@@ -1,43 +1,68 @@
-let allOrders = [];
+let ordenes = [
+    { id: 1, cliente: "Juan Pérez", equipo: "Smart TV Samsung 55\"", falla: "Sin imagen, tiene sonido", estado: "Ingresado" },
+    { id: 2, cliente: "Carlos Gómez", equipo: "PlayStation 5", falla: "Sobrecalentamiento y apague", estado: "En Diagnóstico" }
+];
 
-document.addEventListener("DOMContentLoaded", () => {
-    fetchOrders();
-});
+function renderizarOrdenes(lista = ordenes) {
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = '';
 
-async function fetchOrders() {
-    try {
-        const response = await fetch('/api/v1/ordenes');
-        if (!response.ok) throw new Error("Error al consultar API");
-        allOrders = await response.json();
-        renderOrders(allOrders);
-    } catch (error) {
-        document.getElementById("ordersContainer").innerHTML = `
-            <div class="bg-white p-6 rounded-xl border border-slate-200 text-center text-slate-500 text-sm">
-                Conectado al servidor. Listo para sincronizar órdenes.
-            </div>`;
-    }
-}
-
-function renderOrders(orders) {
-    const container = document.getElementById("ordersContainer");
-    if (!orders || orders.length === 0) {
-        container.innerHTML = `
-            <div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-500 text-sm">
-                No hay órdenes ingresadas aún en la base de datos.
-            </div>`;
-        return;
-    }
-
-    container.innerHTML = orders.map(order => `
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-            <div>
-                <span class="font-bold text-slate-900">#${order.id || 'N/A'}</span> - 
-                <span class="font-semibold text-slate-800">${order.equipo || 'Sin equipo'}</span>
-                <p class="text-sm text-slate-500">${order.cliente || 'Cliente no asignado'}</p>
+    lista.forEach(ord => {
+        const card = document.createElement('div');
+        card.className = "bg-cardbg border border-bordercolor rounded-xl p-5 hover:border-blue-500/50 transition cursor-pointer shadow-lg";
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-md">#${ord.id}</span>
+                <span class="text-xs font-medium text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md">${ord.estado}</span>
             </div>
-            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                ${order.estado || 'INGRESADO'}
-            </span>
-        </div>
-    `).join('');
+            <h3 class="font-bold text-white text-base mb-1">${ord.equipo}</h3>
+            <p class="text-xs text-slate-400 mb-3">Cliente: <span class="text-slate-200 font-medium">${ord.cliente}</span></p>
+            <div class="bg-darkbg/50 rounded-lg p-2.5 border border-bordercolor/50">
+                <p class="text-xs text-slate-300"><strong>Falla:</strong> ${ord.falla}</p>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
+
+function filtrarOrdenes() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtradas = ordenes.filter(o => 
+        o.cliente.toLowerCase().includes(query) || 
+        o.equipo.toLowerCase().includes(query) ||
+        o.id.toString().includes(query)
+    );
+    renderizarOrdenes(filtradas);
+}
+
+function abrirModalNuevaOrden() {
+    document.getElementById('modalNuevaOrden').classList.remove('hidden');
+}
+
+function cerrarModalNuevaOrden() {
+    document.getElementById('modalNuevaOrden').classList.add('hidden');
+}
+
+function guardarOrden(e) {
+    e.preventDefault();
+    const cliente = document.getElementById('clienteInput').value;
+    const equipo = document.getElementById('equipoInput').value;
+    const falla = document.getElementById('fallaInput').value;
+
+    const nueva = {
+        id: ordenes.length + 1,
+        cliente,
+        equipo,
+        falla,
+        estado: "Ingresado"
+    };
+
+    ordenes.unshift(nueva);
+    renderizarOrdenes();
+    cerrarModalNuevaOrden();
+    document.getElementById('formNuevaOrden').reset();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderizarOrdenes();
+});
