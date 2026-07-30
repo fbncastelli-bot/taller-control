@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TallerControl OS - Sistema de Gestión Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { darkbg: '#0b0f17', cardbg: '#151d2a', bordercolor: '#26334d' }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0b0f17; color: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .glass { background: rgba(21, 29, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid #26334d; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- LOGIN MODAL -->
+    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="glass w-full max-w-md p-8 rounded-2xl shadow-2xl border border-slate-700/50">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-sky-500/20 text-2xl">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">TallerControl OS</h2>
+                <p class="text-xs text-slate-400 mt-1">Acceso seguro a plataforma web</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <input type="text" id="username" value="admin" required placeholder="Usuario" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-sky-500 outline-none">
+                <input type="password" id="password" value="1234" required placeholder="Contraseña" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-sky-500 outline-none">
+                <div id="loginError" class="hidden text-xs text-rose-400 bg-rose-500/10 p-3 rounded-lg text-center"></div>
+                <button type="submit" class="w-full py-3 bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-xl transition">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="appContainer" class="hidden flex w-full h-full">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between p-4">
+            <div>
+                <div class="flex items-center gap-3 px-3 py-4 mb-6 border-b border-slate-800">
+                    <div class="w-10 h-10 bg-sky-500/10 text-sky-400 rounded-xl flex items-center justify-center border border-sky-500/20">
+                        <i class="fa-solid fa-microchip text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-sm text-white">TallerControl</h1>
+                        <span class="text-[10px] text-sky-400 font-mono">WEB OS v3.3</span>
+                    </div>
+                </div>
+
+                <nav class="space-y-1">
+                    <button onclick="switchTab('ordenes')" id="btn-ordenes" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-clipboard-list w-5"></i> Órdenes de Trabajo
+                    </button>
+                    <button onclick="switchTab('placas')" id="btn-placas" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-tv w-5"></i> Banco de Placas
+                    </button>
+                    <button onclick="switchTab('componentes')" id="btn-componentes" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-boxes-stacked w-5"></i> Componentes
+                    </button>
+                    <button onclick="switchTab('ventas')" id="btn-ventas" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-tag w-5"></i> Ventas y Usados
+                    </button>
+                    <button onclick="switchTab('caja')" id="btn-caja" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-cash-register w-5"></i> Caja y Finanzas
+                    </button>
+                    <button onclick="switchTab('firmwares')" id="btn-firmwares" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-cloud-arrow-down w-5"></i> Firmware Nube
+                    </button>
+                </nav>
+            </div>
+
+            <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-300" id="userNameLabel">ADMIN</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                </div>
+                <button onclick="logout()" class="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-lg border border-rose-500/20 transition">
+                    <i class="fa-solid fa-power-off mr-1"></i> Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- DASHBOARD BODY -->
+        <main class="flex-1 flex flex-col bg-[#0b0f17] overflow-y-auto">
+
+            <!-- TAB ÓRDENES DE TRABAJO -->
+            <section id="tab-ordenes" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-clipboard-list text-sky-400 mr-2"></i> Gestión de Órdenes</h2>
+                <form id="formOrden" onsubmit="guardarOrden(event)" class="glass p-4 rounded-2xl grid grid-cols-5 gap-4">
+                    <input type="text" id="ord_cliente" placeholder="Cliente" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="ord_equipo" placeholder="Equipo / TV" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="ord_falla" placeholder="Falla" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="number" step="0.01" id="ord_presupuesto" placeholder="Presupuesto $" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-xl text-xs py-2">Guardar Orden</button>
+                </form>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" onkeyup="filtrarTabla('searchOrdenes', 'ordenesTableBody')" id="searchOrdenes" placeholder="Filtrar órdenes en vivo..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none">
+                </div>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">N°</th><th class="p-4">Cliente</th><th class="p-4">Equipo</th><th class="p-4">Falla</th><th class="p-4">Estado</th><th class="p-4">Presupuesto</th><th class="p-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordenesTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB BANCO DE PLACAS -->
+            <section id="tab-placas" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-tv text-sky-400 mr-2"></i> Banco de Placas (Stock)</h2>
+                <form id="formPlaca" onsubmit="guardarPlaca(event)" class="glass p-4 rounded-2xl grid grid-cols-6 gap-3">
+                    <input type="text" id="plc_codigo" placeholder="Código Main" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="plc_modelo" placeholder="Modelo TV" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="plc_panel" placeholder="Panel / Display" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="plc_ubicacion" placeholder="Gavetero" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <select id="plc_estado" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                        <option>Probada OK</option><option>Para Repuesto</option><option>A Reparar</option>
+                    </select>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs py-2">Guardar Placa</button>
+                </form>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" onkeyup="filtrarTabla('searchPlacas', 'placasTableBody')" id="searchPlacas" placeholder="Filtrar placas en vivo por código o modelo..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none">
+                </div>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">N°</th><th class="p-4">Código Main</th><th class="p-4">Modelo TV</th><th class="p-4">Panel</th><th class="p-4">Gavetero</th><th class="p-4">Estado</th><th class="p-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="placasTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB COMPONENTES -->
+            <section id="tab-componentes" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-boxes-stacked text-sky-400 mr-2"></i> Stock Componentes</h2>
+                <form id="formComponente" onsubmit="guardarComponente(event)" class="glass p-4 rounded-2xl grid grid-cols-5 gap-3">
+                    <select id="cmp_cat" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                        <option>MOSFETs</option><option>Integrados PWM/Fuente</option><option>Transistores Bipolares</option><option>Diodos/Schottky</option><option>Capacitores</option><option>Otros</option>
+                    </select>
+                    <input type="text" id="cmp_codigo" placeholder="Código (ej: 1N4148)" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="text" id="cmp_ubicacion" placeholder="Gavetero" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="number" id="cmp_cantidad" placeholder="Cantidad" value="1" min="1" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-xl text-xs py-2">Guardar Componente</button>
+                </form>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" onkeyup="filtrarTabla('searchComponentes', 'componentesTableBody')" id="searchComponentes" placeholder="Filtrar componentes en vivo..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none">
+                </div>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">N°</th><th class="p-4">Categoría</th><th class="p-4">Código</th><th class="p-4">Gavetero</th><th class="p-4">Cantidad</th><th class="p-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="componentesTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB VENTAS -->
+            <section id="tab-ventas" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-tag text-sky-400 mr-2"></i> Ventas y Usados</h2>
+                <form id="formVenta" onsubmit="guardarVenta(event)" class="glass p-4 rounded-2xl grid grid-cols-4 gap-3">
+                    <input type="text" id="vta_producto" placeholder="Producto / Equipo" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="number" step="0.01" id="vta_precio" placeholder="Precio $" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <select id="vta_estado" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                        <option>En Venta</option><option>Reservado</option><option>Vendido</option>
+                    </select>
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-xl text-xs py-2">Guardar Publicación</button>
+                </form>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">N°</th><th class="p-4">Producto</th><th class="p-4">Precio</th><th class="p-4">Estado</th><th class="p-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ventasTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB CAJA Y FINANZAS -->
+            <section id="tab-caja" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-cash-register text-sky-400 mr-2"></i> Caja y Finanzas</h2>
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-emerald-500">
+                        <span class="text-xs text-slate-400 font-semibold uppercase">Total Ingresos</span>
+                        <h3 id="caja_ingresos" class="text-xl font-bold text-emerald-400 mt-1">$ 0.00</h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-rose-500">
+                        <span class="text-xs text-slate-400 font-semibold uppercase">Total Egresos</span>
+                        <h3 id="caja_egresos" class="text-xl font-bold text-rose-400 mt-1">$ 0.00</h3>
+                    </div>
+                    <div class="glass p-5 rounded-2xl border-l-4 border-l-sky-500">
+                        <span class="text-xs text-slate-400 font-semibold uppercase">Balance Neto</span>
+                        <h3 id="caja_balance" class="text-xl font-bold text-sky-400 mt-1">$ 0.00</h3>
+                    </div>
+                </div>
+
+                <form id="formCaja" onsubmit="guardarCaja(event)" class="glass p-4 rounded-2xl grid grid-cols-4 gap-3">
+                    <select id="caj_tipo" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                        <option>Ingreso</option><option>Egreso</option>
+                    </select>
+                    <input type="text" id="caj_concepto" placeholder="Concepto / Detalle" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <input type="number" step="0.01" id="caj_monto" placeholder="Monto $" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white outline-none">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs py-2">Registrar Movimiento</button>
+                </form>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">N°</th><th class="p-4">Fecha</th><th class="p-4">Tipo</th><th class="p-4">Concepto</th><th class="p-4">Monto</th><th class="p-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cajaTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB FIRMWARES NUBE -->
+            <section id="tab-firmwares" class="tab-content hidden p-8 space-y-6">
+                <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-cloud-arrow-down text-sky-400 mr-2"></i> Firmwares Nube</h2>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3 text-slate-500 text-xs"></i>
+                    <input type="text" onkeyup="filtrarTabla('searchFirmwares', 'firmwareTableBody')" id="searchFirmwares" placeholder="Buscar por modelo o chasis..." class="w-full bg-slate-900/80 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none">
+                </div>
+                <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 border-b border-slate-800 text-xs uppercase text-slate-400">
+                                <th class="p-4">ID</th><th class="p-4">Modelo TV</th><th class="p-4">Chasis</th><th class="p-4">Archivo</th><th class="p-4 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="firmwareTableBody" class="divide-y divide-slate-800/60 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // Detección automática de entorno (Local vs Nube)
+        const REMOTE_API_URL = "https://TU-SERVIDOR.onrender.com"; // Se actualizará al desplegar en Render
+        const API_URL = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.protocol === "file:")
+            ? "http://127.0.0.1:8000"
+            : REMOTE_API_URL;
+
+        let userToken = localStorage.getItem("user_token") || "";
+
+        window.onload = () => { if (userToken) validarToken(); };
+
+        document.getElementById("loginForm").onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch(`${API_URL}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: document.getElementById("username").value, password: document.getElementById("password").value })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                userToken = data.token;
+                localStorage.setItem("user_token", userToken);
+                iniciarSesion(data.usuario);
+            } else {
+                document.getElementById("loginError").innerText = "Credenciales incorrectas";
+                document.getElementById("loginError").classList.remove("hidden");
+            }
+        };
+
+        async function validarToken() {
+            const res = await fetch(`${API_URL}/api/v1/verify-token`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                iniciarSesion(data.usuario);
+            } else logout();
+        }
+
+        function iniciarSesion(user) {
+            document.getElementById("loginModal").classList.add("hidden");
+            document.getElementById("appContainer").classList.remove("hidden");
+            document.getElementById("userNameLabel").innerText = user.toUpperCase();
+            switchTab('ordenes');
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("bg-sky-500/10", "text-sky-400", "border-sky-500/20", "font-semibold"));
+            
+            document.getElementById(`tab-${tab}`).classList.remove("hidden");
+            document.getElementById(`btn-${tab}`).classList.add("bg-sky-500/10", "text-sky-400", "border-sky-500/20", "font-semibold");
+
+            if (tab === 'ordenes') cargarOrdenes();
+            if (tab === 'placas') cargarPlacas();
+            if (tab === 'componentes') cargarComponentes();
+            if (tab === 'ventas') cargarVentas();
+            if (tab === 'caja') cargarCaja();
+            if (tab === 'firmwares') cargarFirmwares();
+        }
+
+        function filtrarTabla(inputId, tbodyId) {
+            const q = document.getElementById(inputId).value.toLowerCase();
+            const rows = document.querySelectorAll(`#${tbodyId} tr`);
+            rows.forEach(r => r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none");
+        }
+
+        async function eliminarRegistro(endpoint, id, callback) {
+            if (confirm(`¿Desea borrar el registro #${id}?`)) {
+                await fetch(`${API_URL}/api/v1/${endpoint}/${id}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${userToken}` }
+                });
+                callback();
+            }
+        }
+
+        async function cargarOrdenes() {
+            const res = await fetch(`${API_URL}/api/v1/ordenes`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("ordenesTableBody").innerHTML = data.map(o => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-4 font-mono text-slate-400">#${o.id}</td>
+                        <td class="p-4 font-semibold text-white">${o.cliente}</td>
+                        <td class="p-4 text-slate-300">${o.equipo}</td>
+                        <td class="p-4 text-slate-400 text-xs">${o.falla}</td>
+                        <td class="p-4 text-xs font-bold text-sky-400">${o.estado}</td>
+                        <td class="p-4 font-mono text-emerald-400">$ ${o.presupuesto.toLocaleString()}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="eliminarRegistro('ordenes', ${o.id}, cargarOrdenes)" class="text-rose-400 hover:text-rose-300 text-xs font-semibold">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function guardarOrden(e) {
+            e.preventDefault();
+            await fetch(`${API_URL}/api/v1/ordenes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+                body: JSON.stringify({
+                    cliente: document.getElementById("ord_cliente").value,
+                    equipo: document.getElementById("ord_equipo").value,
+                    falla: document.getElementById("ord_falla").value,
+                    estado: "Ingresado",
+                    presupuesto: parseFloat(document.getElementById("ord_presupuesto").value || 0)
+                })
+            });
+            document.getElementById("formOrden").reset();
+            cargarOrdenes();
+        }
+
+        async function cargarPlacas() {
+            const res = await fetch(`${API_URL}/api/v1/placas`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("placasTableBody").innerHTML = data.map(p => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-4 font-mono text-slate-400">#${p.id}</td>
+                        <td class="p-4 font-semibold text-sky-400 font-mono text-xs">${p.codigo_main}</td>
+                        <td class="p-4 text-white">${p.tv_modelo}</td>
+                        <td class="p-4 text-slate-300 text-xs">${p.panel}</td>
+                        <td class="p-4 text-slate-400 text-xs">${p.ubicacion}</td>
+                        <td class="p-4 text-xs font-bold text-emerald-400">${p.estado}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="eliminarRegistro('placas', ${p.id}, cargarPlacas)" class="text-rose-400 hover:text-rose-300 text-xs font-semibold">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function guardarPlaca(e) {
+            e.preventDefault();
+            await fetch(`${API_URL}/api/v1/placas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+                body: JSON.stringify({
+                    codigo_main: document.getElementById("plc_codigo").value,
+                    tv_modelo: document.getElementById("plc_modelo").value,
+                    panel: document.getElementById("plc_panel").value,
+                    ubicacion: document.getElementById("plc_ubicacion").value,
+                    estado: document.getElementById("plc_estado").value
+                })
+            });
+            document.getElementById("formPlaca").reset();
+            cargarPlacas();
+        }
+
+        async function cargarComponentes() {
+            const res = await fetch(`${API_URL}/api/v1/componentes`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("componentesTableBody").innerHTML = data.map(c => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-4 font-mono text-slate-400">#${c.id}</td>
+                        <td class="p-4 text-slate-300">${c.categoria}</td>
+                        <td class="p-4 font-semibold text-sky-400 font-mono text-xs">${c.codigo}</td>
+                        <td class="p-4 text-slate-400 text-xs">${c.ubicacion}</td>
+                        <td class="p-4 font-mono text-emerald-400 font-bold">${c.cantidad} u.</td>
+                        <td class="p-4 text-center">
+                            <button onclick="eliminarRegistro('componentes', ${c.id}, cargarComponentes)" class="text-rose-400 hover:text-rose-300 text-xs font-semibold">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function guardarComponente(e) {
+            e.preventDefault();
+            await fetch(`${API_URL}/api/v1/componentes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+                body: JSON.stringify({
+                    categoria: document.getElementById("cmp_cat").value,
+                    codigo: document.getElementById("cmp_codigo").value,
+                    ubicacion: document.getElementById("cmp_ubicacion").value,
+                    cantidad: parseInt(document.getElementById("cmp_cantidad").value || 1)
+                })
+            });
+            document.getElementById("formComponente").reset();
+            cargarComponentes();
+        }
+
+        async function cargarVentas() {
+            const res = await fetch(`${API_URL}/api/v1/ventas`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("ventasTableBody").innerHTML = data.map(v => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-4 font-mono text-slate-400">#${v.id}</td>
+                        <td class="p-4 font-semibold text-white">${v.producto}</td>
+                        <td class="p-4 font-mono text-emerald-400">$ ${v.precio.toLocaleString()}</td>
+                        <td class="p-4 text-xs font-bold text-sky-400">${v.estado}</td>
+                        <td class="p-4 text-center space-x-2">
+                            <a href="https://listado.mercadolibre.com.ar/${encodeURIComponent(v.producto + ' usado')}" target="_blank" class="px-2 py-1 bg-amber-500/10 text-amber-400 rounded border border-amber-500/20 text-xs">
+                                <i class="fa-solid fa-cart-shopping"></i> ML
+                            </a>
+                            <button onclick="eliminarRegistro('ventas', ${v.id}, cargarVentas)" class="text-rose-400 hover:text-rose-300 text-xs font-semibold">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function guardarVenta(e) {
+            e.preventDefault();
+            await fetch(`${API_URL}/api/v1/ventas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+                body: JSON.stringify({
+                    producto: document.getElementById("vta_producto").value,
+                    precio: parseFloat(document.getElementById("vta_precio").value || 0),
+                    estado: document.getElementById("vta_estado").value
+                })
+            });
+            document.getElementById("formVenta").reset();
+            cargarVentas();
+        }
+
+        async function cargarCaja() {
+            const res = await fetch(`${API_URL}/api/v1/caja`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                let ingresos = 0, egresos = 0;
+                
+                document.getElementById("cajaTableBody").innerHTML = data.map(m => {
+                    if (m.tipo === "Ingreso") ingresos += m.monto;
+                    else egresos += m.monto;
+                    
+                    const isIngreso = m.tipo === "Ingreso";
+                    return `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-4 font-mono text-slate-400">#${m.id}</td>
+                            <td class="p-4 text-slate-400 text-xs">${m.fecha}</td>
+                            <td class="p-4 text-xs font-bold ${isIngreso ? 'text-emerald-400' : 'text-rose-400'}">${m.tipo}</td>
+                            <td class="p-4 text-white font-semibold">${m.concepto}</td>
+                            <td class="p-4 font-mono ${isIngreso ? 'text-emerald-400' : 'text-rose-400'}">$ ${m.monto.toLocaleString()}</td>
+                            <td class="p-4 text-center">
+                                <button onclick="eliminarRegistro('caja', ${m.id}, cargarCaja)" class="text-rose-400 hover:text-rose-300 text-xs font-semibold">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join("");
+
+                document.getElementById("caja_ingresos").innerText = `$ ${ingresos.toLocaleString()}`;
+                document.getElementById("caja_egresos").innerText = `$ ${egresos.toLocaleString()}`;
+                document.getElementById("caja_balance").innerText = `$ ${(ingresos - egresos).toLocaleString()}`;
+            }
+        }
+
+        async function guardarCaja(e) {
+            e.preventDefault();
+            await fetch(`${API_URL}/api/v1/caja`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+                body: JSON.stringify({
+                    tipo: document.getElementById("caj_tipo").value,
+                    concepto: document.getElementById("caj_concepto").value,
+                    monto: parseFloat(document.getElementById("caj_monto").value || 0)
+                })
+            });
+            document.getElementById("formCaja").reset();
+            cargarCaja();
+        }
+
+        async function cargarFirmwares() {
+            const res = await fetch(`${API_URL}/api/v1/firmwares`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById("firmwareTableBody").innerHTML = data.map(f => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-4 font-mono text-slate-400">#${f.id}</td>
+                        <td class="p-4 font-semibold text-white">${f.modelo}</td>
+                        <td class="p-4 text-sky-400 font-mono text-xs">${f.chasis}</td>
+                        <td class="p-4 text-slate-300 font-mono text-xs">${f.filename}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="descargarFirmware(${f.id}, '${f.filename}')" class="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-semibold">
+                                <i class="fa-solid fa-download mr-1"></i> Descargar
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        }
+
+        async function descargarFirmware(id, filename) {
+            const res = await fetch(`${API_URL}/api/v1/firmwares/download/${id}`, { headers: { "Authorization": `Bearer ${userToken}` } });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        }
+    </script>
+</body>
+</html>
