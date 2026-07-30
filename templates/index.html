@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Control - Gestión de Órdenes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased">
+
+    <!-- Header Principal -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none text-slate-900">Taller Control</h1>
+                    <span class="text-xs text-slate-500 font-medium">Servicio Técnico</span>
+                </div>
+            </div>
+            
+            <!-- Buscador -->
+            <div class="flex-1 max-w-md mx-4">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Buscar cliente, equipo o N° orden..." 
+                        class="w-full bg-slate-100 text-slate-900 pl-10 pr-4 py-2 rounded-lg border border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-sm transition">
+                    <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
+                </div>
+            </div>
+
+            <button onclick="alert('Formulario de nueva orden')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm transition">
+                <i class="fa-solid fa-plus mr-2"></i> Nueva Orden
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenido -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Sidebar Filtros -->
+            <aside class="space-y-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Estados</h2>
+                    <nav class="space-y-1">
+                        <button class="w-full flex justify-between items-center px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700">
+                            <span>Todos</span> <span id="count-all" class="bg-blue-200 text-blue-800 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- Lista de Órdenes -->
+            <section class="lg:col-span-3 space-y-4">
+                <div id="ordersContainer" class="space-y-3">
+                    <div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-400">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p class="text-sm">Cargando órdenes del taller...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
