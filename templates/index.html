@@ -22,7 +22,7 @@
 </head>
 <body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden">
 
-    <!-- Header Móvil / Botón Menú -->
+    <!-- Header Móvil -->
     <div class="md:hidden bg-cardbg border-b border-bordercolor p-4 flex items-center justify-between z-20">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">TC</div>
@@ -49,12 +49,12 @@
                     <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                     Órdenes
                 </button>
-                <button onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <button onclick="cambiarVista('clientes'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     Clientes
                 </button>
-                <button onclick="toggleSidebar()" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <button onclick="cambiarVista('stock'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
+                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     Repuestos / Stock
                 </button>
                 <button onclick="cambiarVista('caja'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
@@ -72,12 +72,10 @@
         </div>
     </aside>
 
-    <!-- Overlay para celular -->
     <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 hidden z-20 md:hidden"></div>
 
     <!-- Área Principal -->
     <main class="flex-1 flex flex-col overflow-hidden">
-        <!-- Topbar / Buscador -->
         <header class="h-16 bg-cardbg/50 border-b border-bordercolor px-4 md:px-6 flex items-center justify-between">
             <div class="relative w-full md:w-96">
                 <input type="text" id="searchInput" onkeyup="filtrarOrdenes()" placeholder="Buscar cliente, equipo o N° orden..." class="w-full bg-darkbg border border-bordercolor rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
@@ -85,25 +83,59 @@
             </div>
         </header>
 
-        <!-- VISTA: ÓRDENES DE TRABAJO -->
+        <!-- VISTA: ÓRDENES -->
         <div id="vistaOrdenes" class="flex-1 overflow-y-auto p-4 md:p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white">Órdenes de Trabajo</h2>
-            </div>
+            <h2 class="text-xl font-bold text-white mb-6">Órdenes de Trabajo</h2>
             <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- VISTA: CLIENTES -->
+        <div id="vistaClientes" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white">Clientes Registrados</h2>
+                <button onclick="abrirModal('modalNuevoCliente')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Cliente</button>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
+                            <th class="py-3 px-4">Nombre</th>
+                            <th class="py-3 px-4">Teléfono</th>
+                            <th class="py-3 px-4">Dirección</th>
+                            <th class="py-3 px-4">Equipos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaClientes"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VISTA: REPUESTOS / STOCK -->
+        <div id="vistaStock" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white">Control de Stock / Repuestos</h2>
+                <button onclick="abrirModal('modalNuevoRepuesto')" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Repuesto</button>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
+                            <th class="py-3 px-4">Componente / Repuesto</th>
+                            <th class="py-3 px-4">Stock</th>
+                            <th class="py-3 px-4">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaStock"></tbody>
+                </table>
+            </div>
         </div>
 
         <!-- VISTA: CAJA Y BALANCE -->
         <div id="vistaCaja" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Caja y Balance</h2>
-                <button onclick="abrirModalMovimiento()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-emerald-600/20 text-sm flex items-center gap-2 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Nuevo Movimiento
-                </button>
+                <button onclick="abrirModalMovimiento()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Movimiento</button>
             </div>
-
-            <!-- Tarjetas de Resumen Financiero -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-cardbg border border-bordercolor rounded-2xl p-4">
                     <span class="text-xs text-slate-400 font-medium">Ingresos Totales</span>
@@ -118,77 +150,72 @@
                     <p id="saldoTotal" class="text-2xl font-bold text-blue-400 mt-1">$0</p>
                 </div>
             </div>
-
-            <!-- Tabla de Movimientos -->
             <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
-                <div class="p-4 border-b border-bordercolor">
-                    <h3 class="font-bold text-white text-sm">Historial de Movimientos</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
-                                <th class="py-3 px-4">Fecha</th>
-                                <th class="py-3 px-4">Concepto</th>
-                                <th class="py-3 px-4">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaMovimientos"></tbody>
-                    </table>
-                </div>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
+                            <th class="py-3 px-4">Fecha</th>
+                            <th class="py-3 px-4">Concepto</th>
+                            <th class="py-3 px-4">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMovimientos"></tbody>
+                </table>
             </div>
         </div>
     </main>
 
-    <!-- Modal Nueva Orden -->
+    <!-- MODAL: NUEVA ORDEN -->
     <div id="modalNuevaOrden" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">Ingresar Nueva Orden de Servicio</h3>
+            <h3 class="text-lg font-bold text-white mb-4">Ingresar Nueva Orden</h3>
             <form id="formNuevaOrden" onsubmit="guardarOrden(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre del Cliente</label>
-                    <input type="text" id="clienteInput" required class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Equipo / Modelo</label>
-                    <input type="text" id="equipoInput" required placeholder="Ej: Smart TV LG 43 - LC430DUE" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Falla Declarada</label>
-                    <textarea id="fallaInput" rows="3" required placeholder="Ej: No enciende, titila LED frontal..." class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"></textarea>
-                </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" onclick="cerrarModalNuevaOrden()" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancelar</button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg text-sm transition">Guardar Orden</button>
-                </div>
+                <input type="text" id="clienteInput" required placeholder="Nombre del cliente" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="text" id="equipoInput" required placeholder="Equipo / Modelo" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <textarea id="fallaInput" rows="3" required placeholder="Falla declarada" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200"></textarea>
+                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevaOrden')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Nuevo Movimiento de Caja -->
+    <!-- MODAL: NUEVO CLIENTE -->
+    <div id="modalNuevoCliente" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Registrar Nuevo Cliente</h3>
+            <form id="formNuevoCliente" onsubmit="guardarCliente(event)" class="space-y-4">
+                <input type="text" id="clienteNombreInput" required placeholder="Nombre y Apellido" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="text" id="clienteTelInput" required placeholder="Teléfono" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="text" id="clienteDirInput" placeholder="Dirección / Localidad" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoCliente')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-indigo-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: NUEVO REPUESTO -->
+    <div id="modalNuevoRepuesto" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Agregar Repuesto al Stock</h3>
+            <form id="formNuevoRepuesto" onsubmit="guardarRepuesto(event)" class="space-y-4">
+                <input type="text" id="repuestoNombreInput" required placeholder="Nombre o código del repuesto" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="number" id="repuestoCantInput" required placeholder="Cantidad de unidades" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="number" id="repuestoPrecioInput" required placeholder="Precio unitario ($)" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoRepuesto')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-amber-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: NUEVO MOVIMIENTO -->
     <div id="modalNuevoMovimiento" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-4">Registrar Movimiento de Caja</h3>
             <form id="formNuevoMovimiento" onsubmit="guardarMovimientoCaja(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Tipo de Movimiento</label>
-                    <select id="tipoInput" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                        <option value="ingreso">Ingreso (+ Cobro / Seña)</option>
-                        <option value="egreso">Egreso (- Gasto / Repuesto)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Concepto / Descripción</label>
-                    <input type="text" id="conceptoInput" required placeholder="Ej: Seña reparación TV Samsung" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Monto ($)</label>
-                    <input type="number" id="montoInput" required placeholder="Ej: 15000" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" onclick="cerrarModalMovimiento()" class="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2 rounded-lg text-sm transition">Guardar Movimiento</button>
-                </div>
+                <select id="tipoInput" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                    <option value="ingreso">Ingreso (+ Cobro / Seña)</option>
+                    <option value="egreso">Egreso (- Gasto / Repuesto)</option>
+                </select>
+                <input type="text" id="conceptoInput" required placeholder="Concepto" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <input type="number" id="montoInput" required placeholder="Monto ($)" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
+                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoMovimiento')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-emerald-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
             </form>
         </div>
     </div>
