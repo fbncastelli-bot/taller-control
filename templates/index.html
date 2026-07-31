@@ -20,12 +20,23 @@
         }
     </script>
 </head>
-<body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex overflow-hidden">
+<body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Header Móvil / Botón Menú -->
+    <div class="md:hidden bg-cardbg border-b border-bordercolor p-4 flex items-center justify-between z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">TC</div>
+            <h1 class="font-bold text-white leading-none">TallerControl</h1>
+        </div>
+        <button onclick="toggleSidebar()" class="text-slate-300 focus:outline-none p-1">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </div>
 
     <!-- Sidebar / Menú Lateral -->
-    <aside class="w-64 bg-cardbg border-r border-bordercolor flex flex-col justify-between">
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-cardbg border-r border-bordercolor flex flex-col justify-between z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
         <div class="p-4">
-            <div class="flex items-center gap-3 mb-8 px-2">
+            <div class="hidden md:flex items-center gap-3 mb-8 px-2">
                 <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/30">TC</div>
                 <div>
                     <h1 class="font-bold text-white leading-none">TallerControl</h1>
@@ -34,19 +45,19 @@
             </div>
 
             <nav class="space-y-1">
-                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/20">
+                <a href="#" onclick="toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white shadow-md shadow-blue-600/20">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                     Órdenes
                 </a>
-                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
+                <a href="#" onclick="toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     Clientes
                 </a>
-                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
+                <a href="#" onclick="toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     Repuestos / Stock
                 </a>
-                <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
+                <a href="#" onclick="toggleSidebar()" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     Caja y Balance
                 </a>
@@ -54,32 +65,34 @@
         </div>
 
         <div class="p-4 border-t border-bordercolor">
-            <button onclick="abrirModalNuevaOrden()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition">
+            <button onclick="abrirModalNuevaOrden(); toggleSidebar();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Nueva Orden
             </button>
         </div>
     </aside>
 
+    <!-- Overlay para celular al abrir menú -->
+    <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 hidden z-20 md:hidden"></div>
+
     <!-- Área Principal -->
     <main class="flex-1 flex flex-col overflow-hidden">
         <!-- Topbar / Buscador -->
-        <header class="h-16 bg-cardbg/50 border-b border-bordercolor px-6 flex items-center justify-between">
-            <div class="relative w-96">
+        <header class="h-16 bg-cardbg/50 border-b border-bordercolor px-4 md:px-6 flex items-center justify-between">
+            <div class="relative w-full md:w-96">
                 <input type="text" id="searchInput" onkeyup="filtrarOrdenes()" placeholder="Buscar cliente, equipo o N° orden..." class="w-full bg-darkbg border border-bordercolor rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
                 <svg class="w-4 h-4 text-slate-500 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
         </header>
 
         <!-- Contenido principal -->
-        <div class="flex-1 overflow-y-auto p-6">
+        <div class="flex-1 overflow-y-auto p-4 md:p-6">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Órdenes de Trabajo</h2>
             </div>
 
             <!-- Listado de tarjetas -->
             <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Se cargan dinámicamente con app.js -->
             </div>
         </div>
     </main>
@@ -109,6 +122,14 @@
         </div>
     </div>
 
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+    </script>
     <script src="/static/app.js"></script>
 </body>
 </html>
