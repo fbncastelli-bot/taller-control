@@ -1,95 +1,154 @@
-from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import List, Optional
+from flask import Flask, render_template, request, jsonify
+import sqlite3
 import os
 
-app = FastAPI(
-    title="API Servidor Taller Control",
-    version="3.3"
-)
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Configuración CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+DB_NAME = "taller.db"
 
-# Montar archivos estáticos para la interfaz gráfica
-app.mount("/static", StaticFiles(directory="static"), name="static")
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # Tabla de Órdenes
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ordenes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT NOT NULL,
+            equipo TEXT NOT NULL,
+            falla TEXT NOT NULL,
+            estado TEXT DEFAULT 'Ingresado'
+        )
+    ''')
+    
+    # Tabla de Clientes
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clientes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            telefono TEXT,
+            direccion TEXT
+        )
+    ''')
 
-# Modelos de datos
-class LoginData(BaseModel):
-    username: str
-    password: str
+    # Tabla de Stock / Repuestos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS repuestos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            cantidad INTEGER DEFAULT 0,
+            precio REAL DEFAULT 0.0
+        )
+    ''')
 
-class Orden(BaseModel):
-    id: Optional[int] = None
-    cliente: str
-    equipo: str
-    falla: str
-    estado: str = "INGRESADO"
-    presupuesto: float = 0.0
+    # Tabla de Movimientos de Caja
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS caja (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL,
+            concepto TEXT NOT NULL,
+            monto REAL NOT NULL,
+            fecha TEXT NOT NULL
+        )
+    ''')
 
-# Base de datos en memoria para pruebas
-db_ordenes = [
-    {
-        "id": 1,
-        "cliente": "Juan Pérez",
-        "equipo": "Smart TV Samsung 55\"",
-        "falla": "No enciende, led de standby titila",
-        "estado": "EN_REVISION",
-        "presupuesto": 45000.0
-    },
-    {
-        "id": 2,
-        "cliente": "Carlos Gómez",
-        "equipo": "PlayStation 5",
-        "falla": "Apagado repentino a los 10 minutos de juego",
-        "estado": "INGRESADO",
-        "presupuesto": 0.0
-    }
-]
+    conn.commit()
+    conn.close()
 
-# Servir la interfaz web en la raíz
-@app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    with open("templates/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+# Inicializar BD al arrancar
+init_db()
 
-# Endpoints de la API
-@app.post("/api/login")
-async def login(credentials: LoginData):
-    if credentials.username == "admin" and credentials.password == "admin123":
-        return {"access_token": "token_demo_12345", "token_type": "bearer"}
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Credenciales incorrectas"
-    )
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-@app.get("/api/v1/verify-token")
-async def verify_token():
-    return {"status": "ok", "message": "Token válido"}
+# --- ENDPOINTS ÓRDENES ---
+@app.route('/api/ordenes', methods=['GET'])
+def get_ordenes():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM ordenes ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
-@app.get("/api/v1/ordenes", response_model=List[Orden])
-async def get_ordenes():
-    return db_ordenes
+@app.route('/api/ordenes', methods=['POST'])
+def add_orden():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO ordenes (cliente, equipo, falla, estado) VALUES (?, ?, ?, ?)',
+                   (data['cliente'], data['equipo'], data['falla'], 'Ingresado'))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
 
-@app.post("/api/v1/ordenes", response_model=Orden)
-async def create_orden(orden: Orden):
-    new_id = len(db_ordenes) + 1 if db_ordenes else 1
-    orden_dict = orden.dict()
-    orden_dict["id"] = new_id
-    db_ordenes.append(orden_dict)
-    return orden_dict
+# --- ENDPOINTS CLIENTES ---
+@app.route('/api/clientes', methods=['GET'])
+def get_clientes():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM clientes ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
-@app.delete("/api/v1/ordenes/{item_id}")
-async def delete_orden(item_id: int):
-    global db_ordenes
-    db_ordenes = [o for o in db_ordenes if o.get("id") != item_id]
-    return {"message": f"Orden {item_id} eliminada correctamente"}
+@app.route('/api/clientes', methods=['POST'])
+def add_cliente():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO clientes (nombre, telefono, direccion) VALUES (?, ?, ?)',
+                   (data['nombre'], data['telefono'], data['direccion']))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+# --- ENDPOINTS REPUESTOS ---
+@app.route('/api/repuestos', methods=['GET'])
+def get_repuestos():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM repuestos ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/repuestos', methods=['POST'])
+def add_repuesto():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO repuestos (nombre, cantidad, precio) VALUES (?, ?, ?)',
+                   (data['nombre'], data['cantidad'], data['precio']))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+# --- ENDPOINTS CAJA ---
+@app.route('/api/caja', methods=['GET'])
+def get_caja():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM caja ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/caja', methods=['POST'])
+def add_caja():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO caja (tipo, concepto, monto, fecha) VALUES (?, ?, ?, ?)',
+                   (data['tipo'], data['concepto'], data['monto'], data['fecha']))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
