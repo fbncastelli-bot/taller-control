@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TallerControl OS - Sistema de Gestión</title>
+    <title>Sistema Profesional de Gestión de Taller v4.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -11,289 +11,324 @@
             theme: {
                 extend: {
                     colors: {
-                        darkbg: '#0b0f17',
-                        cardbg: '#151d2a',
-                        bordercolor: '#26334d'
+                        navybg: '#1b263b',
+                        cardbg: '#0d1b2a',
+                        headerbg: '#1e293b',
+                        bordercolor: '#334155',
+                        cyanbtn: '#06b6d4',
+                        greenbtn: '#10b981'
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden">
+<body class="bg-navybg text-slate-100 font-sans antialiased h-screen flex flex-col overflow-hidden">
 
-    <!-- MODAL DE LOGIN -->
-    <div id="loginOverlay" class="fixed inset-0 bg-darkbg z-50 flex items-center justify-center p-4">
+    <!-- MODAL LOGIN -->
+    <div id="loginOverlay" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
         <div class="bg-cardbg border border-bordercolor w-full max-w-md rounded-2xl p-8 shadow-2xl">
-            <div class="flex items-center justify-center gap-3 mb-6">
-                <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-blue-500/30">TC</div>
-                <div>
-                    <h1 class="text-xl font-bold text-white leading-none">TallerControl</h1>
-                    <span class="text-xs text-slate-400">Acceso al Sistema</span>
-                </div>
+            <div class="text-center mb-6">
+                <h1 class="text-xl font-bold text-cyan-400">TallerControl OS v4.2</h1>
+                <p class="text-xs text-slate-400 mt-1">Servicio Técnico & Firmwares</p>
             </div>
-            
             <form id="loginForm" onsubmit="procesarLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Usuario</label>
-                    <input type="text" id="loginUsuario" required placeholder="Ingresá tu usuario" class="w-full bg-darkbg border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    <input type="text" id="loginUsuario" required class="w-full bg-slate-900 border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Contraseña</label>
-                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-darkbg border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
                 </div>
                 <div id="loginError" class="text-rose-500 text-xs text-center hidden"></div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-blue-600/30 transition">
-                    Ingresar
-                </button>
+                <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-xl transition">Ingresar al Sistema</button>
             </form>
         </div>
     </div>
 
-    <!-- Header Móvil -->
-    <div class="md:hidden bg-cardbg border-b border-bordercolor p-4 flex items-center justify-between z-20">
+    <!-- ENCABEZADO SUPERIOR -->
+    <header class="bg-headerbg border-b border-bordercolor px-4 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-4">
+            <h1 class="text-base font-bold text-cyan-400 uppercase tracking-wide">Servicio Técnico & Firmwares</h1>
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">● BDDD: ONLINE</span>
+        </div>
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">TC</div>
-            <h1 class="font-bold text-white leading-none">TallerControl</h1>
+            <span class="text-xs text-slate-300 font-medium">👤 USER: ADMINISTRADOR</span>
+            <button onclick="cerrarSesion()" class="text-xs bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 px-2.5 py-1 rounded-lg transition">Salir</button>
         </div>
-        <button onclick="toggleSidebar()" class="text-slate-300 focus:outline-none p-1">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-    </div>
+    </header>
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-cardbg border-r border-bordercolor flex flex-col justify-between z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
-        <div class="p-4">
-            <div class="hidden md:flex items-center gap-3 mb-8 px-2">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/30">TC</div>
+    <!-- BARRA DE PESTAÑAS TIPO ESCRITORIO -->
+    <nav class="bg-slate-900 border-b border-bordercolor px-2 flex gap-1 overflow-x-auto shrink-0 pt-2">
+        <button id="btnTabOrdenes" onclick="cambiarVista('ordenes')" class="px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition">📋 Órdenes de Trabajo</button>
+        <button id="btnTabPlacas" onclick="cambiarVista('placas')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">📦 Banco de Placas (Stock)</button>
+        <button id="btnTabStock" onclick="cambiarVista('stock')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">💡 Stock Componentes</button>
+        <button id="btnTabVentas" onclick="cambiarVista('ventas')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">🏷️ Ventas y Usados</button>
+        <button id="btnTabCaja" onclick="cambiarVista('caja')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">💵 Caja y Finanzas</button>
+        <button id="btnTabFirmwares" onclick="cambiarVista('firmwares')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">☁️ Firmwares Nube</button>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 overflow-hidden p-4 flex flex-col">
+
+        <!-- 1. VISTA: ÓRDENES DE TRABAJO -->
+        <section id="vistaOrdenes" class="flex-1 flex flex-col gap-3 overflow-hidden">
+            <!-- Formulario Superior Directo -->
+            <form onsubmit="guardarOrdenDirecta(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-6 gap-3 shrink-0">
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] text-slate-400 mb-1">Cliente:</label>
+                    <input type="text" id="ordCliente" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] text-slate-400 mb-1">Equipo/Modelo:</label>
+                    <input type="text" id="ordEquipo" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
                 <div>
-                    <h1 class="font-bold text-white leading-none">TallerControl</h1>
-                    <span class="text-xs text-slate-400">Servicio Técnico</span>
+                    <label class="block text-[11px] text-slate-400 mb-1">Estado:</label>
+                    <select id="ordEstado" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
+                        <option value="Ingresado">Ingresado</option>
+                        <option value="Presupuestado">Presupuestado</option>
+                        <option value="En Reparación">En Reparación</option>
+                        <option value="Finalizado">Finalizado</option>
+                        <option value="Entregado">Entregado</option>
+                    </select>
                 </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar Orden</button>
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-[11px] text-slate-400 mb-1">Falla Reportada:</label>
+                    <input type="text" id="ordFalla" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-[11px] text-slate-400 mb-1">Presupuesto $:</label>
+                    <input type="number" id="ordPresupuesto" placeholder="0.00" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+            </form>
+
+            <!-- Barra de Búsqueda -->
+            <div class="flex gap-2 shrink-0">
+                <input type="text" id="buscarOrdenInput" onkeyup="filtrarOrdenes()" placeholder="Buscar Orden: Cliente, Equipo o N° de Orden..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
+                <button onclick="filtrarOrdenes()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Filtrar</button>
             </div>
 
-            <nav class="space-y-1">
-                <button onclick="cambiarVista('ordenes'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                    Órdenes
-                </button>
-                <button onclick="cambiarVista('clientes'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    Clientes
-                </button>
-                <button onclick="cambiarVista('stock'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                    Repuestos / Stock
-                </button>
-                <button onclick="cambiarVista('datasheets'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Datasheets / PDFs
-                </button>
-                <button onclick="cambiarVista('firmwares'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    Firmwares Nube
-                </button>
-                <button onclick="cambiarVista('caja'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
-                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Caja y Balance
-                </button>
-            </nav>
-        </div>
-
-        <div class="p-4 border-t border-bordercolor flex flex-col gap-2">
-            <button onclick="abrirModalNuevaOrden(); toggleSidebar();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Nueva Orden
-            </button>
-            <button onclick="cerrarSesion()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition">
-                Cerrar Sesión
-            </button>
-        </div>
-    </aside>
-
-    <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 hidden z-20 md:hidden"></div>
-
-    <!-- Área Principal -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-16 bg-cardbg/50 border-b border-bordercolor px-4 md:px-6 flex items-center justify-between">
-            <div class="relative w-full md:w-96">
-                <input type="text" id="searchInput" onkeyup="filtrarOrdenes()" placeholder="Buscar cliente, equipo o N° orden..." class="w-full bg-darkbg border border-bordercolor rounded-xl py-2 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
-                <svg class="w-4 h-4 text-slate-500 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </div>
-        </header>
-
-        <!-- VISTAS -->
-        <div id="vistaOrdenes" class="flex-1 overflow-y-auto p-4 md:p-6">
-            <h2 class="text-xl font-bold text-white mb-6">Órdenes de Trabajo</h2>
-            <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </div>
-
-        <div id="vistaClientes" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white">Clientes Registrados</h2>
-                <button onclick="abrirModal('modalNuevoCliente')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Cliente</button>
-            </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
-                            <th class="py-3 px-4">Nombre</th>
-                            <th class="py-3 px-4">Teléfono</th>
-                            <th class="py-3 px-4">Dirección</th>
+            <!-- Tabla de Órdenes -->
+            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
+                        <tr>
+                            <th class="py-2 px-3 w-12">N°</th>
+                            <th class="py-2 px-3">Cliente</th>
+                            <th class="py-2 px-3">Equipo / Modelo</th>
+                            <th class="py-2 px-3">Falla Reportada</th>
+                            <th class="py-2 px-3 w-28">Presupuesto</th>
+                            <th class="py-2 px-3 w-28">Estado Trabajo</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaClientes"></tbody>
+                    <tbody id="tablaOrdenesBody"></tbody>
                 </table>
             </div>
-        </div>
 
-        <div id="vistaStock" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white">Control de Stock / Repuestos</h2>
-                <button onclick="abrirModal('modalNuevoRepuesto')" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Repuesto</button>
+            <!-- Botones Inferiores de Acción -->
+            <div class="flex flex-wrap gap-3 shrink-0 pt-1">
+                <button onclick="verFichaInforme()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">📄 Ver Ficha / Informe</button>
+                <button onclick="imprimirComprobanteCliente()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">🖨️ Imprimir Comprobante Cliente</button>
+                <button onclick="imprimirTicketTapa()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">🏷️ Ticket para Tapa TV</button>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
-                            <th class="py-3 px-4">Componente / Repuesto</th>
-                            <th class="py-3 px-4">Stock</th>
-                            <th class="py-3 px-4">Acciones</th>
-                            <th class="py-3 px-4">Precio</th>
+        </section>
+
+        <!-- 2. VISTA: BANCO DE PLACAS -->
+        <section id="vistaPlacas" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
+            <div class="bg-cardbg border border-bordercolor rounded-xl p-4">
+                <h3 class="text-sm font-bold text-cyan-400 mb-2">Stock Banco de Placas (Main, Power, T-Con)</h3>
+                <p class="text-xs text-slate-400">Registro unificado de placas probadas listos para sustitución.</p>
+            </div>
+        </section>
+
+        <!-- 3. VISTA: STOCK COMPONENTES -->
+        <section id="vistaStock" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
+            <!-- Formulario Superior Directo -->
+            <form onsubmit="guardarComponenteDirecto(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Categoría:</label>
+                    <select id="compCategoria" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
+                        <option value="Transistores Bipolares">Transistores Bipolares</option>
+                        <option value="Integrados PWM/Fuente">Integrados PWM/Fuente</option>
+                        <option value="Mosfets / Diodos">Mosfets / Diodos</option>
+                        <option value="Capacitores / THT">Capacitores / THT</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Código/Descripción:</label>
+                    <input type="text" id="compCodigo" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Ubicación/Gaveta:</label>
+                    <input type="text" id="compUbicacion" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Cantidad:</label>
+                    <input type="number" id="compCantidad" value="1" min="1" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar Componente Nuevo</button>
+                </div>
+            </form>
+
+            <div class="flex gap-2 shrink-0">
+                <input type="text" id="buscarCompInput" onkeyup="filtrarComponentes()" placeholder="Escriba código (ej: 1N4148, MOSFET)..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
+                <button onclick="filtrarComponentes()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Filtrar</button>
+            </div>
+
+            <!-- Tabla Componentes -->
+            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
+                        <tr>
+                            <th class="py-2 px-3 w-12">N°</th>
+                            <th class="py-2 px-3">Categoría</th>
+                            <th class="py-2 px-3">Código / Nombre Componente</th>
+                            <th class="py-2 px-3 w-32">Gavetero / Ubicación</th>
+                            <th class="py-2 px-3 w-20">Stock</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaStock"></tbody>
+                    <tbody id="tablaStockBody"></tbody>
                 </table>
             </div>
-        </div>
 
-        <!-- VISTA: DATASHEETS / PDF -->
-        <div id="vistaDatasheets" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
-            <h2 class="text-xl font-bold text-white mb-4">Buscador de Datasheets / PDFs Técnicos</h2>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl p-6 shadow-lg mb-6">
-                <div class="flex gap-3">
-                    <input type="text" id="pdfSearchInput" placeholder="Ingresá código o integrado (ej: OB2269, APW7142)..." class="flex-1 bg-darkbg border border-bordercolor rounded-xl py-2.5 px-4 text-sm text-slate-200 focus:outline-none focus:border-rose-500">
-                    <button onclick="buscarDatasheetWeb()" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition">Buscar PDF</button>
+            <!-- Botones de Acción de Stock -->
+            <div class="flex flex-wrap gap-2 shrink-0 pt-1">
+                <button onclick="sumarStockSeleccionado()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs">+ Sumar 1</button>
+                <button onclick="restarStockSeleccionado()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs">- Restar 1</button>
+                <button onclick="buscarDatasheetSeleccionado()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">📄 Datasheet PDF</button>
+                <button onclick="imprimirEtiquetaComponente()" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">🏷️ Imprimir Etiqueta</button>
+            </div>
+        </section>
+
+        <!-- 4. VISTA: VENTAS Y USADOS -->
+        <section id="vistaVentas" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
+            <form onsubmit="guardarPublicacion(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] text-slate-400 mb-1">Producto / Equipo:</label>
+                    <input type="text" id="ventProducto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
                 </div>
-            </div>
-            <div id="pdfResults" class="space-y-3"></div>
-        </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Precio $:</label>
+                    <input type="number" id="ventPrecio" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Estado:</label>
+                    <select id="ventEstado" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
+                        <option value="En Venta">En Venta</option>
+                        <option value="Vendido">Vendido</option>
+                    </select>
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar en Publicaciones</button>
+                </div>
+            </form>
 
-        <!-- VISTA: FIRMWARES NUBE -->
-        <div id="vistaFirmwares" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white">Base de Firmwares en la Nube</h2>
-                <span class="bg-cyan-500/10 text-cyan-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-cyan-500/20">Acceso Suscriptor</span>
+            <div class="flex gap-2 shrink-0">
+                <button onclick="consultarMercadoLibre()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5">🔍 Consultar Valor Usado (MercadoLibre)</button>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
-                            <th class="py-3 px-4">Marca</th>
-                            <th class="py-3 px-4">Modelo</th>
-                            <th class="py-3 px-4">Chasis / Main</th>
-                            <th class="py-3 px-4">Descarga</th>
+
+            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
+                        <tr>
+                            <th class="py-2 px-3 w-12">N°</th>
+                            <th class="py-2 px-3">Producto / Equipo</th>
+                            <th class="py-2 px-3 w-36">Precio Publicado ($)</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaFirmwares"></tbody>
+                    <tbody id="tablaVentasBody"></tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div id="vistaCaja" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white">Caja y Balance</h2>
-                <button onclick="abrirModalMovimiento()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-xl text-sm transition">+ Nuevo Movimiento</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-cardbg border border-bordercolor rounded-2xl p-4">
-                    <span class="text-xs text-slate-400 font-medium">Ingresos Totales</span>
-                    <p id="totalIngresos" class="text-2xl font-bold text-emerald-400 mt-1">$0</p>
-                </div>
-                <div class="bg-cardbg border border-bordercolor rounded-2xl p-4">
-                    <span class="text-xs text-slate-400 font-medium">Gastos / Egresos</span>
-                    <p id="totalEgresos" class="text-2xl font-bold text-rose-400 mt-1">$0</p>
-                </div>
-                <div class="bg-cardbg border border-bordercolor rounded-2xl p-4">
-                    <span class="text-xs text-slate-400 font-medium">Saldo en Caja</span>
-                    <p id="saldoTotal" class="text-2xl font-bold text-blue-400 mt-1">$0</p>
+        <!-- 5. VISTA: CAJA Y FINANZAS -->
+        <section id="vistaCaja" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
+            <div class="bg-cardbg border border-bordercolor rounded-xl p-3 flex items-center justify-between shrink-0">
+                <div class="flex gap-6 text-xs">
+                    <span class="text-emerald-400 font-bold">Ingresos: <span id="lblIngresos">$0.00</span></span>
+                    <span class="text-rose-400 font-bold">Egresos: <span id="lblEgresos">$0.00</span></span>
                 </div>
             </div>
-            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
-                            <th class="py-3 px-4">Fecha</th>
-                            <th class="py-3 px-4">Concepto</th>
-                            <th class="py-3 px-4">Monto</th>
+
+            <form onsubmit="registrarMovimientoCaja(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Tipo Movimiento:</label>
+                    <select id="cajaTipo" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
+                        <option value="Ingreso">Ingreso</option>
+                        <option value="Egreso">Egreso</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] text-slate-400 mb-1">Concepto / Detalle:</label>
+                    <input type="text" id="cajaConcepto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">Monto $:</label>
+                    <input type="number" id="cajaMonto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Registrar Movimiento</button>
+                </div>
+            </form>
+
+            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
+                        <tr>
+                            <th class="py-2 px-3 w-12">N°</th>
+                            <th class="py-2 px-3 w-36">Fecha y Hora</th>
+                            <th class="py-2 px-3 w-24">Tipo</th>
+                            <th class="py-2 px-3">Concepto / Detalle</th>
+                            <th class="py-2 px-3 w-28">Monto</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaMovimientos"></tbody>
+                    <tbody id="tablaCajaBody"></tbody>
                 </table>
             </div>
-        </div>
+        </section>
+
+        <!-- 6. VISTA: FIRMWARES NUBE -->
+        <section id="vistaFirmwares" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
+            <div class="bg-cardbg border border-bordercolor rounded-xl p-3 flex items-center justify-between shrink-0">
+                <div>
+                    <h3 class="text-xs font-bold text-cyan-400">Servidor de Firmwares & Dumps en la Nube</h3>
+                    <p class="text-[11px] text-slate-400">Estado de Suscripción: <span class="text-emerald-400 font-bold">ACTIVA (Plan Premium Taller)</span></p>
+                </div>
+            </div>
+
+            <div class="flex gap-2 shrink-0">
+                <input type="text" id="buscarFirmwareInput" placeholder="Chasis, Código Main, eMMC, SPI Flash..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
+                <button onclick="filtrarFirmwares()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Buscar Archivos</button>
+            </div>
+
+            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
+                        <tr>
+                            <th class="py-2 px-3 w-12">N°</th>
+                            <th class="py-2 px-3">Código Main / Chasis</th>
+                            <th class="py-2 px-3">Modelo TV Asociado</th>
+                            <th class="py-2 px-3">Memoria / Binario</th>
+                            <th class="py-2 px-3 w-24">Tamaño</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaFirmwaresBody"></tbody>
+                </table>
+            </div>
+
+            <div class="shrink-0 pt-1">
+                <button onclick="descargarFirmwareSeleccionado()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition">⬇️ Descargar Firmware Seleccionado</button>
+            </div>
+        </section>
+
     </main>
 
-    <!-- MODALES -->
-    <div id="modalNuevaOrden" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">Ingresar Nueva Orden</h3>
-            <form id="formNuevaOrden" onsubmit="guardarOrden(event)" class="space-y-4">
-                <input type="text" id="clienteInput" required placeholder="Nombre del cliente" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="text" id="equipoInput" required placeholder="Equipo / Modelo" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <textarea id="fallaInput" rows="3" required placeholder="Falla declarada" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200"></textarea>
-                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevaOrden')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modalNuevoCliente" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">Registrar Nuevo Cliente</h3>
-            <form id="formNuevoCliente" onsubmit="guardarCliente(event)" class="space-y-4">
-                <input type="text" id="clienteNombreInput" required placeholder="Nombre y Apellido" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="text" id="clienteTelInput" required placeholder="Teléfono" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="text" id="clienteDirInput" placeholder="Dirección / Localidad" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoCliente')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-indigo-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modalNuevoRepuesto" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">Agregar Repuesto al Stock</h3>
-            <form id="formNuevoRepuesto" onsubmit="guardarRepuesto(event)" class="space-y-4">
-                <input type="text" id="repuestoNombreInput" required placeholder="Nombre o código del repuesto" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="number" id="repuestoCantInput" required placeholder="Cantidad de unidades" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="number" id="repuestoPrecioInput" required placeholder="Precio unitario ($)" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoRepuesto')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-amber-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modalNuevoMovimiento" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">Registrar Movimiento de Caja</h3>
-            <form id="formNuevoMovimiento" onsubmit="guardarMovimientoCaja(event)" class="space-y-4">
-                <select id="tipoInput" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                    <option value="ingreso">Ingreso (+ Cobro / Seña)</option>
-                    <option value="egreso">Egreso (- Gasto / Repuesto)</option>
-                </select>
-                <input type="text" id="conceptoInput" required placeholder="Concepto" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <input type="number" id="montoInput" required placeholder="Monto ($)" class="w-full bg-darkbg border border-bordercolor rounded-lg py-2 px-3 text-sm text-slate-200">
-                <div class="flex justify-end gap-3"><button type="button" onclick="cerrarModal('modalNuevoMovimiento')" class="px-4 py-2 text-sm text-slate-400">Cancelar</button><button type="submit" class="bg-emerald-600 text-white font-semibold px-5 py-2 rounded-lg text-sm">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-    </script>
     <script src="/static/app.js"></script>
 </body>
 </html>
