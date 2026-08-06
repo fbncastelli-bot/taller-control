@@ -10,7 +10,7 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Tabla de Usuarios (Login)
+    # Usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,18 +20,19 @@ def init_db():
     ''')
     cursor.execute("INSERT OR IGNORE INTO usuarios (id, usuario, password) VALUES (1, 'admin', '1234')")
     
-    # Tabla de Órdenes
+    # Órdenes de Trabajo con Presupuesto
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cliente TEXT NOT NULL,
             equipo TEXT NOT NULL,
             falla TEXT NOT NULL,
+            presupuesto REAL DEFAULT 0.0,
             estado TEXT DEFAULT 'Ingresado'
         )
     ''')
     
-    # Tabla de Clientes
+    # Clientes
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,17 +42,29 @@ def init_db():
         )
     ''')
 
-    # Tabla de Stock / Repuestos
+    # Stock Componentes
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS repuestos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            categoria TEXT,
             nombre TEXT NOT NULL,
+            ubicacion TEXT,
             cantidad INTEGER DEFAULT 0,
             precio REAL DEFAULT 0.0
         )
     ''')
 
-    # Tabla de Movimientos de Caja
+    # Ventas y Usados
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS publicaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            producto TEXT NOT NULL,
+            precio REAL DEFAULT 0.0,
+            estado TEXT DEFAULT 'En Venta'
+        )
+    ''')
+
+    # Caja y Finanzas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS caja (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,13 +75,14 @@ def init_db():
         )
     ''')
 
-    # Tabla de Firmwares (Registro para descargas)
+    # Firmwares
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS firmwares (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            marca TEXT NOT NULL,
+            chasis TEXT NOT NULL,
             modelo TEXT NOT NULL,
-            chasis TEXT,
+            memoria TEXT,
+            tamano TEXT,
             url_archivo TEXT NOT NULL
         )
     ''')
@@ -82,25 +96,20 @@ init_db()
 def home():
     return render_template('index.html')
 
-# --- ENDPOINT LOGIN ---
+# --- LOGIN ---
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
-    usuario = data.get('usuario')
-    password = data.get('password')
-    
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM usuarios WHERE usuario = ? AND password = ?', (usuario, password))
+    cursor.execute('SELECT * FROM usuarios WHERE usuario = ? AND password = ?', (data.get('usuario'), data.get('password')))
     user = cursor.fetchone()
     conn.close()
-    
     if user:
-        return jsonify({"status": "ok", "mensaje": "Acceso correcto"})
-    else:
-        return jsonify({"status": "error", "mensaje": "Usuario o contraseña incorrectos"}), 401
+        return jsonify({"status": "ok"})
+    return jsonify({"status": "error", "mensaje": "Credenciales inválidas"}), 401
 
-# --- ENDPOINTS ÓRDENES ---
+# --- ÓRDENES ---
 @app.route('/api/ordenes', methods=['GET'])
 def get_ordenes():
     conn = sqlite3.connect(DB_NAME)
@@ -116,13 +125,13 @@ def add_orden():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO ordenes (cliente, equipo, falla, estado) VALUES (?, ?, ?, ?)',
-                   (data['cliente'], data['equipo'], data['falla'], 'Ingresado'))
+    cursor.execute('INSERT INTO ordenes (cliente, equipo, falla, presupuesto, estado) VALUES (?, ?, ?, ?, ?)',
+                   (data.get('cliente'), data.get('equipo'), data.get('falla'), data.get('presupuesto', 0), data.get('estado', 'Ingresado')))
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
 
-# --- ENDPOINTS CLIENTES ---
+# --- CLIENTES ---
 @app.route('/api/clientes', methods=['GET'])
 def get_clientes():
     conn = sqlite3.connect(DB_NAME)
@@ -139,12 +148,12 @@ def add_cliente():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('INSERT INTO clientes (nombre, telefono, direccion) VALUES (?, ?, ?)',
-                   (data['nombre'], data['telefono'], data['direccion']))
+                   (data.get('nombre'), data.get('telefono'), data.get('direccion')))
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
 
-# --- ENDPOINTS REPUESTOS ---
+# --- STOCK COMPONENTES ---
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
     conn = sqlite3.connect(DB_NAME)
@@ -160,8 +169,8 @@ def add_repuesto():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO repuestos (nombre, cantidad, precio) VALUES (?, ?, ?)',
-                   (data['nombre'], data['cantidad'], data['precio']))
+    cursor.execute('INSERT INTO repuestos (categoria, nombre, ubicacion, cantidad, precio) VALUES (?, ?, ?, ?, ?)',
+                   (data.get('categoria'), data.get('nombre'), data.get('ubicacion'), data.get('cantidad', 1), data.get('precio', 0.0)))
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
@@ -177,7 +186,29 @@ def update_stock(repuesto_id):
     conn.close()
     return jsonify({"status": "ok"})
 
-# --- ENDPOINTS CAJA ---
+# --- VENTAS Y USADOS ---
+@app.route('/api/publicaciones', methods=['GET'])
+def get_publicaciones():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM publicaciones ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/publicaciones', methods=['POST'])
+def add_publicacion():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO publicaciones (producto, precio, estado) VALUES (?, ?, ?)',
+                   (data.get('producto'), data.get('precio', 0.0), data.get('estado', 'En Venta')))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+# --- CAJA ---
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
     conn = sqlite3.connect(DB_NAME)
@@ -194,12 +225,12 @@ def add_caja():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('INSERT INTO caja (tipo, concepto, monto, fecha) VALUES (?, ?, ?, ?)',
-                   (data['tipo'], data['concepto'], data['monto'], data['fecha']))
+                   (data.get('tipo'), data.get('concepto'), data.get('monto'), data.get('fecha')))
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
 
-# --- ENDPOINTS FIRMWARES ---
+# --- FIRMWARES ---
 @app.route('/api/firmwares', methods=['GET'])
 def get_firmwares():
     conn = sqlite3.connect(DB_NAME)
