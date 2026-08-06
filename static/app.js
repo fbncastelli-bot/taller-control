@@ -1,9 +1,65 @@
 document.addEventListener("DOMContentLoaded", () => {
-    cargarOrdenes();
-    cargarClientes();
-    cargarStock();
-    cargarCaja();
+    verificarSesion();
 });
+
+// --- AUTENTICACIÓN Y LOGIN ---
+function verificarSesion() {
+    const usuarioLogueado = localStorage.getItem("tc_logged_in");
+    const loginOverlay = document.getElementById("loginOverlay");
+
+    if (usuarioLogueado === "true") {
+        if (loginOverlay) loginOverlay.classList.add("hidden");
+        cargarOrdenes();
+        cargarClientes();
+        cargarStock();
+        cargarCaja();
+    } else {
+        if (loginOverlay) loginOverlay.classList.remove("hidden");
+    }
+}
+
+async function procesarLogin(e) {
+    e.preventDefault();
+    const usuarioInput = document.getElementById("loginUsuario").value;
+    const passwordInput = document.getElementById("loginPassword").value;
+    const errorEl = document.getElementById("loginError");
+
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario: usuarioInput, password: passwordInput })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.status === "ok") {
+            localStorage.setItem("tc_logged_in", "true");
+            if (errorEl) errorEl.classList.add("hidden");
+            document.getElementById("loginOverlay").classList.add("hidden");
+            cargarOrdenes();
+            cargarClientes();
+            cargarStock();
+            cargarCaja();
+        } else {
+            if (errorEl) {
+                errorEl.innerText = data.mensaje || "Usuario o contraseña incorrectos";
+                errorEl.classList.remove("hidden");
+            }
+        }
+    } catch (err) {
+        console.error("Error al autenticar:", err);
+        if (errorEl) {
+            errorEl.innerText = "Error de conexión con el servidor";
+            errorEl.classList.remove("hidden");
+        }
+    }
+}
+
+function cerrarSesion() {
+    localStorage.removeItem("tc_logged_in");
+    location.reload();
+}
 
 function cambiarVista(vista) {
     const vistas = ['vistaOrdenes', 'vistaClientes', 'vistaStock', 'vistaCaja'];
@@ -110,7 +166,6 @@ function renderizarClientes(lista) {
             <td class="py-3 px-4 text-white font-medium">${c.nombre}</td>
             <td class="py-3 px-4 text-slate-400">${c.telefono || '-'}</td>
             <td class="py-3 px-4 text-slate-400">${c.direccion || '-'}</td>
-            <td class="py-3 px-4 text-blue-400 font-bold">Activo</td>
         `;
         container.appendChild(row);
     });
