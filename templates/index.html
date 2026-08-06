@@ -22,7 +22,7 @@
 </head>
 <body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden">
 
-    <!-- MODAL DE LOGIN (PANTALLA DE BLOQUEO) -->
+    <!-- MODAL DE LOGIN -->
     <div id="loginOverlay" class="fixed inset-0 bg-darkbg z-50 flex items-center justify-center p-4">
         <div class="bg-cardbg border border-bordercolor w-full max-w-md rounded-2xl p-8 shadow-2xl">
             <div class="flex items-center justify-center gap-3 mb-6">
@@ -61,7 +61,7 @@
         </button>
     </div>
 
-    <!-- Sidebar / Menú Lateral -->
+    <!-- Sidebar -->
     <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-64 bg-cardbg border-r border-bordercolor flex flex-col justify-between z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
         <div class="p-4">
             <div class="hidden md:flex items-center gap-3 mb-8 px-2">
@@ -84,6 +84,14 @@
                 <button onclick="cambiarVista('stock'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
                     <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     Repuestos / Stock
+                </button>
+                <button onclick="cambiarVista('datasheets'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
+                    <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Datasheets / PDFs
+                </button>
+                <button onclick="cambiarVista('firmwares'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Firmwares Nube
                 </button>
                 <button onclick="cambiarVista('caja'); toggleSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800/50 hover:text-white transition">
                     <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -114,13 +122,12 @@
             </div>
         </header>
 
-        <!-- VISTA: ÓRDENES -->
+        <!-- VISTAS -->
         <div id="vistaOrdenes" class="flex-1 overflow-y-auto p-4 md:p-6">
             <h2 class="text-xl font-bold text-white mb-6">Órdenes de Trabajo</h2>
             <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </div>
 
-        <!-- VISTA: CLIENTES -->
         <div id="vistaClientes" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Clientes Registrados</h2>
@@ -140,7 +147,6 @@
             </div>
         </div>
 
-        <!-- VISTA: REPUESTOS / STOCK -->
         <div id="vistaStock" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Control de Stock / Repuestos</h2>
@@ -152,6 +158,7 @@
                         <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
                             <th class="py-3 px-4">Componente / Repuesto</th>
                             <th class="py-3 px-4">Stock</th>
+                            <th class="py-3 px-4">Acciones</th>
                             <th class="py-3 px-4">Precio</th>
                         </tr>
                     </thead>
@@ -160,7 +167,39 @@
             </div>
         </div>
 
-        <!-- VISTA: CAJA Y BALANCE -->
+        <!-- VISTA: DATASHEETS / PDF -->
+        <div id="vistaDatasheets" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
+            <h2 class="text-xl font-bold text-white mb-4">Buscador de Datasheets / PDFs Técnicos</h2>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl p-6 shadow-lg mb-6">
+                <div class="flex gap-3">
+                    <input type="text" id="pdfSearchInput" placeholder="Ingresá código o integrado (ej: OB2269, APW7142)..." class="flex-1 bg-darkbg border border-bordercolor rounded-xl py-2.5 px-4 text-sm text-slate-200 focus:outline-none focus:border-rose-500">
+                    <button onclick="buscarDatasheetWeb()" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition">Buscar PDF</button>
+                </div>
+            </div>
+            <div id="pdfResults" class="space-y-3"></div>
+        </div>
+
+        <!-- VISTA: FIRMWARES NUBE -->
+        <div id="vistaFirmwares" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white">Base de Firmwares en la Nube</h2>
+                <span class="bg-cyan-500/10 text-cyan-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-cyan-500/20">Acceso Suscriptor</span>
+            </div>
+            <div class="bg-cardbg border border-bordercolor rounded-2xl overflow-hidden shadow-lg">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-darkbg/50 border-b border-bordercolor text-xs text-slate-400">
+                            <th class="py-3 px-4">Marca</th>
+                            <th class="py-3 px-4">Modelo</th>
+                            <th class="py-3 px-4">Chasis / Main</th>
+                            <th class="py-3 px-4">Descarga</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaFirmwares"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div id="vistaCaja" class="flex-1 overflow-y-auto p-4 md:p-6 hidden">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-xl font-bold text-white">Caja y Balance</h2>
