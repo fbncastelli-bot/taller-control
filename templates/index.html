@@ -22,6 +22,34 @@
 </head>
 <body class="bg-darkbg text-slate-200 font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden">
 
+    <!-- MODAL DE LOGIN (PANTALLA DE BLOQUEO) -->
+    <div id="loginOverlay" class="fixed inset-0 bg-darkbg z-50 flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor w-full max-w-md rounded-2xl p-8 shadow-2xl">
+            <div class="flex items-center justify-center gap-3 mb-6">
+                <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-blue-500/30">TC</div>
+                <div>
+                    <h1 class="text-xl font-bold text-white leading-none">TallerControl</h1>
+                    <span class="text-xs text-slate-400">Acceso al Sistema</span>
+                </div>
+            </div>
+            
+            <form id="loginForm" onsubmit="procesarLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Usuario</label>
+                    <input type="text" id="loginUsuario" required placeholder="Ingresá tu usuario" class="w-full bg-darkbg border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Contraseña</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-darkbg border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div id="loginError" class="text-rose-500 text-xs text-center hidden"></div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-blue-600/30 transition">
+                    Ingresar
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Header Móvil -->
     <div class="md:hidden bg-cardbg border-b border-bordercolor p-4 flex items-center justify-between z-20">
         <div class="flex items-center gap-3">
@@ -64,10 +92,13 @@
             </nav>
         </div>
 
-        <div class="p-4 border-t border-bordercolor">
+        <div class="p-4 border-t border-bordercolor flex flex-col gap-2">
             <button onclick="abrirModalNuevaOrden(); toggleSidebar();" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Nueva Orden
+            </button>
+            <button onclick="cerrarSesion()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+                Cerrar Sesión
             </button>
         </div>
     </aside>
@@ -102,7 +133,6 @@
                             <th class="py-3 px-4">Nombre</th>
                             <th class="py-3 px-4">Teléfono</th>
                             <th class="py-3 px-4">Dirección</th>
-                            <th class="py-3 px-4">Equipos</th>
                         </tr>
                     </thead>
                     <tbody id="tablaClientes"></tbody>
@@ -165,7 +195,7 @@
         </div>
     </main>
 
-    <!-- MODAL: NUEVA ORDEN -->
+    <!-- MODALES -->
     <div id="modalNuevaOrden" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-4">Ingresar Nueva Orden</h3>
@@ -178,7 +208,6 @@
         </div>
     </div>
 
-    <!-- MODAL: NUEVO CLIENTE -->
     <div id="modalNuevoCliente" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-4">Registrar Nuevo Cliente</h3>
@@ -191,7 +220,6 @@
         </div>
     </div>
 
-    <!-- MODAL: NUEVO REPUESTO -->
     <div id="modalNuevoRepuesto" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-4">Agregar Repuesto al Stock</h3>
@@ -204,7 +232,6 @@
         </div>
     </div>
 
-    <!-- MODAL: NUEVO MOVIMIENTO -->
     <div id="modalNuevoMovimiento" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-cardbg border border-bordercolor w-full max-w-lg rounded-2xl p-6 shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-4">Registrar Movimiento de Caja</h3>
