@@ -13,6 +13,7 @@ function verificarSesion() {
         cargarClientes();
         cargarStock();
         cargarCaja();
+        cargarFirmwares();
     } else {
         if (loginOverlay) loginOverlay.classList.remove("hidden");
     }
@@ -41,6 +42,7 @@ async function procesarLogin(e) {
             cargarClientes();
             cargarStock();
             cargarCaja();
+            cargarFirmwares();
         } else {
             if (errorEl) {
                 errorEl.innerText = data.mensaje || "Usuario o contraseña incorrectos";
@@ -61,8 +63,9 @@ function cerrarSesion() {
     location.reload();
 }
 
+// --- NAVEGACIÓN DE VISTAS ---
 function cambiarVista(vista) {
-    const vistas = ['vistaOrdenes', 'vistaClientes', 'vistaStock', 'vistaCaja'];
+    const vistas = ['vistaOrdenes', 'vistaClientes', 'vistaStock', 'vistaDatasheets', 'vistaFirmwares', 'vistaCaja'];
     vistas.forEach(v => {
         const el = document.getElementById(v);
         if (el) el.classList.add("hidden");
@@ -77,6 +80,11 @@ function cambiarVista(vista) {
     } else if (vista === 'stock') {
         document.getElementById("vistaStock").classList.remove("hidden");
         cargarStock();
+    } else if (vista === 'datasheets') {
+        document.getElementById("vistaDatasheets").classList.remove("hidden");
+    } else if (vista === 'firmwares') {
+        document.getElementById("vistaFirmwares").classList.remove("hidden");
+        cargarFirmwares();
     } else if (vista === 'caja') {
         document.getElementById("vistaCaja").classList.remove("hidden");
         cargarCaja();
@@ -212,10 +220,25 @@ function renderizarStock(lista) {
         row.innerHTML = `
             <td class="py-3 px-4 text-white font-medium">${r.nombre}</td>
             <td class="py-3 px-4 font-bold ${r.cantidad < 5 ? 'text-amber-400' : 'text-emerald-400'}">${r.cantidad} u.</td>
+            <td class="py-3 px-4">
+                <div class="flex items-center gap-2">
+                    <button onclick="modificarStock(${r.id}, -1)" class="bg-slate-800 hover:bg-slate-700 text-white font-bold w-7 h-7 rounded-lg border border-bordercolor text-xs flex items-center justify-center">-</button>
+                    <button onclick="modificarStock(${r.id}, 1)" class="bg-slate-800 hover:bg-slate-700 text-white font-bold w-7 h-7 rounded-lg border border-bordercolor text-xs flex items-center justify-center">+</button>
+                </div>
+            </td>
             <td class="py-3 px-4 text-slate-300 font-semibold">$${r.precio.toLocaleString()}</td>
         `;
         container.appendChild(row);
     });
+}
+
+async function modificarStock(id, cambio) {
+    await fetch(`/api/repuestos/${id}/stock`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cambio: cambio })
+    });
+    cargarStock();
 }
 
 async function guardarRepuesto(e) {
@@ -235,6 +258,70 @@ async function guardarRepuesto(e) {
     cargarStock();
     cerrarModal('modalNuevoRepuesto');
     document.getElementById("formNuevoRepuesto").reset();
+}
+
+// --- DATASHEETS / BUSCADOR DE PDF ---
+function buscarDatasheetWeb() {
+    const query = document.getElementById("pdfSearchInput").value.trim();
+    const container = document.getElementById("pdfResults");
+
+    if (!query) return;
+
+    const urlGoogle = `https://www.google.com/search?q=${encodeURIComponent(query + ' datasheet pdf')}`;
+    const urlAlldatasheet = `https://www.alldatasheet.com/view.jsp?Searchword=${encodeURIComponent(query)}`;
+
+    container.innerHTML = `
+        <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-lg space-y-3">
+            <h4 class="font-bold text-white text-base">Resultados de Búsqueda para: <span class="text-rose-400">${query}</span></h4>
+            <p class="text-xs text-slate-400">Hacé clic en los enlaces para abrir la documentación técnica en PDF:</p>
+            <div class="flex flex-wrap gap-3 pt-2">
+                <a href="${urlGoogle}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold py-2 px-4 rounded-xl border border-bordercolor transition inline-flex items-center gap-2">
+                    Buscar PDF en Google ↗
+                </a>
+                <a href="${urlAlldatasheet}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-semibold py-2 px-4 rounded-xl border border-bordercolor transition inline-flex items-center gap-2">
+                    Buscar en AllDataSheet ↗
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+// --- FIRMWARES NUBE ---
+async function cargarFirmwares() {
+    try {
+        const res = await fetch('/api/firmwares');
+        const data = await res.json();
+        renderizarFirmwares(data);
+    } catch (err) {
+        console.error("Error al cargar firmwares:", err);
+    }
+}
+
+function renderizarFirmwares(lista) {
+    const container = document.getElementById("tablaFirmwares");
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (lista.length === 0) {
+        container.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 text-sm">No hay firmwares cargados aún en la nube.</td></tr>`;
+        return;
+    }
+
+    lista.forEach(f => {
+        const row = document.createElement("tr");
+        row.className = "border-b border-bordercolor/50 text-sm";
+        row.innerHTML = `
+            <td class="py-3 px-4 text-white font-medium">${f.marca}</td>
+            <td class="py-3 px-4 text-slate-300">${f.modelo}</td>
+            <td class="py-3 px-4 text-slate-400">${f.chasis || '-'}</td>
+            <td class="py-3 px-4">
+                <a href="${f.url_archivo}" target="_blank" class="text-xs bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 px-3 py-1.5 rounded-lg border border-cyan-500/30 font-semibold transition inline-block">
+                    Descargar BIN/ZIP
+                </a>
+            </td>
+        `;
+        container.appendChild(row);
+    });
 }
 
 // --- CAJA Y BALANCE ---
