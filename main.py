@@ -18,8 +18,6 @@ def init_db():
             password TEXT NOT NULL
         )
     ''')
-
-    # Insertar usuario administrador por defecto si no existe
     cursor.execute("INSERT OR IGNORE INTO usuarios (id, usuario, password) VALUES (1, 'admin', '1234')")
     
     # Tabla de Órdenes
@@ -64,10 +62,20 @@ def init_db():
         )
     ''')
 
+    # Tabla de Firmwares (Registro para descargas)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS firmwares (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            marca TEXT NOT NULL,
+            modelo TEXT NOT NULL,
+            chasis TEXT,
+            url_archivo TEXT NOT NULL
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
-# Inicializar BD al arrancar
 init_db()
 
 @app.route('/')
@@ -158,6 +166,17 @@ def add_repuesto():
     conn.close()
     return jsonify({"status": "ok"})
 
+@app.route('/api/repuestos/<int:repuesto_id>/stock', methods=['PUT'])
+def update_stock(repuesto_id):
+    data = request.json
+    cambio = data.get('cambio', 0)
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE repuestos SET cantidad = MAX(0, cantidad + ?) WHERE id = ?', (cambio, repuesto_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
 # --- ENDPOINTS CAJA ---
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
@@ -179,6 +198,17 @@ def add_caja():
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
+
+# --- ENDPOINTS FIRMWARES ---
+@app.route('/api/firmwares', methods=['GET'])
+def get_firmwares():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM firmwares ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
