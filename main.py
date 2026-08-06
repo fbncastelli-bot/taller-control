@@ -10,6 +10,18 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
+    # Tabla de Usuarios (Login)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+
+    # Insertar usuario administrador por defecto si no existe
+    cursor.execute("INSERT OR IGNORE INTO usuarios (id, usuario, password) VALUES (1, 'admin', '1234')")
+    
     # Tabla de Órdenes
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
@@ -61,6 +73,24 @@ init_db()
 @app.route('/')
 def home():
     return render_template('index.html')
+
+# --- ENDPOINT LOGIN ---
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    usuario = data.get('usuario')
+    password = data.get('password')
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM usuarios WHERE usuario = ? AND password = ?', (usuario, password))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return jsonify({"status": "ok", "mensaje": "Acceso correcto"})
+    else:
+        return jsonify({"status": "error", "mensaje": "Usuario o contraseña incorrectos"}), 401
 
 # --- ENDPOINTS ÓRDENES ---
 @app.route('/api/ordenes', methods=['GET'])
