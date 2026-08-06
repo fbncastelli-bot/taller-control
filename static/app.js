@@ -1,60 +1,55 @@
+let ordenSeleccionadaId = null;
+let repuestoSeleccionadoId = null;
+let firmwareSeleccionadoUrl = null;
+
 document.addEventListener("DOMContentLoaded", () => {
     verificarSesion();
 });
 
-// --- AUTENTICACIÓN Y LOGIN ---
+// --- SESIÓN ---
 function verificarSesion() {
-    const usuarioLogueado = localStorage.getItem("tc_logged_in");
-    const loginOverlay = document.getElementById("loginOverlay");
-
-    if (usuarioLogueado === "true") {
-        if (loginOverlay) loginOverlay.classList.add("hidden");
+    const logueado = localStorage.getItem("tc_logged_in");
+    const overlay = document.getElementById("loginOverlay");
+    if (logueado === "true") {
+        if (overlay) overlay.classList.add("hidden");
         cargarOrdenes();
-        cargarClientes();
         cargarStock();
+        cargarPublicaciones();
         cargarCaja();
         cargarFirmwares();
     } else {
-        if (loginOverlay) loginOverlay.classList.remove("hidden");
+        if (overlay) overlay.classList.remove("hidden");
     }
 }
 
 async function procesarLogin(e) {
     e.preventDefault();
-    const usuarioInput = document.getElementById("loginUsuario").value;
-    const passwordInput = document.getElementById("loginPassword").value;
-    const errorEl = document.getElementById("loginError");
+    const u = document.getElementById("loginUsuario").value;
+    const p = document.getElementById("loginPassword").value;
+    const err = document.getElementById("loginError");
 
     try {
         const res = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario: usuarioInput, password: passwordInput })
+            body: JSON.stringify({ usuario: u, password: p })
         });
-
         const data = await res.json();
-
         if (res.ok && data.status === "ok") {
             localStorage.setItem("tc_logged_in", "true");
-            if (errorEl) errorEl.classList.add("hidden");
             document.getElementById("loginOverlay").classList.add("hidden");
             cargarOrdenes();
-            cargarClientes();
             cargarStock();
+            cargarPublicaciones();
             cargarCaja();
             cargarFirmwares();
         } else {
-            if (errorEl) {
-                errorEl.innerText = data.mensaje || "Usuario o contraseña incorrectos";
-                errorEl.classList.remove("hidden");
-            }
+            err.innerText = data.mensaje || "Error al autenticar";
+            err.classList.remove("hidden");
         }
-    } catch (err) {
-        console.error("Error al autenticar:", err);
-        if (errorEl) {
-            errorEl.innerText = "Error de conexión con el servidor";
-            errorEl.classList.remove("hidden");
-        }
+    } catch (e) {
+        err.innerText = "Error de conexión";
+        err.classList.remove("hidden");
     }
 }
 
@@ -63,348 +58,358 @@ function cerrarSesion() {
     location.reload();
 }
 
-// --- NAVEGACIÓN DE VISTAS ---
+// --- VISTAS ---
 function cambiarVista(vista) {
-    const vistas = ['vistaOrdenes', 'vistaClientes', 'vistaStock', 'vistaDatasheets', 'vistaFirmwares', 'vistaCaja'];
-    vistas.forEach(v => {
-        const el = document.getElementById(v);
+    const ids = ['vistaOrdenes', 'vistaPlacas', 'vistaStock', 'vistaVentas', 'vistaCaja', 'vistaFirmwares'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
         if (el) el.classList.add("hidden");
+    });
+
+    const btns = ['btnTabOrdenes', 'btnTabPlacas', 'btnTabStock', 'btnTabVentas', 'btnTabCaja', 'btnTabFirmwares'];
+    btns.forEach(b => {
+        const btn = document.getElementById(b);
+        if (btn) {
+            btn.className = "px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition";
+        }
     });
 
     if (vista === 'ordenes') {
         document.getElementById("vistaOrdenes").classList.remove("hidden");
+        document.getElementById("btnTabOrdenes").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
         cargarOrdenes();
-    } else if (vista === 'clientes') {
-        document.getElementById("vistaClientes").classList.remove("hidden");
-        cargarClientes();
+    } else if (vista === 'placas') {
+        document.getElementById("vistaPlacas").classList.remove("hidden");
+        document.getElementById("btnTabPlacas").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
     } else if (vista === 'stock') {
         document.getElementById("vistaStock").classList.remove("hidden");
+        document.getElementById("btnTabStock").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
         cargarStock();
-    } else if (vista === 'datasheets') {
-        document.getElementById("vistaDatasheets").classList.remove("hidden");
-    } else if (vista === 'firmwares') {
-        document.getElementById("vistaFirmwares").classList.remove("hidden");
-        cargarFirmwares();
+    } else if (vista === 'ventas') {
+        document.getElementById("vistaVentas").classList.remove("hidden");
+        document.getElementById("btnTabVentas").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
+        cargarPublicaciones();
     } else if (vista === 'caja') {
         document.getElementById("vistaCaja").classList.remove("hidden");
+        document.getElementById("btnTabCaja").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
         cargarCaja();
+    } else if (vista === 'firmwares') {
+        document.getElementById("vistaFirmwares").classList.remove("hidden");
+        document.getElementById("btnTabFirmwares").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
+        cargarFirmwares();
     }
 }
 
 // --- ÓRDENES ---
 async function cargarOrdenes() {
-    try {
-        const res = await fetch('/api/ordenes');
-        const data = await res.json();
-        renderizarOrdenes(data);
-    } catch (err) {
-        console.error("Error al cargar órdenes:", err);
-    }
+    const res = await fetch('/api/ordenes');
+    const data = await res.json();
+    renderOrdenes(data);
 }
 
-function renderizarOrdenes(lista) {
-    const container = document.getElementById("ordersContainer");
-    if (!container) return;
-    container.innerHTML = "";
-
-    if (lista.length === 0) {
-        container.innerHTML = `<p class="text-slate-500 text-sm col-span-full text-center py-8">No hay órdenes registradas.</p>`;
-        return;
-    }
-
-    lista.forEach(ord => {
-        const card = document.createElement("div");
-        card.className = "bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-lg flex flex-col justify-between";
-        card.innerHTML = `
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg">#${ord.id}</span>
-                    <span class="text-xs font-medium text-slate-300 bg-slate-800 px-2.5 py-1 rounded-lg border border-bordercolor">${ord.estado}</span>
-                </div>
-                <h3 class="font-bold text-white text-lg mb-1">${ord.equipo}</h3>
-                <p class="text-xs text-slate-400 mb-4">Cliente: <span class="text-slate-200 font-medium">${ord.cliente}</span></p>
-                <div class="bg-darkbg/50 border border-bordercolor/50 rounded-xl p-3 mb-4">
-                    <p class="text-xs text-slate-400"><strong class="text-slate-300">Falla:</strong> ${ord.falla}</p>
-                </div>
-            </div>
+function renderOrdenes(lista) {
+    const tbody = document.getElementById("tablaOrdenesBody");
+    tbody.innerHTML = "";
+    lista.forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
+        tr.onclick = () => {
+            document.querySelectorAll("#tablaOrdenesBody tr").forEach(r => r.classList.remove("bg-slate-800"));
+            tr.classList.add("bg-slate-800");
+            ordenSeleccionadaId = o.id;
+        };
+        tr.innerHTML = `
+            <td class="py-2 px-3 text-cyan-400 font-bold">${o.id}</td>
+            <td class="py-2 px-3 text-white font-medium">${o.cliente}</td>
+            <td class="py-2 px-3 text-slate-300">${o.equipo}</td>
+            <td class="py-2 px-3 text-slate-400">${o.falla}</td>
+            <td class="py-2 px-3 text-amber-400 font-bold">$${(o.presupuesto || 0).toLocaleString()}</td>
+            <td class="py-2 px-3 text-cyan-300 font-semibold">${o.estado}</td>
         `;
-        container.appendChild(card);
+        tbody.appendChild(tr);
     });
 }
 
-async function guardarOrden(e) {
+async function guardarOrdenDirecta(e) {
     e.preventDefault();
-    const nueva = {
-        cliente: document.getElementById("clienteInput").value,
-        equipo: document.getElementById("equipoInput").value,
-        falla: document.getElementById("fallaInput").value
+    const o = {
+        cliente: document.getElementById("ordCliente").value,
+        equipo: document.getElementById("ordEquipo").value,
+        falla: document.getElementById("ordFalla").value,
+        presupuesto: parseFloat(document.getElementById("ordPresupuesto").value || 0),
+        estado: document.getElementById("ordEstado").value
     };
-
     await fetch('/api/ordenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nueva)
+        body: JSON.stringify(o)
     });
-
+    document.getElementById("ordCliente").value = "";
+    document.getElementById("ordEquipo").value = "";
+    document.getElementById("ordFalla").value = "";
+    document.getElementById("ordPresupuesto").value = "";
     cargarOrdenes();
-    cerrarModal('modalNuevaOrden');
-    document.getElementById("formNuevaOrden").reset();
 }
 
-// --- CLIENTES ---
-async function cargarClientes() {
-    try {
-        const res = await fetch('/api/clientes');
-        const data = await res.json();
-        renderizarClientes(data);
-    } catch (err) {
-        console.error("Error al cargar clientes:", err);
-    }
+async function filtrarOrdenes() {
+    const q = document.getElementById("buscarOrdenInput").value.toLowerCase();
+    const res = await fetch('/api/ordenes');
+    const list = await res.json();
+    const filt = list.filter(o =>
+        o.cliente.toLowerCase().includes(q) ||
+        o.equipo.toLowerCase().includes(q) ||
+        o.id.toString().includes(q)
+    );
+    renderOrdenes(filt);
 }
 
-function renderizarClientes(lista) {
-    const container = document.getElementById("tablaClientes");
-    if (!container) return;
-    container.innerHTML = "";
-
-    lista.forEach(c => {
-        const row = document.createElement("tr");
-        row.className = "border-b border-bordercolor/50 text-sm";
-        row.innerHTML = `
-            <td class="py-3 px-4 text-white font-medium">${c.nombre}</td>
-            <td class="py-3 px-4 text-slate-400">${c.telefono || '-'}</td>
-            <td class="py-3 px-4 text-slate-400">${c.direccion || '-'}</td>
-        `;
-        container.appendChild(row);
-    });
+function verFichaInforme() {
+    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
+    alert(`Generando Ficha/Informe para la Orden N° ${ordenSeleccionadaId}`);
 }
 
-async function guardarCliente(e) {
-    e.preventDefault();
-    const nuevo = {
-        nombre: document.getElementById("clienteNombreInput").value,
-        telefono: document.getElementById("clienteTelInput").value,
-        direccion: document.getElementById("clienteDirInput").value
-    };
-
-    await fetch('/api/clientes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevo)
-    });
-
-    cargarClientes();
-    cerrarModal('modalNuevoCliente');
-    document.getElementById("formNuevoCliente").reset();
+function imprimirComprobanteCliente() {
+    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
+    alert(`Imprimiendo comprobante para el cliente de la Orden N° ${ordenSeleccionadaId}`);
 }
 
-// --- STOCK / REPUESTOS ---
+function imprimirTicketTapa() {
+    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
+    alert(`Imprimiendo ticket para tapa TV de la Orden N° ${ordenSeleccionadaId}`);
+}
+
+// --- STOCK COMPONENTES ---
 async function cargarStock() {
-    try {
-        const res = await fetch('/api/repuestos');
-        const data = await res.json();
-        renderizarStock(data);
-    } catch (err) {
-        console.error("Error al cargar stock:", err);
-    }
+    const res = await fetch('/api/repuestos');
+    const data = await res.json();
+    renderStock(data);
 }
 
-function renderizarStock(lista) {
-    const container = document.getElementById("tablaStock");
-    if (!container) return;
-    container.innerHTML = "";
-
+function renderStock(lista) {
+    const tbody = document.getElementById("tablaStockBody");
+    tbody.innerHTML = "";
     lista.forEach(r => {
-        const row = document.createElement("tr");
-        row.className = "border-b border-bordercolor/50 text-sm";
-        row.innerHTML = `
-            <td class="py-3 px-4 text-white font-medium">${r.nombre}</td>
-            <td class="py-3 px-4 font-bold ${r.cantidad < 5 ? 'text-amber-400' : 'text-emerald-400'}">${r.cantidad} u.</td>
-            <td class="py-3 px-4">
-                <div class="flex items-center gap-2">
-                    <button onclick="modificarStock(${r.id}, -1)" class="bg-slate-800 hover:bg-slate-700 text-white font-bold w-7 h-7 rounded-lg border border-bordercolor text-xs flex items-center justify-center">-</button>
-                    <button onclick="modificarStock(${r.id}, 1)" class="bg-slate-800 hover:bg-slate-700 text-white font-bold w-7 h-7 rounded-lg border border-bordercolor text-xs flex items-center justify-center">+</button>
-                </div>
-            </td>
-            <td class="py-3 px-4 text-slate-300 font-semibold">$${r.precio.toLocaleString()}</td>
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
+        tr.onclick = () => {
+            document.querySelectorAll("#tablaStockBody tr").forEach(row => row.classList.remove("bg-slate-800"));
+            tr.classList.add("bg-slate-800");
+            repuestoSeleccionadoId = r.id;
+            tr.dataset.codigo = r.nombre;
+        };
+        tr.innerHTML = `
+            <td class="py-2 px-3 text-cyan-400 font-bold">${r.id}</td>
+            <td class="py-2 px-3 text-slate-300">${r.categoria || 'Gral'}</td>
+            <td class="py-2 px-3 text-white font-medium">${r.nombre}</td>
+            <td class="py-2 px-3 text-slate-400">${r.ubicacion || '-'}</td>
+            <td class="py-2 px-3 font-bold ${r.cantidad < 5 ? 'text-amber-400' : 'text-emerald-400'}">${r.cantidad} u.</td>
         `;
-        container.appendChild(row);
+        tbody.appendChild(tr);
     });
 }
 
-async function modificarStock(id, cambio) {
-    await fetch(`/api/repuestos/${id}/stock`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cambio: cambio })
-    });
-    cargarStock();
-}
-
-async function guardarRepuesto(e) {
+async function guardarComponenteDirecto(e) {
     e.preventDefault();
-    const nuevo = {
-        nombre: document.getElementById("repuestoNombreInput").value,
-        cantidad: parseInt(document.getElementById("repuestoCantInput").value),
-        precio: parseFloat(document.getElementById("repuestoPrecioInput").value)
+    const c = {
+        categoria: document.getElementById("compCategoria").value,
+        nombre: document.getElementById("compCodigo").value,
+        ubicacion: document.getElementById("compUbicacion").value,
+        cantidad: parseInt(document.getElementById("compCantidad").value || 1),
+        precio: 0.0
     };
-
     await fetch('/api/repuestos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevo)
+        body: JSON.stringify(c)
     });
-
+    document.getElementById("compCodigo").value = "";
+    document.getElementById("compUbicacion").value = "";
+    document.getElementById("compCantidad").value = "1";
     cargarStock();
-    cerrarModal('modalNuevoRepuesto');
-    document.getElementById("formNuevoRepuesto").reset();
 }
 
-// --- DATASHEETS / BUSCADOR DE PDF ---
-function buscarDatasheetWeb() {
-    const query = document.getElementById("pdfSearchInput").value.trim();
-    const container = document.getElementById("pdfResults");
-
-    if (!query) return;
-
-    const urlGoogle = `https://www.google.com/search?q=${encodeURIComponent(query + ' datasheet pdf')}`;
-    const urlAlldatasheet = `https://www.alldatasheet.com/view.jsp?Searchword=${encodeURIComponent(query)}`;
-
-    container.innerHTML = `
-        <div class="bg-cardbg border border-bordercolor rounded-2xl p-5 shadow-lg space-y-3">
-            <h4 class="font-bold text-white text-base">Resultados de Búsqueda para: <span class="text-rose-400">${query}</span></h4>
-            <p class="text-xs text-slate-400">Hacé clic en los enlaces para abrir la documentación técnica en PDF:</p>
-            <div class="flex flex-wrap gap-3 pt-2">
-                <a href="${urlGoogle}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-semibold py-2 px-4 rounded-xl border border-bordercolor transition inline-flex items-center gap-2">
-                    Buscar PDF en Google ↗
-                </a>
-                <a href="${urlAlldatasheet}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-semibold py-2 px-4 rounded-xl border border-bordercolor transition inline-flex items-center gap-2">
-                    Buscar en AllDataSheet ↗
-                </a>
-            </div>
-        </div>
-    `;
+async function sumarStockSeleccionado() {
+    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
+    await fetch(`/api/repuestos/${repuestoSeleccionadoId}/stock`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cambio: 1 })
+    });
+    cargarStock();
 }
 
-// --- FIRMWARES NUBE ---
-async function cargarFirmwares() {
-    try {
-        const res = await fetch('/api/firmwares');
-        const data = await res.json();
-        renderizarFirmwares(data);
-    } catch (err) {
-        console.error("Error al cargar firmwares:", err);
-    }
+async function restarStockSeleccionado() {
+    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
+    await fetch(`/api/repuestos/${repuestoSeleccionadoId}/stock`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cambio: -1 })
+    });
+    cargarStock();
 }
 
-function renderizarFirmwares(lista) {
-    const container = document.getElementById("tablaFirmwares");
-    if (!container) return;
-    container.innerHTML = "";
+function buscarDatasheetSeleccionado() {
+    const selected = document.querySelector("#tablaStockBody tr.bg-slate-800");
+    if (!selected) return alert("Seleccioná un componente de la tabla.");
+    const codigo = selected.dataset.codigo;
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(codigo + ' datasheet pdf')}`, '_blank');
+}
 
-    if (lista.length === 0) {
-        container.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 text-sm">No hay firmwares cargados aún en la nube.</td></tr>`;
-        return;
-    }
+function imprimirEtiquetaComponente() {
+    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
+    alert(`Imprimiendo etiqueta de gaveta para el componente ID ${repuestoSeleccionadoId}`);
+}
 
-    lista.forEach(f => {
-        const row = document.createElement("tr");
-        row.className = "border-b border-bordercolor/50 text-sm";
-        row.innerHTML = `
-            <td class="py-3 px-4 text-white font-medium">${f.marca}</td>
-            <td class="py-3 px-4 text-slate-300">${f.modelo}</td>
-            <td class="py-3 px-4 text-slate-400">${f.chasis || '-'}</td>
-            <td class="py-3 px-4">
-                <a href="${f.url_archivo}" target="_blank" class="text-xs bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 px-3 py-1.5 rounded-lg border border-cyan-500/30 font-semibold transition inline-block">
-                    Descargar BIN/ZIP
-                </a>
-            </td>
+async function filtrarComponentes() {
+    const q = document.getElementById("buscarCompInput").value.toLowerCase();
+    const res = await fetch('/api/repuestos');
+    const list = await res.json();
+    const filt = list.filter(r =>
+        r.nombre.toLowerCase().includes(q) ||
+        (r.categoria && r.categoria.toLowerCase().includes(q))
+    );
+    renderStock(filt);
+}
+
+// --- VENTAS Y USADOS ---
+async function cargarPublicaciones() {
+    const res = await fetch('/api/publicaciones');
+    const data = await res.json();
+    renderPublicaciones(data);
+}
+
+function renderPublicaciones(lista) {
+    const tbody = document.getElementById("tablaVentasBody");
+    tbody.innerHTML = "";
+    lista.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-bordercolor/50";
+        tr.innerHTML = `
+            <td class="py-2 px-3 text-cyan-400 font-bold">${p.id}</td>
+            <td class="py-2 px-3 text-white font-medium">${p.producto}</td>
+            <td class="py-2 px-3 text-emerald-400 font-bold">$${p.precio.toLocaleString()}</td>
         `;
-        container.appendChild(row);
+        tbody.appendChild(tr);
     });
 }
 
-// --- CAJA Y BALANCE ---
-async function cargarCaja() {
-    try {
-        const res = await fetch('/api/caja');
-        const data = await res.json();
-        renderizarMovimientosCaja(data);
-    } catch (err) {
-        console.error("Error al cargar caja:", err);
-    }
+async function guardarPublicacion(e) {
+    e.preventDefault();
+    const p = {
+        producto: document.getElementById("ventProducto").value,
+        precio: parseFloat(document.getElementById("ventPrecio").value || 0),
+        estado: document.getElementById("ventEstado").value
+    };
+    await fetch('/api/publicaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+    });
+    document.getElementById("ventProducto").value = "";
+    document.getElementById("ventPrecio").value = "";
+    cargarPublicaciones();
 }
 
-function renderizarMovimientosCaja(lista) {
-    const container = document.getElementById("tablaMovimientos");
-    if (!container) return;
-    container.innerHTML = "";
+function consultarMercadoLibre() {
+    const prod = document.getElementById("ventProducto").value.trim();
+    if (!prod) return alert("Ingresá el nombre o código del producto en el campo 'Producto / Equipo'.");
+    window.open(`https://listado.mercadolibre.com.ar/${encodeURIComponent(prod)}`, '_blank');
+}
 
+// --- CAJA Y FINANZAS ---
+async function cargarCaja() {
+    const res = await fetch('/api/caja');
+    const data = await res.json();
+    renderCaja(data);
+}
+
+function renderCaja(lista) {
+    const tbody = document.getElementById("tablaCajaBody");
+    tbody.innerHTML = "";
     let ingresos = 0;
     let egresos = 0;
 
     lista.forEach(m => {
-        if (m.tipo === "ingreso") ingresos += m.monto;
-        if (m.tipo === "egreso") egresos += m.monto;
+        if (m.tipo.toLowerCase() === "ingreso") ingresos += m.monto;
+        if (m.tipo.toLowerCase() === "egreso") egresos += m.monto;
 
-        const row = document.createElement("tr");
-        row.className = "border-b border-bordercolor/50 text-sm";
-        const esIngreso = m.tipo === "ingreso";
-        row.innerHTML = `
-            <td class="py-3 px-4 text-slate-400">${m.fecha}</td>
-            <td class="py-3 px-4 text-white font-medium">${m.concepto}</td>
-            <td class="py-3 px-4 ${esIngreso ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                ${esIngreso ? '+' : '-'} $${m.monto.toLocaleString()}
-            </td>
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-bordercolor/50";
+        const esIng = m.tipo.toLowerCase() === "ingreso";
+        tr.innerHTML = `
+            <td class="py-2 px-3 text-cyan-400 font-bold">${m.id}</td>
+            <td class="py-2 px-3 text-slate-400">${m.fecha}</td>
+            <td class="py-2 px-3 ${esIng ? 'text-emerald-400' : 'text-rose-400'} font-semibold">${m.tipo}</td>
+            <td class="py-2 px-3 text-white font-medium">${m.concepto}</td>
+            <td class="py-2 px-3 ${esIng ? 'text-emerald-400' : 'text-rose-400'} font-bold">$${m.monto.toLocaleString()}</td>
         `;
-        container.appendChild(row);
+        tbody.appendChild(tr);
     });
 
-    const totalIngresosEl = document.getElementById("totalIngresos");
-    const totalEgresosEl = document.getElementById("totalEgresos");
-    const saldoTotalEl = document.getElementById("saldoTotal");
-
-    if (totalIngresosEl) totalIngresosEl.innerText = `$${ingresos.toLocaleString()}`;
-    if (totalEgresosEl) totalEgresosEl.innerText = `$${egresos.toLocaleString()}`;
-    if (saldoTotalEl) saldoTotalEl.innerText = `$${(ingresos - egresos).toLocaleString()}`;
+    document.getElementById("lblIngresos").innerText = `$${ingresos.toLocaleString()}`;
+    document.getElementById("lblEgresos").innerText = `$${egresos.toLocaleString()}`;
 }
 
-async function guardarMovimientoCaja(e) {
+async function registrarMovimientoCaja(e) {
     e.preventDefault();
-    const nuevo = {
-        tipo: document.getElementById("tipoInput").value,
-        concepto: document.getElementById("conceptoInput").value,
-        monto: parseFloat(document.getElementById("montoInput").value),
-        fecha: new Date().toISOString().split('T')[0]
+    const m = {
+        tipo: document.getElementById("cajaTipo").value,
+        concepto: document.getElementById("cajaConcepto").value,
+        monto: parseFloat(document.getElementById("cajaMonto").value || 0),
+        fecha: new Date().toISOString().replace('T', ' ').substring(0, 16)
     };
-
     await fetch('/api/caja', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevo)
+        body: JSON.stringify(m)
     });
-
+    document.getElementById("cajaConcepto").value = "";
+    document.getElementById("cajaMonto").value = "";
     cargarCaja();
-    cerrarModal('modalNuevoMovimiento');
-    document.getElementById("formNuevoMovimiento").reset();
 }
 
-// --- MODALES Y UTILIDADES ---
-function abrirModal(id) { document.getElementById(id).classList.remove("hidden"); }
-function cerrarModal(id) { document.getElementById(id).classList.add("hidden"); }
-function abrirModalNuevaOrden() { abrirModal('modalNuevaOrden'); }
-function cerrarModalNuevaOrden() { cerrarModal('modalNuevaOrden'); }
-function abrirModalMovimiento() { abrirModal('modalNuevoMovimiento'); }
-function cerrarModalMovimiento() { cerrarModal('modalNuevoMovimiento'); }
+// --- FIRMWARES ---
+async function cargarFirmwares() {
+    const res = await fetch('/api/firmwares');
+    const data = await res.json();
+    renderFirmwares(data);
+}
 
-async function filtrarOrdenes() {
-    const query = document.getElementById("searchInput").value.toLowerCase();
-    const res = await fetch('/api/ordenes');
-    const ordenes = await res.json();
-    const filtradas = ordenes.filter(o => 
-        o.cliente.toLowerCase().includes(query) ||
-        o.equipo.toLowerCase().includes(query) ||
-        o.id.toString().includes(query)
+function renderFirmwares(lista) {
+    const tbody = document.getElementById("tablaFirmwaresBody");
+    tbody.innerHTML = "";
+    lista.forEach(f => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
+        tr.onclick = () => {
+            document.querySelectorAll("#tablaFirmwaresBody tr").forEach(row => row.classList.remove("bg-slate-800"));
+            tr.classList.add("bg-slate-800");
+            firmwareSeleccionadoUrl = f.url_archivo;
+        };
+        tr.innerHTML = `
+            <td class="py-2 px-3 text-cyan-400 font-bold">${f.id}</td>
+            <td class="py-2 px-3 text-white font-medium">${f.chasis}</td>
+            <td class="py-2 px-3 text-slate-300">${f.modelo}</td>
+            <td class="py-2 px-3 text-cyan-300">${f.memoria || '-'}</td>
+            <td class="py-2 px-3 text-slate-400">${f.tamano || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function filtrarFirmwares() {
+    const q = document.getElementById("buscarFirmwareInput").value.toLowerCase();
+    const res = await fetch('/api/firmwares');
+    const list = await res.json();
+    const filt = list.filter(f =>
+        f.chasis.toLowerCase().includes(q) ||
+        f.modelo.toLowerCase().includes(q) ||
+        (f.memoria && f.memoria.toLowerCase().includes(q))
     );
-    renderizarOrdenes(filtradas);
+    renderFirmwares(filt);
+}
+
+function descargarFirmwareSeleccionado() {
+    if (!firmwareSeleccionadoUrl) return alert("Seleccioná un archivo de la lista de firmwares.");
+    window.open(firmwareSeleccionadoUrl, '_blank');
 }
