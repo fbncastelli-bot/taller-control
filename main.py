@@ -46,6 +46,17 @@ def init_db():
         )
     ''')
     cursor.execute('''
+        CREATE TABLE IF NOT EXISTS placas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL,
+            codigo TEXT NOT NULL,
+            modelo_tv TEXT,
+            ubicacion TEXT,
+            estado TEXT DEFAULT 'Probada / OK',
+            cantidad INTEGER DEFAULT 1
+        )
+    ''')
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS publicaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             producto TEXT NOT NULL,
@@ -207,6 +218,44 @@ def handle_clientes():
     rows = cursor.fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+# --- GESTIÓN DE PLACAS (MAIN, POWER, T-CON, ETC.) ---
+@app.route('/api/placas', methods=['GET', 'POST'])
+def handle_placas():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    if request.method == 'POST':
+        data = request.json
+        cursor.execute('INSERT INTO placas (tipo, codigo, modelo_tv, ubicacion, estado, cantidad) VALUES (?, ?, ?, ?, ?, ?)',
+                       (data.get('tipo'), data.get('codigo'), data.get('modelo_tv'), data.get('ubicacion'), data.get('estado', 'Probada / OK'), data.get('cantidad', 1)))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "ok"})
+    cursor.execute('SELECT * FROM placas ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/placas/<int:placa_id>/stock', methods=['PUT'])
+def update_stock_placa(placa_id):
+    data = request.json
+    cambio = data.get('cambio', 0)
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE placas SET cantidad = MAX(0, cantidad + ?) WHERE id = ?', (cambio, placa_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+@app.route('/api/placas/<int:placa_id>', methods=['DELETE'])
+def delete_placa(placa_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM placas WHERE id = ?', (placa_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
 
 @app.route('/api/repuestos', methods=['GET', 'POST'])
 def handle_repuestos():
