@@ -3,29 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taller Control</title>
+    <title>Taller Control - Sistema Integrado</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
+    <!-- HEADER -->
     <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
             <span class="text-2xl">🔧</span>
-            <h1 class="text-xl font-bold text-white">Taller Control</h1>
+            <h1 class="text-xl font-bold text-white tracking-wide">Taller Control</h1>
         </div>
-        <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">DB: Online</span>
+        <div class="flex items-center gap-3">
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">DB: Online</span>
+        </div>
     </header>
 
     <div class="flex-1 flex w-full mx-auto">
-        <aside class="w-64 bg-slate-800/50 border-r border-slate-700/50 p-4 flex flex-col gap-2">
-            <button onclick="cambiarPestana('sec-ordenes', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium bg-blue-600 text-white flex items-center gap-3 transition">📋 <span>Órdenes de Trabajo</span></button>
-            <button onclick="cambiarPestana('sec-repuestos', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">📦 <span>Stock Componentes</span></button>
-            <button onclick="cambiarPestana('sec-placas', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">🧩 <span>Banco de Placas</span></button>
-            <button onclick="cambiarPestana('sec-firmwares', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">💾 <span>Firmwares en la Nube</span></button>
+        <!-- NAVEGACIÓN LATERAL -->
+        <aside class="w-64 bg-slate-800/60 border-r border-slate-700/60 p-4 flex flex-col gap-2">
+            <button onclick="cambiarPestana('sec-ordenes', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium bg-blue-600 text-white flex items-center gap-3 transition">
+                📋 <span>Órdenes de Trabajo</span>
+            </button>
+            <button onclick="cambiarPestana('sec-repuestos', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                📦 <span>Stock Componentes</span>
+            </button>
+            <button onclick="cambiarPestana('sec-placas', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                🧩 <span>Banco de Placas</span>
+            </button>
+            <button onclick="cambiarPestana('sec-firmwares', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                💾 <span>Firmwares en la Nube</span>
+            </button>
         </aside>
 
+        <!-- CONTENIDO PRINCIPAL -->
         <main class="flex-1 p-6 space-y-6 overflow-y-auto">
-            
+
+            <!-- MODAL / DIAGNÓSTICO IA -->
+            <div id="panelResultadoIA" class="hidden bg-slate-800 border border-purple-500/50 rounded-xl p-5 space-y-3 shadow-2xl">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                    <h4 class="text-md font-bold text-purple-400 flex items-center gap-2">🤖 Diagnóstico Técnico IA</h4>
+                    <button onclick="document.getElementById('panelResultadoIA').classList.add('hidden')" class="text-slate-400 hover:text-white font-bold">✕ Cerrar</button>
+                </div>
+                <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm text-slate-200 font-sans leading-relaxed bg-slate-900/60 p-4 rounded-lg border border-slate-700/50"></pre>
+            </div>
+
             <!-- ÓRDENES DE TRABAJO -->
             <section id="sec-ordenes" class="space-y-6">
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
@@ -39,15 +61,7 @@
                     </form>
                 </div>
 
-                <div id="panelResultadoIA" class="hidden bg-slate-800 border border-purple-500/40 rounded-xl p-5 space-y-3">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                        <h4 class="text-md font-bold text-purple-400 flex items-center gap-2">🤖 Diagnóstico Técnico IA</h4>
-                        <button onclick="document.getElementById('panelResultadoIA').classList.add('hidden')" class="text-slate-400 hover:text-white font-bold">✕ Cerrar</button>
-                    </div>
-                    <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm text-slate-200 font-sans leading-relaxed"></pre>
-                </div>
-
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
@@ -56,7 +70,7 @@
                                 <th class="p-4">Equipo / Modelo</th>
                                 <th class="p-4">Falla</th>
                                 <th class="p-4">Presupuesto</th>
-                                <th class="p-4 text-center">Acciones</th>
+                                <th class="p-4 text-center">Análisis IA</th>
                             </tr>
                         </thead>
                         <tbody id="tablaOrdenesBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
@@ -77,7 +91,7 @@
                     </form>
                 </div>
 
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
@@ -85,8 +99,8 @@
                                 <th class="p-4">Componente</th>
                                 <th class="p-4">Ubicación</th>
                                 <th class="p-4">Stock</th>
-                                <th class="p-4 text-center">Ajuste Cantidad</th>
-                                <th class="p-4 text-center">Datasheet / PDF</th>
+                                <th class="p-4 text-center">Ajuste</th>
+                                <th class="p-4 text-center">Búsquedas / Archivos</th>
                             </tr>
                         </thead>
                         <tbody id="tablaRepuestosBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
@@ -106,14 +120,14 @@
                     </form>
                 </div>
 
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
                                 <th class="p-4">Tipo</th>
                                 <th class="p-4">Código Chasis</th>
                                 <th class="p-4">Modelo TV</th>
-                                <th class="p-4 text-center">Diagrama PDF</th>
+                                <th class="p-4 text-center">Consultas / Repuestos</th>
                             </tr>
                         </thead>
                         <tbody id="tablaPlacasBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
@@ -124,16 +138,16 @@
             <!-- FIRMWARES EN LA NUBE -->
             <section id="sec-firmwares" class="space-y-6 hidden">
                 <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                    <h2 class="text-lg font-semibold text-white">💾 Archivos de Firmware SPI / eMMC</h2>
+                    <h2 class="text-lg font-semibold text-white">💾 Repositorio de Firmwares (SPI Flash / eMMC)</h2>
                 </div>
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
-                                <th class="p-4">Chasis / Código</th>
+                                <th class="p-4">Chasis / PCB</th>
                                 <th class="p-4">Modelo TV</th>
                                 <th class="p-4">Tipo Memoria</th>
-                                <th class="p-4 text-center">Descarga / Binario</th>
+                                <th class="p-4 text-center">Descarga</th>
                             </tr>
                         </thead>
                         <tbody id="tablaFirmwaresBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
