@@ -1,401 +1,51 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Profesional de Gestión de Taller v4.2</title>
+    <title>Taller Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        navybg: '#1b263b',
-                        cardbg: '#0d1b2a',
-                        headerbg: '#1e293b',
-                        bordercolor: '#334155',
-                        cyanbtn: '#06b6d4',
-                        greenbtn: '#10b981'
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-navybg text-slate-100 font-sans antialiased h-screen flex flex-col overflow-hidden">
+<body class="bg-gray-100 text-gray-800">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide">🔧 Taller Control</h1>
+            <span class="text-xs bg-slate-800 px-3 py-1 rounded-full border border-slate-700">Sistema de Gestión</span>
+        </header>
 
-    <!-- MODAL LOGIN -->
-    <div id="loginOverlay" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div class="bg-cardbg border border-bordercolor w-full max-w-md rounded-2xl p-8 shadow-2xl">
-            <div class="text-center mb-6">
-                <h1 class="text-xl font-bold text-cyan-400">TallerControl OS v4.2</h1>
-                <p class="text-xs text-slate-400 mt-1">Servicio Técnico & Firmwares</p>
-            </div>
-            <form id="loginForm" onsubmit="procesarLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Usuario</label>
-                    <input type="text" id="loginUsuario" required class="w-full bg-slate-900 border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Contraseña</label>
-                    <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-bordercolor rounded-xl py-2.5 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400">
-                </div>
-                <div id="loginError" class="text-rose-500 text-xs text-center hidden"></div>
-                <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-xl transition">Ingresar al Sistema</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ENCABEZADO SUPERIOR -->
-    <header class="bg-headerbg border-b border-bordercolor px-4 py-3 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-4">
-            <h1 class="text-base font-bold text-cyan-400 uppercase tracking-wide">Servicio Técnico & Firmwares</h1>
-            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">● BDDD: ONLINE</span>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-xs text-slate-300 font-medium">👤 USER: ADMINISTRADOR</span>
-            <button onclick="cerrarSesion()" class="text-xs bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 px-2.5 py-1 rounded-lg transition">Salir</button>
-        </div>
-    </header>
-
-    <!-- BARRA DE PESTAÑAS TIPO ESCRITORIO -->
-    <nav class="bg-slate-900 border-b border-bordercolor px-2 flex gap-1 overflow-x-auto shrink-0 pt-2">
-        <button id="btnTabOrdenes" onclick="cambiarVista('ordenes')" class="px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition">📋 Órdenes de Trabajo</button>
-        <button id="btnTabPlacas" onclick="cambiarVista('placas')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">📦 Banco de Placas (Stock)</button>
-        <button id="btnTabStock" onclick="cambiarVista('stock')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">💡 Stock Componentes</button>
-        <button id="btnTabVentas" onclick="cambiarVista('ventas')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">🏷️ Ventas y Usados</button>
-        <button id="btnTabCaja" onclick="cambiarVista('caja')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">💵 Caja y Finanzas</button>
-        <button id="btnTabFirmwares" onclick="cambiarVista('firmwares')" class="px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition">☁️ Firmwares Nube</button>
-    </nav>
-
-    <!-- CONTENIDO PRINCIPAL -->
-    <main class="flex-1 overflow-hidden p-4 flex flex-col">
-
-        <!-- 1. VISTA: ÓRDENES DE TRABAJO -->
-        <section id="vistaOrdenes" class="flex-1 flex flex-col gap-3 overflow-hidden">
-            <!-- Formulario Superior Directo -->
-            <form onsubmit="guardarOrdenDirecta(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-6 gap-3 shrink-0">
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] text-slate-400 mb-1">Cliente:</label>
-                    <input type="text" id="ordCliente" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] text-slate-400 mb-1">Equipo/Modelo:</label>
-                    <input type="text" id="ordEquipo" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Estado:</label>
-                    <select id="ordEstado" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
-                        <option value="Ingresado">Ingresado</option>
-                        <option value="Presupuestado">Presupuestado</option>
-                        <option value="En Reparación">En Reparación</option>
-                        <option value="Finalizado">Finalizado</option>
-                        <option value="Entregado">Entregado</option>
-                    </select>
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar Orden</button>
-                </div>
-                <div class="md:col-span-3">
-                    <label class="block text-[11px] text-slate-400 mb-1">Falla Reportada:</label>
-                    <input type="text" id="ordFalla" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div class="md:col-span-3">
-                    <label class="block text-[11px] text-slate-400 mb-1">Presupuesto $:</label>
-                    <input type="number" id="ordPresupuesto" placeholder="0.00" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-            </form>
-
-            <!-- Barra de Búsqueda -->
-            <div class="flex gap-2 shrink-0">
-                <input type="text" id="buscarOrdenInput" onkeyup="filtrarOrdenes()" placeholder="Buscar Orden: Cliente, Equipo o N° de Orden..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
-                <button onclick="filtrarOrdenes()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Filtrar</button>
-            </div>
-
-            <!-- Tabla de Órdenes -->
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3">Cliente</th>
-                            <th class="py-2 px-3">Equipo / Modelo</th>
-                            <th class="py-2 px-3">Falla Reportada</th>
-                            <th class="py-2 px-3 w-28">Presupuesto</th>
-                            <th class="py-2 px-3 w-28">Estado Trabajo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaOrdenesBody"></tbody>
-                </table>
-            </div>
-
-            <!-- Botones Inferiores de Acción -->
-            <div class="flex flex-wrap gap-3 shrink-0 pt-1">
-                <button onclick="verFichaInforme()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">📄 Ver Ficha / Informe</button>
-                <button onclick="imprimirComprobanteCliente()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">🖨️ Imprimir Comprobante Cliente</button>
-                <button onclick="imprimirTicketTapa()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition">🏷️ Ticket para Tapa TV</button>
-            </div>
-        </section>
-
-        <!-- 2. VISTA: BANCO DE PLACAS -->
-        <section id="vistaPlacas" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
-            <!-- Formulario Superior de Carga Directa -->
-            <form onsubmit="guardarPlacaDirecta(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-6 gap-3 shrink-0">
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Tipo de Placa:</label>
-                    <select id="placaTipo" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
-                        <option value="Main Board">Main Board</option>
-                        <option value="Fuente (Power Supply)">Fuente (Power Supply)</option>
-                        <option value="T-Con">T-Con</option>
-                        <option value="Driver LED / Inverter">Driver LED / Inverter</option>
-                        <option value="Combo (Main+Fuente)">Combo (Main+Fuente)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Código / Modelo Placa:</label>
-                    <input type="text" id="placaCodigo" required placeholder="Ej: RSAG7.820.xxxx" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">TV / Chasis Compatible:</label>
-                    <input type="text" id="placaModeloTV" placeholder="Ej: Samsung UN32F5000" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Ubicación / Estante:</label>
-                    <input type="text" id="placaUbicacion" placeholder="Ej: Cajón B2" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Estado / Cantidad:</label>
+        <!-- Main Content -->
+        <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+            <section class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-800">Órdenes de Trabajo</h2>
                     <div class="flex gap-2">
-                        <select id="placaEstado" class="w-2/3 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-1 text-xs text-white">
-                            <option value="Probada / OK">Probada / OK</option>
-                            <option value="A Reparar">A Reparar</option>
-                            <option value="Nueva">Nueva</option>
-                        </select>
-                        <input type="number" id="placaCantidad" value="1" min="1" required class="w-1/3 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
+                        <button id="btnAnalizarIA" onclick="analizarFallaIA()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow transition">
+                            🤖 Analizar Falla con IA
+                        </button>
                     </div>
                 </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar Placa</button>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 text-sm">
+                                <th class="p-3">ID</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Equipo</th>
+                                <th class="p-3">Falla</th>
+                                <th class="p-3">Presupuesto</th>
+                                <th class="p-3">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaOrdenesBody" class="cursor-pointer divide-y divide-slate-100">
+                            <!-- Filas cargadas por app.js -->
+                        </tbody>
+                    </table>
                 </div>
-            </form>
-
-            <!-- Barra de Búsqueda de Placas -->
-            <div class="flex gap-2 shrink-0">
-                <input type="text" id="buscarPlacaInput" onkeyup="filtrarPlacas()" placeholder="Buscar Placa: Código, Tipo, Modelo TV o Ubicación..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
-                <button onclick="filtrarPlacas()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Filtrar</button>
-            </div>
-
-            <!-- Tabla del Banco de Placas -->
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3 w-32">Tipo</th>
-                            <th class="py-2 px-3">Código / Modelo Placa</th>
-                            <th class="py-2 px-3">TV / Chasis Compatible</th>
-                            <th class="py-2 px-3 w-28">Ubicación</th>
-                            <th class="py-2 px-3 w-28">Estado</th>
-                            <th class="py-2 px-3 w-20">Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaPlacasBody"></tbody>
-                </table>
-            </div>
-
-            <!-- Botones de Acción de Placas -->
-            <div class="flex flex-wrap gap-2 shrink-0 pt-1">
-                <button onclick="sumarPlacaSeleccionada()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs">+ Sumar 1</button>
-                <button onclick="restarPlacaSeleccionada()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs">- Restar 1</button>
-                <button onclick="imprimirEtiquetaPlaca()" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">🏷️ Imprimir Etiqueta Ubicación</button>
-                <button onclick="eliminarPlacaSeleccionada()" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">🗑️ Eliminar Placa</button>
-            </div>
-        </section>
-
-        <!-- 3. VISTA: STOCK COMPONENTES -->
-        <section id="vistaStock" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
-            <!-- Formulario Superior Directo -->
-            <form onsubmit="guardarComponenteDirecto(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Categoría:</label>
-                    <select id="compCategoria" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
-                        <option value="Transistores Bipolares">Transistores Bipolares</option>
-                        <option value="Integrados PWM/Fuente">Integrados PWM/Fuente</option>
-                        <option value="Mosfets / Diodos">Mosfets / Diodos</option>
-                        <option value="Capacitores / THT">Capacitores / THT</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Código/Descripción:</label>
-                    <input type="text" id="compCodigo" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Ubicación/Gaveta:</label>
-                    <input type="text" id="compUbicacion" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Cantidad:</label>
-                    <input type="number" id="compCantidad" value="1" min="1" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar Componente Nuevo</button>
-                </div>
-            </form>
-
-            <div class="flex gap-2 shrink-0">
-                <input type="text" id="buscarCompInput" onkeyup="filtrarComponentes()" placeholder="Escriba código (ej: 1N4148, MOSFET)..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
-                <button onclick="filtrarComponentes()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Filtrar</button>
-            </div>
-
-            <!-- Tabla Componentes -->
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3">Categoría</th>
-                            <th class="py-2 px-3">Código / Nombre Componente</th>
-                            <th class="py-2 px-3 w-32">Gavetero / Ubicación</th>
-                            <th class="py-2 px-3 w-20">Stock</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaStockBody"></tbody>
-                </table>
-            </div>
-
-            <!-- Botones de Acción de Stock -->
-            <div class="flex flex-wrap gap-2 shrink-0 pt-1">
-                <button onclick="sumarStockSeleccionado()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs">+ Sumar 1</button>
-                <button onclick="restarStockSeleccionado()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs">- Restar 1</button>
-                <button onclick="buscarDatasheetSeleccionado()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">📄 Datasheet PDF</button>
-                <button onclick="imprimirEtiquetaComponente()" class="bg-teal-600 hover:bg-teal-500 text-white font-semibold px-4 py-2 rounded-xl text-xs">🏷️ Imprimir Etiqueta</button>
-            </div>
-        </section>
-
-        <!-- 4. VISTA: VENTAS Y USADOS -->
-        <section id="vistaVentas" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
-            <form onsubmit="guardarPublicacion(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] text-slate-400 mb-1">Producto / Equipo:</label>
-                    <input type="text" id="ventProducto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Precio $:</label>
-                    <input type="number" id="ventPrecio" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Estado:</label>
-                    <select id="ventEstado" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
-                        <option value="En Venta">En Venta</option>
-                        <option value="Vendido">Vendido</option>
-                    </select>
-                </div>
-                <div class="flex items-end gap-2">
-                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Guardar en Publicaciones</button>
-                </div>
-            </form>
-
-            <div class="flex gap-2 shrink-0">
-                <button onclick="consultarMercadoLibre()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5">🔍 Consultar Valor Usado (MercadoLibre)</button>
-            </div>
-
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3">Producto / Equipo</th>
-                            <th class="py-2 px-3 w-36">Precio Publicado ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaVentasBody"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- 5. VISTA: CAJA Y FINANZAS -->
-        <section id="vistaCaja" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
-            <div class="bg-cardbg border border-bordercolor rounded-xl p-3 flex items-center justify-between shrink-0">
-                <div class="flex gap-6 text-xs">
-                    <span class="text-emerald-400 font-bold">Ingresos: <span id="lblIngresos">$0.00</span></span>
-                    <span class="text-rose-400 font-bold">Egresos: <span id="lblEgresos">$0.00</span></span>
-                </div>
-            </div>
-
-            <form onsubmit="registrarMovimientoCaja(event)" class="bg-cardbg border border-bordercolor rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-3 shrink-0">
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Tipo Movimiento:</label>
-                    <select id="cajaTipo" class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-2 text-xs text-white">
-                        <option value="Ingreso">Ingreso</option>
-                        <option value="Egreso">Egreso</option>
-                    </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] text-slate-400 mb-1">Concepto / Detalle:</label>
-                    <input type="text" id="cajaConcepto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-slate-400 mb-1">Monto $:</label>
-                    <input type="number" id="cajaMonto" required class="w-full bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-white">
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">Registrar Movimiento</button>
-                </div>
-            </form>
-
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3 w-36">Fecha y Hora</th>
-                            <th class="py-2 px-3 w-24">Tipo</th>
-                            <th class="py-2 px-3">Concepto / Detalle</th>
-                            <th class="py-2 px-3 w-28">Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaCajaBody"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- 6. VISTA: FIRMWARES NUBE -->
-        <section id="vistaFirmwares" class="flex-1 flex flex-col gap-3 overflow-hidden hidden">
-            <div class="bg-cardbg border border-bordercolor rounded-xl p-3 flex items-center justify-between shrink-0">
-                <div>
-                    <h3 class="text-xs font-bold text-cyan-400">Servidor de Firmwares & Dumps en la Nube</h3>
-                    <p class="text-[11px] text-slate-400">Estado de Suscripción: <span class="text-emerald-400 font-bold">ACTIVA (Plan Premium Taller)</span></p>
-                </div>
-            </div>
-
-            <div class="flex gap-2 shrink-0">
-                <input type="text" id="buscarFirmwareInput" placeholder="Chasis, Código Main, eMMC, SPI Flash..." class="flex-1 bg-slate-900 border border-bordercolor rounded-lg py-1.5 px-3 text-xs text-slate-200">
-                <button onclick="filtrarFirmwares()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-4 py-1.5 rounded-lg text-xs">Buscar Archivos</button>
-            </div>
-
-            <div class="flex-1 bg-cardbg border border-bordercolor rounded-xl overflow-y-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-900 sticky top-0 border-b border-bordercolor text-slate-400">
-                        <tr>
-                            <th class="py-2 px-3 w-12">N°</th>
-                            <th class="py-2 px-3">Código Main / Chasis</th>
-                            <th class="py-2 px-3">Modelo TV Asociado</th>
-                            <th class="py-2 px-3">Memoria / Binario</th>
-                            <th class="py-2 px-3 w-24">Tamaño</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaFirmwaresBody"></tbody>
-                </table>
-            </div>
-
-            <div class="shrink-0 pt-1">
-                <button onclick="descargarFirmwareSeleccionado()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition">⬇️ Descargar Firmware Seleccionado</button>
-            </div>
-        </section>
-
-    </main>
-
-    <script src="/static/app.js?v=4.2"></script>
+            </section>
+        </main>
+    </div>
 </body>
 </html>
