@@ -9,7 +9,7 @@ GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
 
-# Base de datos local en memoria
+# Base de datos local
 db_ordenes = [
     {
         "id": 1,
@@ -50,7 +50,6 @@ db_firmwares = [
     }
 ]
 
-# Tabla estática de referencia para drivers LED más comunes
 DRIVERS_LED = {
     "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
     "MAP3202": "Aumentar el valor de la resistencia conectada en la línea R_ISET (pin 6).",
@@ -58,6 +57,39 @@ DRIVERS_LED = {
     "AP3041": "Modificar el divisor en el pin ISET incrementando el valor de R_SET.",
     "OZ9998": "Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama."
 }
+
+def consultar_gemini_dinamico(prompt):
+    candidatos = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-2.0-flash',
+        'gemini-pro'
+    ]
+    ultimo_error = None
+
+    for nombre in candidatos:
+        try:
+            model = genai.GenerativeModel(nombre)
+            res = model.generate_content(prompt)
+            if res and res.text:
+                return res.text, None
+        except Exception as e:
+            ultimo_error = str(e)
+
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                try:
+                    model = genai.GenerativeModel(m.name)
+                    res = model.generate_content(prompt)
+                    if res and res.text:
+                        return res.text, None
+                except Exception as e:
+                    ultimo_error = str(e)
+    except Exception as e:
+        ultimo_error = str(e)
+
+    return None, ultimo_error
 
 @app.route('/')
 def index():
@@ -122,7 +154,7 @@ def add_placa():
 def get_firmwares():
     return jsonify(db_firmwares)
 
-# DIAGNÓSTICO IA (ESPAÑOL FORZADO)
+# DIAGNÓSTICO IA
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
@@ -144,50 +176,14 @@ Proporcioná una guía estructurada:
 2. Métodos de aislamiento o descarte de etapas.
 3. Componentes o sectores propensos a falla en este chasis."""
 
-        candidatos = [
-            'gemini-1.5-flash',
-            'gemini-1.5-pro',
-            'gemini-2.0-flash',
-            'gemini-pro'
-        ]
-
-        respuesta_texto = None
-        ultimo_error = None
-
-        for nombre in candidatos:
-            try:
-                model = genai.GenerativeModel(nombre)
-                res = model.generate_content(prompt)
-                if res and res.text:
-                    respuesta_texto = res.text
-                    break
-            except Exception as e:
-                ultimo_error = str(e)
-
-        if not respuesta_texto:
-            try:
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        try:
-                            model = genai.GenerativeModel(m.name)
-                            res = model.generate_content(prompt)
-                            if res and res.text:
-                                respuesta_texto = res.text
-                                break
-                        except Exception as e:
-                            ultimo_error = str(e)
-            except Exception as e:
-                ultimo_error = str(e)
-
-        if respuesta_texto:
-            return jsonify({'diagnostico': respuesta_texto})
-        else:
-            return jsonify({'error': f'No se pudo conectar a un modelo activo: {ultimo_error}'}), 500
-
+        texto, err = consultar_gemini_dinamico(prompt)
+        if texto:
+            return jsonify({'diagnostico': texto})
+        return jsonify({'error': f'No se pudo conectar a un modelo activo: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ENDPOINT: TEST POINTS VÍA IA
+# TEST POINTS VÍA IA
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
@@ -205,14 +201,14 @@ Detallá:
 2. Sub-fuentes SMD y bobinas de la Main (Core, RAM, 3.3V, 5V, 12V).
 3. Prueba de resistencia/diodos típica respecto a masa para descartar cortos."""
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        res = model.generate_content(prompt)
-
-        return jsonify({'test_points': res.text})
+        texto, err = consultar_gemini_dinamico(prompt)
+        if texto:
+            return jsonify({'test_points': texto})
+        return jsonify({'error': f'No se pudo conectar a un modelo activo: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ENDPOINT: CALCULADORA BACKLIGHT
+# CALCULADORA BACKLIGHT
 @app.route('/api/calcular-backlight', methods=['POST'])
 def calcular_backlight():
     data = request.json or {}
