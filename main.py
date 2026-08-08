@@ -1,4 +1,4 @@
-aimport os
+import os
 import re
 from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
@@ -61,14 +61,13 @@ DRIVERS_LED = {
 
 def consultar_gemini_limpio(prompt):
     system_instruction = (
-        "Sos un asistente técnico de laboratorio electrónico de Smart TVs. "
-        "Tu única función es responder directamente en español técnico. "
-        "Queda estrictamente prohibido escribir frases, análisis, verificaciones o encabezados en inglés."
+        "Sos un asistente de laboratorio electrónico. Tu función es entregar tablas directas de datos en español. "
+        "No escribas introducciones, no saludes, no expliques qué vas a hacer, ni incluyas ningún texto en inglés."
     )
     
     ultimo_error = None
 
-    # 1. Búsqueda dinámica de modelos activos en la cuenta
+    # Intentar obtener un modelo activo de la API
     try:
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
@@ -79,19 +78,22 @@ def consultar_gemini_limpio(prompt):
                     )
                     res = model.generate_content(prompt)
                     if res and res.text:
-                        texto_limpio = re.sub(
-                            r'^(Role:|Constraints:|Input Case:|Required Structure:|Model:).*?\n\n', 
-                            '', 
-                            res.text, 
-                            flags=re.DOTALL | re.IGNORECASE
-                        )
-                        return texto_limpio.strip(), None
+                        # Filtro estricto por código para eliminar cualquier fragmento en inglés residual
+                        texto = res.text
+                        # Eliminar bloques comunes de system prompt en inglés si se filtran
+                        texto = re.sub(r'(?i)(role|constraints|input case|required structure|model|verification|language).*?\n', '', texto)
+                        # Cortar si hay explicaciones en inglés antes de la tabla en español
+                        if '|' in texto:
+                            # Retener desde la primera ocurrencia de la tabla Markdown
+                            pos_tabla = texto.find('|')
+                            texto = texto[pos_tabla:]
+                        return texto.strip(), None
                 except Exception as e:
                     ultimo_error = str(e)
     except Exception as e:
         ultimo_error = str(e)
 
-    # 2. Reintento alternativo con modelos flash/pro actuales
+    # Reintento con modelos flash directo
     candidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
     for nombre in candidatos:
         try:
@@ -101,13 +103,12 @@ def consultar_gemini_limpio(prompt):
             )
             res = model.generate_content(prompt)
             if res and res.text:
-                texto_limpio = re.sub(
-                    r'^(Role:|Constraints:|Input Case:|Required Structure:|Model:).*?\n\n', 
-                    '', 
-                    res.text, 
-                    flags=re.DOTALL | re.IGNORECASE
-                )
-                return texto_limpio.strip(), None
+                texto = res.text
+                texto = re.sub(r'(?i)(role|constraints|input case|required structure|model|verification|language).*?\n', '', texto)
+                if '|' in texto:
+                    pos_tabla = texto.find('|')
+                    texto = texto[pos_tabla:]
+                return texto.strip(), None
         except Exception as e:
             ultimo_error = str(e)
 
@@ -203,7 +204,7 @@ Entregá una guía técnica directa:
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# TEST POINTS VÍA IA
+# TEST POINTS VÍA IA (TABLA DIRECTA DE ICs Y BOBINAS SIN TEXTO EN INGLÉS)
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
@@ -213,20 +214,17 @@ def obtener_test_points():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        prompt = f"""Analizá el chasis / placa de TV: {chasis}
+        prompt = f"""Generá la tabla de mediciones de laboratorio para el chasis: {chasis}.
 
-Proporcioná la guía de mediciones referenciando prioritariamente a PINES DE CIRCUITOS INTEGRADOS y BOBINAS DE PASO SMD:
+Regla: No incluyas texto antes o después. Devolvé ÚNICAMENTE la tabla en formato Markdown con las columnas:
+| Sub-fuente / Etapa | IC Regulador o Diodo | Pin o Punto de Medición | Tensión Standby | Tensión ON | Resistencia a GND (Aislamiento) |
 
-1. PUNTOS DE MEDICIÓN EN CIs Y BOBINAS:
-   - Indicá los integrados reguladores Buck/LDO clave de la placa y sus pines de entrada/salida (ej. Pin VCC, Pin LX/OUT, Pin EN).
-   - Identificá las bobinas asociadas a las sub-fuentes (1.1V Core, 1.5V/1.8V RAM, 3.3V_STB, 5V, 12V).
-   - En el sector T-CON / Panel, indicá los pines del CI generador de VGH, VGL, VDD, VCOM o sus diodos de salida directos.
-
-2. TABLA DE TENSIONES ESPERADAS:
-   - Componente / Pin de CI | Tensión Standby | Tensión ON (Encendido)
-
-3. PRUEBAS DE RESISTENCIA EN FRÍO:
-   - Valores de resistencia a masa (GND) en las bobinas principales para descartar micros o memorias en corto."""
+Incluí las líneas clave de la placa:
+- 12V Main
+- 3.3V Standby
+- 1.1V / 1.5V Core y RAM (Sub-fuentes Buck)
+- VCC e ISET del Driver LED
+- VGH, VGL, VDD del sector T-CON / Panel"""
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
