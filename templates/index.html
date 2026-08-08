@@ -9,11 +9,14 @@
     <aside class="w-64 bg-slate-800 p-6 border-r border-slate-700">
         <h1 class="text-xl font-bold mb-8">🔧 Taller Control</h1>
         <nav class="space-y-4">
-            <button onclick="document.getElementById('sec-ordenes').classList.remove('hidden')" class="w-full text-left">📋 Órdenes</button>
+            <button onclick="cambiarPestana('sec-ordenes')" class="w-full text-left">📋 Órdenes</button>
+            <button onclick="cambiarPestana('sec-repuestos')" class="w-full text-left">📦 Stock Componentes</button>
+            <button onclick="cambiarPestana('sec-placas')" class="w-full text-left">🧩 Banco de Placas</button>
         </nav>
     </aside>
 
     <main class="flex-1 p-8">
+        <!-- ÓRDENES -->
         <section id="sec-ordenes">
             <form id="formOrden" onsubmit="guardarOrden(event)" class="bg-slate-800 p-6 rounded-lg mb-6 grid grid-cols-2 gap-4">
                 <input type="text" id="ot_cliente" placeholder="Cliente" class="bg-slate-900 p-2 rounded">
@@ -22,18 +25,41 @@
                 <input type="number" id="ot_presupuesto" placeholder="Presupuesto" class="bg-slate-900 p-2 rounded">
                 <button type="submit" class="bg-blue-600 col-span-2 p-2 rounded">Guardar Orden</button>
             </form>
-            
             <div id="panelResultadoIA" class="hidden bg-purple-900/50 p-6 rounded-lg mb-6 border border-purple-500">
                 <h3 class="font-bold mb-2">🤖 Diagnóstico IA:</h3>
                 <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm"></pre>
             </div>
-
             <table class="w-full text-left bg-slate-800 rounded">
                 <thead><tr class="border-b border-slate-700"><th class="p-4">OT #</th><th>Cliente</th><th>Equipo</th><th>Falla</th><th>$</th><th>Acción</th></tr></thead>
                 <tbody id="tablaOrdenesBody"></tbody>
             </table>
         </section>
+
+        <!-- STOCK -->
+        <section id="sec-repuestos" class="hidden">
+            <h2 class="text-xl font-bold mb-4">Stock Componentes</h2>
+            <table class="w-full text-left bg-slate-800 rounded">
+                <thead><tr class="border-b border-slate-700"><th class="p-4">Categoría</th><th>Componente</th><th>Ubicación</th><th>Cantidad</th></tr></thead>
+                <tbody id="tablaRepuestosBody"></tbody>
+            </table>
+        </section>
+
+        <!-- PLACAS -->
+        <section id="sec-placas" class="hidden">
+            <h2 class="text-xl font-bold mb-4">Banco de Placas</h2>
+            <table class="w-full text-left bg-slate-800 rounded">
+                <thead><tr class="border-b border-slate-700"><th class="p-4">Tipo</th><th>Código</th><th>Modelo</th></tr></thead>
+                <tbody id="tablaPlacasBody"></tbody>
+            </table>
+        </section>
     </main>
+
+    <script>
+        function cambiarPestana(id) {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+    </script>
     <script src="/static/app.js"></script>
 </body>
 </html>
