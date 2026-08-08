@@ -60,21 +60,39 @@ DRIVERS_LED = {
 }
 
 def consultar_gemini_limpio(prompt):
-    candidatos = [
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-2.0-flash',
-        'gemini-pro'
-    ]
-    
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. "
         "Tu única función es responder directamente en español técnico. "
         "Queda estrictamente prohibido escribir frases, análisis, verificaciones o encabezados en inglés."
     )
-
+    
     ultimo_error = None
 
+    # 1. Búsqueda dinámica de modelos activos en la cuenta
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                try:
+                    model = genai.GenerativeModel(
+                        model_name=m.name,
+                        system_instruction=system_instruction
+                    )
+                    res = model.generate_content(prompt)
+                    if res and res.text:
+                        texto_limpio = re.sub(
+                            r'^(Role:|Constraints:|Input Case:|Required Structure:|Model:).*?\n\n', 
+                            '', 
+                            res.text, 
+                            flags=re.DOTALL | re.IGNORECASE
+                        )
+                        return texto_limpio.strip(), None
+                except Exception as e:
+                    ultimo_error = str(e)
+    except Exception as e:
+        ultimo_error = str(e)
+
+    # 2. Reintento alternativo con modelos flash/pro actuales
+    candidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
     for nombre in candidatos:
         try:
             model = genai.GenerativeModel(
@@ -185,7 +203,7 @@ Entregá una guía técnica directa:
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# TEST POINTS VÍA IA (REFERENCIA A PINES DE CIs Y BOBINAS)
+# TEST POINTS VÍA IA
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
