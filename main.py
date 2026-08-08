@@ -4,7 +4,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Configuración API Key
+# Configuración API Key centralizada del servidor
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
@@ -119,12 +119,9 @@ def analizar_falla():
         falla = data.get('falla', '')
 
         if not GEMINI_KEY:
-            return jsonify({'error': 'GEMINI_API_KEY no configurada en Render'}), 500
+            return jsonify({'error': 'La clave GEMINI_API_KEY no está configurada en el servidor Render'}), 500
 
-        try:
-            model = genai.GenerativeModel('gemini-2.5-flash')
-        except:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
 
         prompt = f"""Sos un técnico especializado en electrónica de TV, consolas y audio.
 Analizá el siguiente caso:
