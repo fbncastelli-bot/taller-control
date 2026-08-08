@@ -3,49 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taller Control</title>
+    <title>Taller Control - Sistema de Gestión Técnica</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <div class="min-h-screen flex flex-col">
-        <!-- Header -->
-        <header class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wide">🔧 Taller Control</h1>
-            <span class="text-xs bg-slate-800 px-3 py-1 rounded-full border border-slate-700">Sistema de Gestión</span>
-        </header>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
 
-        <!-- Main Content -->
-        <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
-            <section class="bg-white rounded-lg shadow p-6 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold text-slate-800">Órdenes de Trabajo</h2>
-                    <div class="flex gap-2">
-                        <button id="btnAnalizarIA" onclick="analizarFallaIA()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow transition">
+    <!-- Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🔧</span>
+            <h1 class="text-xl font-bold text-white tracking-wide">Taller Control</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">DB: Supabase (Live)</span>
+            <span class="text-xs bg-slate-700 text-slate-300 px-3 py-1 rounded-full">Usuario: admin</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex max-w-[1600px] w-full mx-auto">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-800/50 border-r border-slate-700/50 p-4 flex flex-col gap-2">
+            <button onclick="cambiarPestana('ordenes')" id="nav-ordenes" class="w-full text-left px-4 py-3 rounded-lg font-medium bg-blue-600 text-white flex items-center gap-3 transition">
+                📋 <span>Órdenes de Trabajo</span>
+            </button>
+            <button onclick="cambiarPestana('placas')" id="nav-placas" class="w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                🧩 <span>Banco de Placas</span>
+            </button>
+            <button onclick="cambiarPestana('repuestos')" id="nav-repuestos" class="w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                📦 <span>Stock Componentes</span>
+            </button>
+            <button onclick="cambiarPestana('firmwares')" id="nav-firmwares" class="w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                💾 <span>Firmwares en la Nube</span>
+            </button>
+        </aside>
+
+        <!-- Dynamic Content -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            
+            <!-- SECCIÓN: ÓRDENES DE TRABAJO -->
+            <section id="sec-ordenes" class="space-y-6">
+                <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-lg font-semibold text-white">Órdenes de Trabajo Ingresadas</h2>
+                    <div class="flex gap-3">
+                        <button id="btnAnalizarIA" onclick="analizarFallaIA()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow border border-purple-400/30 transition flex items-center gap-2">
                             🤖 Analizar Falla con IA
                         </button>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 text-sm">
-                                <th class="p-3">ID</th>
-                                <th class="p-3">Cliente</th>
-                                <th class="p-3">Equipo</th>
-                                <th class="p-3">Falla</th>
-                                <th class="p-3">Presupuesto</th>
-                                <th class="p-3">Estado</th>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">OT #</th>
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Equipo / Modelo</th>
+                                <th class="p-4">Falla Reportada</th>
+                                <th class="p-4">Presupuesto</th>
+                                <th class="p-4">Estado</th>
                             </tr>
                         </thead>
-                        <tbody id="tablaOrdenesBody" class="cursor-pointer divide-y divide-slate-100">
-                            <!-- Filas cargadas por app.js -->
+                        <tbody id="tablaOrdenesBody" class="divide-y divide-slate-700/50 text-sm">
+                            <!-- Filas dinámicas -->
                         </tbody>
                     </table>
                 </div>
             </section>
+
+            <!-- SECCIÓN: BANCO DE PLACAS -->
+            <section id="sec-placas" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-lg font-semibold text-white">Inventario de Placas (Main, Power, T-Con)</h2>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Código Chasis / PCB</th>
+                                <th class="p-4">Modelo TV Compatible</th>
+                                <th class="p-4">Ubicación</th>
+                                <th class="p-4">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPlacasBody" class="divide-y divide-slate-700/50 text-sm">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: STOCK DE COMPONENTES -->
+            <section id="sec-repuestos" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-lg font-semibold text-white">Stock de Componentes y SMD</h2>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Categoría</th>
+                                <th class="p-4">Componente</th>
+                                <th class="p-4">Ubicación</th>
+                                <th class="p-4">Cantidad</th>
+                                <th class="p-4">Precio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRepuestosBody" class="divide-y divide-slate-700/50 text-sm">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: FIRMWARES -->
+            <section id="sec-firmwares" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-lg font-semibold text-white">Base de Datos de Firmwares SPI / eMMC</h2>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">Chasis</th>
+                                <th class="p-4">Modelo TV</th>
+                                <th class="p-4">Memoria</th>
+                                <th class="p-4">Descarga</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaFirmwaresBody" class="divide-y divide-slate-700/50 text-sm">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </main>
     </div>
+
+    <script>
+        function cambiarPestana(pestana) {
+            ['ordenes', 'placas', 'repuestos', 'firmwares'].forEach(p => {
+                document.getElementById(`sec-${p}`).classList.add('hidden');
+                const btn = document.getElementById(`nav-${p}`);
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`sec-${pestana}`).classList.remove('hidden');
+            const btnActivo = document.getElementById(`nav-${pestana}`);
+            btnActivo.classList.add('bg-blue-600', 'text-white');
+            btnActivo.classList.remove('text-slate-400');
+        }
+    </script>
 </body>
 </html>
