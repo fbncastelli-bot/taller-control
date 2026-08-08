@@ -2,6 +2,7 @@ import os
 import sqlite3
 import psycopg2
 from flask import Flask, render_template, request, jsonify, render_template_string
+from google import genai
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -13,7 +14,7 @@ def is_postgres():
 def get_db():
     if is_postgres():
         url = DATABASE_URL.replace("postgres://", "postgresql://")
-        return psycopg2.connect(url)
+        return psycopg2.connect(url, sslmode='require', connect_timeout=10)
     else:
         conn = sqlite3.connect("taller.db")
         conn.row_factory = sqlite3.Row
@@ -121,6 +122,37 @@ def handle_ordenes():
         return jsonify({"status": "ok"})
     rows = execute_query('SELECT * FROM ordenes ORDER BY id DESC', fetchall=True)
     return jsonify(rows or [])
+
+# --- ANALIZADOR DE FALLAS TÉCNICAS CON GEMINI ---
+@app.route('/api/ia/diagnostico', methods=['POST'])
+def ia_diagnostico():
+    data = request.json
+    falla = data.get('falla', '')
+    equipo = data.get('equipo', '')
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"status": "error", "mensaje": "Falta configurar GEMINI_API_KEY en Render"}), 400
+        
+    try:
+        client = genai.Client(api_key=api_key)
+        prompt = f"""Actúa como un técnico experto en reparación de Smart TVs, consolas y equipos de audio.
+Analiza técnicamente la siguiente orden de trabajo:
+- Equipo / Modelo: {equipo}
+- Falla reportada: {falla}
+
+Proporciona una guía de diagnóstico estrictamente técnica y directa, sin explicaciones básicas:
+1. Puntos de prueba y tensiones a medir (subfuentes, líneas VCC, señales de control / Feedback).
+2. Componentes sospechosos habituales (capacitores ESR desvalorizados, IC PWM, MOSFETs, Driver LED, firmware SPI/eMMC).
+3. Prueba dinámica o procedimiento rápido de descarte."""
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        return jsonify({"status": "ok", "respuesta": response.text})
+    except Exception as e:
+        return jsonify({"status": "error", "mensaje": str(e)}), 500
 
 @app.route('/imprimir/comprobante/<int:orden_id>')
 def imprimir_comprobante(orden_id):
