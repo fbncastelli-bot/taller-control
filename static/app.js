@@ -1,541 +1,457 @@
+let placaSeleccionadaId = null;
 let ordenSeleccionadaId = null;
-let repuestoSeleccionadoId = null;
-let firmwareSeleccionadoUrl = null;
+let compSeleccionadoId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    verificarSesion();
+    cargarOrdenes();
+    cargarPlacas();
+    cargarComponentes();
+    cargarPublicaciones();
+    cargarCaja();
+    cargarFirmwares();
 });
 
-// --- SESIÓN ---
-function verificarSesion() {
-    const logueado = localStorage.getItem("tc_logged_in");
-    const overlay = document.getElementById("loginOverlay");
-    if (logueado === "true") {
-        if (overlay) overlay.classList.add("hidden");
-        cargarOrdenes();
-        cargarStock();
-        cargarPublicaciones();
-        cargarCaja();
-        cargarFirmwares();
-    } else {
-        if (overlay) overlay.classList.remove("hidden");
+function cambiarVista(vista) {
+    const vistas = ['ordenes', 'placas', 'stock', 'ventas', 'caja', 'firmwares'];
+    vistas.forEach(v => {
+        const sec = document.getElementById('vista' + v.charAt(0).toUpperCase() + v.slice(1));
+        const btn = document.getElementById('btnTab' + v.charAt(0).toUpperCase() + v.slice(1));
+        if (sec) sec.classList.add('hidden');
+        if (btn) {
+            btn.classList.remove('bg-cyan-600', 'text-white', 'border-t', 'border-x', 'border-cyan-400');
+            btn.classList.add('text-slate-400');
+        }
+    });
+
+    const targetSec = document.getElementById('vista' + vista.charAt(0).toUpperCase() + vista.slice(1));
+    const targetBtn = document.getElementById('btnTab' + vista.charAt(0).toUpperCase() + vista.slice(1));
+    if (targetSec) targetSec.classList.remove('hidden');
+    if (targetBtn) {
+        targetBtn.classList.add('bg-cyan-600', 'text-white', 'border-t', 'border-x', 'border-cyan-400');
+        targetBtn.classList.remove('text-slate-400');
     }
+
+    if (vista === 'placas') cargarPlacas();
+    if (vista === 'ordenes') cargarOrdenes();
+    if (vista === 'stock') cargarComponentes();
 }
 
-async function procesarLogin(e) {
+function procesarLogin(e) {
     e.preventDefault();
-    const u = document.getElementById("loginUsuario").value;
-    const p = document.getElementById("loginPassword").value;
-    const err = document.getElementById("loginError");
-
-    try {
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario: u, password: p })
-        });
-        const data = await res.json();
-        if (res.ok && data.status === "ok") {
-            localStorage.setItem("tc_logged_in", "true");
-            document.getElementById("loginOverlay").classList.add("hidden");
-            cargarOrdenes();
-            cargarStock();
-            cargarPublicaciones();
-            cargarCaja();
-            cargarFirmwares();
+    const u = document.getElementById('loginUsuario').value;
+    const p = document.getElementById('loginPassword').value;
+    fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({usuario: u, password: p})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('loginOverlay').classList.add('hidden');
         } else {
-            err.innerText = data.mensaje || "Error al autenticar";
-            err.classList.remove("hidden");
+            const err = document.getElementById('loginError');
+            err.innerText = d.mensaje || 'Error de credenciales';
+            err.classList.remove('hidden');
         }
-    } catch (e) {
-        err.innerText = "Error de conexión";
-        err.classList.remove("hidden");
-    }
+    });
 }
 
 function cerrarSesion() {
-    localStorage.removeItem("tc_logged_in");
-    location.reload();
+    document.getElementById('loginOverlay').classList.remove('hidden');
 }
 
-// --- VISTAS ---
-function cambiarVista(vista) {
-    const ids = ['vistaOrdenes', 'vistaPlacas', 'vistaStock', 'vistaVentas', 'vistaCaja', 'vistaFirmwares'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add("hidden");
+// --- ÓRDENES DE TRABAJO ---
+function cargarOrdenes() {
+    fetch('/api/ordenes')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaOrdenesBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(o => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800 cursor-pointer';
+            tr.onclick = () => {
+                document.querySelectorAll('#tablaOrdenesBody tr').forEach(r => r.classList.remove('bg-slate-700'));
+                tr.classList.add('bg-slate-700');
+                ordenSeleccionadaId = o.id;
+            };
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${o.id}</td>
+                <td class="py-2 px-3 font-semibold">${o.cliente}</td>
+                <td class="py-2 px-3">${o.equipo}</td>
+                <td class="py-2 px-3">${o.falla}</td>
+                <td class="py-2 px-3 text-emerald-400">$${o.presupuesto}</td>
+                <td class="py-2 px-3"><span class="bg-cyan-900/50 text-cyan-300 px-2 py-0.5 rounded text-[10px]">${o.estado}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
+}
 
-    const btns = ['btnTabOrdenes', 'btnTabPlacas', 'btnTabStock', 'btnTabVentas', 'btnTabCaja', 'btnTabFirmwares'];
-    btns.forEach(b => {
-        const btn = document.getElementById(b);
-        if (btn) {
-            btn.className = "px-4 py-2 text-xs font-semibold rounded-t-lg text-slate-400 hover:text-white transition";
+function guardarOrdenDirecta(e) {
+    e.preventDefault();
+    const payload = {
+        cliente: document.getElementById('ordCliente').value,
+        equipo: document.getElementById('ordEquipo').value,
+        falla: document.getElementById('ordFalla').value,
+        presupuesto: parseFloat(document.getElementById('ordPresupuesto').value || 0),
+        estado: document.getElementById('ordEstado').value
+    };
+    fetch('/api/ordenes', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('ordCliente').value = '';
+            document.getElementById('ordEquipo').value = '';
+            document.getElementById('ordFalla').value = '';
+            document.getElementById('ordPresupuesto').value = '';
+            cargarOrdenes();
         }
     });
-
-    if (vista === 'ordenes') {
-        document.getElementById("vistaOrdenes").classList.remove("hidden");
-        document.getElementById("btnTabOrdenes").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-        cargarOrdenes();
-    } else if (vista === 'placas') {
-        document.getElementById("vistaPlacas").classList.remove("hidden");
-        document.getElementById("btnTabPlacas").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-    } else if (vista === 'stock') {
-        document.getElementById("vistaStock").classList.remove("hidden");
-        document.getElementById("btnTabStock").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-        cargarStock();
-    } else if (vista === 'ventas') {
-        document.getElementById("vistaVentas").classList.remove("hidden");
-        document.getElementById("btnTabVentas").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-        cargarPublicaciones();
-    } else if (vista === 'caja') {
-        document.getElementById("vistaCaja").classList.remove("hidden");
-        document.getElementById("btnTabCaja").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-        cargarCaja();
-    } else if (vista === 'firmwares') {
-        document.getElementById("vistaFirmwares").classList.remove("hidden");
-        document.getElementById("btnTabFirmwares").className = "px-4 py-2 text-xs font-semibold rounded-t-lg bg-cyan-600 text-white border-t border-x border-cyan-400 transition";
-        cargarFirmwares();
-    }
 }
 
-// --- ÓRDENES ---
-async function cargarOrdenes() {
-    const res = await fetch('/api/ordenes');
-    const data = await res.json();
-    renderOrdenes(data);
+function verFichaInforme() {
+    if (!ordenSeleccionadaId) return alert('Seleccione una orden primero.');
+    alert('Ficha Técnica de Orden #' + ordenSeleccionadaId);
 }
 
-function renderOrdenes(lista) {
-    const tbody = document.getElementById("tablaOrdenesBody");
-    tbody.innerHTML = "";
-    lista.forEach(o => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
-        tr.onclick = () => {
-            document.querySelectorAll("#tablaOrdenesBody tr").forEach(r => r.classList.remove("bg-slate-800"));
-            tr.classList.add("bg-slate-800");
-            ordenSeleccionadaId = o.id;
-        };
-        tr.innerHTML = `
-            <td class="py-2 px-3 text-cyan-400 font-bold">${o.id}</td>
-            <td class="py-2 px-3 text-white font-medium">${o.cliente}</td>
-            <td class="py-2 px-3 text-slate-300">${o.equipo}</td>
-            <td class="py-2 px-3 text-slate-400">${o.falla}</td>
-            <td class="py-2 px-3 text-amber-400 font-bold">$${(o.presupuesto || 0).toLocaleString()}</td>
-            <td class="py-2 px-3 text-cyan-300 font-semibold">${o.estado}</td>
-        `;
-        tbody.appendChild(tr);
+function imprimirComprobanteCliente() {
+    if (!ordenSeleccionadaId) return alert('Seleccione una orden primero.');
+    window.open('/imprimir/comprobante/' + ordenSeleccionadaId, '_blank');
+}
+
+function imprimirTicketTapa() {
+    if (!ordenSeleccionadaId) return alert('Seleccione una orden primero.');
+    window.open('/imprimir/ticket/' + ordenSeleccionadaId, '_blank');
+}
+
+function filtrarOrdenes() {
+    const q = document.getElementById('buscarOrdenInput').value.toLowerCase();
+    document.querySelectorAll('#tablaOrdenesBody tr').forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
     });
 }
 
-async function guardarOrdenDirecta(e) {
+// --- BANCO DE PLACAS ---
+function cargarPlacas() {
+    fetch('/api/placas')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaPlacasBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800 cursor-pointer';
+            tr.onclick = () => {
+                document.querySelectorAll('#tablaPlacasBody tr').forEach(r => r.classList.remove('bg-slate-700'));
+                tr.classList.add('bg-slate-700');
+                placaSeleccionadaId = p.id;
+            };
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${p.id}</td>
+                <td class="py-2 px-3 font-semibold text-amber-300">${p.tipo}</td>
+                <td class="py-2 px-3 font-mono font-bold">${p.codigo}</td>
+                <td class="py-2 px-3">${p.modelo_tv || '-'}</td>
+                <td class="py-2 px-3">${p.ubicacion || '-'}</td>
+                <td class="py-2 px-3"><span class="bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded text-[10px]">${p.estado}</span></td>
+                <td class="py-2 px-3 font-bold text-center">${p.cantidad}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function guardarPlacaDirecta(e) {
     e.preventDefault();
-    const o = {
-        cliente: document.getElementById("ordCliente").value,
-        equipo: document.getElementById("ordEquipo").value,
-        falla: document.getElementById("ordFalla").value,
-        presupuesto: parseFloat(document.getElementById("ordPresupuesto").value || 0),
-        estado: document.getElementById("ordEstado").value
+    const payload = {
+        tipo: document.getElementById('placaTipo').value,
+        codigo: document.getElementById('placaCodigo').value,
+        modelo_tv: document.getElementById('placaModeloTV').value,
+        ubicacion: document.getElementById('placaUbicacion').value,
+        estado: document.getElementById('placaEstado').value,
+        cantidad: parseInt(document.getElementById('placaCantidad').value || 1)
     };
-    await fetch('/api/ordenes', {
+    fetch('/api/placas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(o)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('placaCodigo').value = '';
+            document.getElementById('placaModeloTV').value = '';
+            document.getElementById('placaUbicacion').value = '';
+            document.getElementById('placaCantidad').value = '1';
+            cargarPlacas();
+        }
     });
-    document.getElementById("ordCliente").value = "";
-    document.getElementById("ordEquipo").value = "";
-    document.getElementById("ordFalla").value = "";
-    document.getElementById("ordPresupuesto").value = "";
-    cargarOrdenes();
 }
 
-async function filtrarOrdenes() {
-    const q = document.getElementById("buscarOrdenInput").value.toLowerCase();
-    const res = await fetch('/api/ordenes');
-    const list = await res.json();
-    const filt = list.filter(o =>
-        o.cliente.toLowerCase().includes(q) ||
-        o.equipo.toLowerCase().includes(q) ||
-        o.id.toString().includes(q)
-    );
-    renderOrdenes(filt);
+function sumarPlacaSeleccionada() {
+    if (!placaSeleccionadaId) return alert('Seleccione una placa de la lista.');
+    fetch(`/api/placas/${placaSeleccionadaId}/stock`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cambio: 1})
+    }).then(() => cargarPlacas());
 }
 
-async function verFichaInforme() {
-    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
-    const res = await fetch('/api/ordenes');
-    const ordenes = await res.json();
-    const o = ordenes.find(item => item.id === ordenSeleccionadaId);
-    if (!o) return alert("No se encontraron los datos de la orden.");
-
-    const ventana = window.open('', '_blank', 'width=700,height=800');
-    ventana.document.write(`
-        <html>
-        <head>
-            <title>Ficha Técnica Orden #${o.id}</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 25px; color: #000; }
-                h2 { text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; }
-                .campo { margin: 12px 0; font-size: 15px; }
-                .bold { font-weight: bold; }
-                .box { border: 1px solid #000; padding: 10px; margin-top: 15px; height: 100px; }
-            </style>
-        </head>
-        <body>
-            <h2>FICHA TÉCNICA DE DE TALLER</h2>
-            <div class="campo"><span class="bold">Orden N°:</span> ${o.id}</div>
-            <div class="campo"><span class="bold">Cliente:</span> ${o.cliente}</div>
-            <div class="campo"><span class="bold">Equipo / Modelo:</span> ${o.equipo}</div>
-            <div class="campo"><span class="bold">Falla Declarada:</span> ${o.falla}</div>
-            <div class="campo"><span class="bold">Presupuesto Estimado:</span> $${(o.presupuesto || 0).toLocaleString()}</div>
-            <div class="campo"><span class="bold">Estado Actual:</span> ${o.estado}</div>
-            <div class="bold" style="margin-top:20px;">Observaciones Técnicas / Diagnosticadas:</div>
-            <div class="box"></div>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    ventana.print();
-    ventana.close();
+function restarPlacaSeleccionada() {
+    if (!placaSeleccionadaId) return alert('Seleccione una placa de la lista.');
+    fetch(`/api/placas/${placaSeleccionadaId}/stock`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cambio: -1})
+    }).then(() => cargarPlacas());
 }
 
-async function imprimirComprobanteCliente() {
-    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
-    
-    const res = await fetch('/api/ordenes');
-    const ordenes = await res.json();
-    const o = ordenes.find(item => item.id === ordenSeleccionadaId);
-    
-    if (!o) return alert("No se encontraron los datos de la orden.");
-
-    const ventana = window.open('', '_blank', 'width=600,height=600');
-    ventana.document.write(`
-        <html>
-        <head>
-            <title>Comprobante Orden #${o.id}</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
-                h2 { margin-top: 0; text-align: center; }
-                .linea { border-bottom: 1px dashed #000; margin: 10px 0; }
-                .campo { margin: 8px 0; font-size: 14px; }
-                .bold { font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <h2>COMPROBANTE DE INGRESO</h2>
-            <div class="linea"></div>
-            <div class="campo"><span class="bold">Orden N°:</span> ${o.id}</div>
-            <div class="campo"><span class="bold">Cliente:</span> ${o.cliente}</div>
-            <div class="campo"><span class="bold">Equipo:</span> ${o.equipo}</div>
-            <div class="campo"><span class="bold">Falla:</span> ${o.falla}</div>
-            <div class="campo"><span class="bold">Presupuesto Estimado:</span> $${(o.presupuesto || 0).toLocaleString()}</div>
-            <div class="campo"><span class="bold">Estado:</span> ${o.estado}</div>
-            <div class="linea"></div>
-            <p style="font-size:11px; text-align:center;">Conserve este comprobante para retirar el equipo.</p>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    ventana.print();
-    ventana.close();
+function eliminarPlacaSeleccionada() {
+    if (!placaSeleccionadaId) return alert('Seleccione una placa de la lista.');
+    if (!confirm('¿Desea eliminar la placa seleccionada?')) return;
+    fetch(`/api/placas/${placaSeleccionadaId}`, {
+        method: 'DELETE'
+    }).then(() => {
+        placaSeleccionadaId = null;
+        cargarPlacas();
+    });
 }
 
-async function imprimirTicketTapa() {
-    if (!ordenSeleccionadaId) return alert("Seleccioná una orden de la lista.");
-    const res = await fetch('/api/ordenes');
-    const ordenes = await res.json();
-    const o = ordenes.find(item => item.id === ordenSeleccionadaId);
-    if (!o) return alert("No se encontraron los datos de la orden.");
+function imprimirEtiquetaPlaca() {
+    if (!placaSeleccionadaId) return alert('Seleccione una placa de la lista.');
+    alert('Etiqueta para Placa #' + placaSeleccionadaId);
+}
 
-    const ventana = window.open('', '_blank', 'width=400,height=400');
-    ventana.document.write(`
-        <html>
-        <head>
-            <title>Etiqueta Orden #${o.id}</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 10px; color: #000; }
-                .ticket { border: 2px solid #000; padding: 10px; text-align: center; }
-                .num { font-size: 28px; font-weight: bold; }
-                .info { font-size: 14px; margin-top: 5px; }
-            </style>
-        </head>
-        <body>
-            <div class="ticket">
-                <div class="num">ORDEN #${o.id}</div>
-                <div class="info"><b>Cliente:</b> ${o.cliente}</div>
-                <div class="info"><b>Equipo:</b> ${o.equipo}</div>
-            </div>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    ventana.print();
-    ventana.close();
+function filtrarPlacas() {
+    const q = document.getElementById('buscarPlacaInput').value.toLowerCase();
+    document.querySelectorAll('#tablaPlacasBody tr').forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
 }
 
 // --- STOCK COMPONENTES ---
-async function cargarStock() {
-    const res = await fetch('/api/repuestos');
-    const data = await res.json();
-    renderStock(data);
-}
-
-function renderStock(lista) {
-    const tbody = document.getElementById("tablaStockBody");
-    tbody.innerHTML = "";
-    lista.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
-        tr.onclick = () => {
-            document.querySelectorAll("#tablaStockBody tr").forEach(row => row.classList.remove("bg-slate-800"));
-            tr.classList.add("bg-slate-800");
-            repuestoSeleccionadoId = r.id;
-            tr.dataset.codigo = r.nombre;
-        };
-        tr.innerHTML = `
-            <td class="py-2 px-3 text-cyan-400 font-bold">${r.id}</td>
-            <td class="py-2 px-3 text-slate-300">${r.categoria || 'Gral'}</td>
-            <td class="py-2 px-3 text-white font-medium">${r.nombre}</td>
-            <td class="py-2 px-3 text-slate-400">${r.ubicacion || '-'}</td>
-            <td class="py-2 px-3 font-bold ${r.cantidad < 5 ? 'text-amber-400' : 'text-emerald-400'}">${r.cantidad} u.</td>
-        `;
-        tbody.appendChild(tr);
+function cargarComponentes() {
+    fetch('/api/repuestos')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaStockBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800 cursor-pointer';
+            tr.onclick = () => {
+                document.querySelectorAll('#tablaStockBody tr').forEach(r => r.classList.remove('bg-slate-700'));
+                tr.classList.add('bg-slate-700');
+                compSeleccionadoId = c.id;
+            };
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${c.id}</td>
+                <td class="py-2 px-3">${c.categoria || '-'}</td>
+                <td class="py-2 px-3 font-mono font-bold">${c.nombre}</td>
+                <td class="py-2 px-3">${c.ubicacion || '-'}</td>
+                <td class="py-2 px-3 font-bold text-center">${c.cantidad}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
 }
 
-async function guardarComponenteDirecto(e) {
+function guardarComponenteDirecto(e) {
     e.preventDefault();
-    const c = {
-        categoria: document.getElementById("compCategoria").value,
-        nombre: document.getElementById("compCodigo").value,
-        ubicacion: document.getElementById("compUbicacion").value,
-        cantidad: parseInt(document.getElementById("compCantidad").value || 1),
-        precio: 0.0
+    const payload = {
+        categoria: document.getElementById('compCategoria').value,
+        nombre: document.getElementById('compCodigo').value,
+        ubicacion: document.getElementById('compUbicacion').value,
+        cantidad: parseInt(document.getElementById('compCantidad').value || 1)
     };
-    await fetch('/api/repuestos', {
+    fetch('/api/repuestos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(c)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('compCodigo').value = '';
+            document.getElementById('compUbicacion').value = '';
+            document.getElementById('compCantidad').value = '1';
+            cargarComponentes();
+        }
     });
-    document.getElementById("compCodigo").value = "";
-    document.getElementById("compUbicacion").value = "";
-    document.getElementById("compCantidad").value = "1";
-    cargarStock();
 }
 
-async function sumarStockSeleccionado() {
-    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
-    await fetch(`/api/repuestos/${repuestoSeleccionadoId}/stock`, {
+function sumarStockSeleccionado() {
+    if (!compSeleccionadoId) return alert('Seleccione un componente.');
+    fetch(`/api/repuestos/${compSeleccionadoId}/stock`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cambio: 1 })
-    });
-    cargarStock();
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cambio: 1})
+    }).then(() => cargarComponentes());
 }
 
-async function restarStockSeleccionado() {
-    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
-    await fetch(`/api/repuestos/${repuestoSeleccionadoId}/stock`, {
+function restarStockSeleccionado() {
+    if (!compSeleccionadoId) return alert('Seleccione un componente.');
+    fetch(`/api/repuestos/${compSeleccionadoId}/stock`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cambio: -1 })
-    });
-    cargarStock();
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cambio: -1})
+    }).then(() => cargarComponentes());
 }
 
 function buscarDatasheetSeleccionado() {
-    const selected = document.querySelector("#tablaStockBody tr.bg-slate-800");
-    if (!selected) return alert("Seleccioná un componente de la tabla.");
-    const codigo = selected.dataset.codigo;
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(codigo + ' datasheet pdf')}`, '_blank');
+    if (!compSeleccionadoId) return alert('Seleccione un componente.');
+    window.open('https://www.alldatasheet.com', '_blank');
 }
 
 function imprimirEtiquetaComponente() {
-    if (!repuestoSeleccionadoId) return alert("Seleccioná un componente de la tabla.");
-    const selected = document.querySelector("#tablaStockBody tr.bg-slate-800");
-    const codigo = selected ? selected.dataset.codigo : repuestoSeleccionadoId;
-
-    const ventana = window.open('', '_blank', 'width=350,height=250');
-    ventana.document.write(`
-        <html>
-        <head>
-            <title>Gaveta ID #${repuestoSeleccionadoId}</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 10px; text-align: center; }
-                .box { border: 2px solid #000; padding: 15px; }
-                .title { font-size: 20px; font-weight: bold; }
-                .sub { font-size: 14px; margin-top: 5px; }
-            </style>
-        </head>
-        <body>
-            <div class="box">
-                <div class="title">${codigo}</div>
-                <div class="sub">ID Componente: #${repuestoSeleccionadoId}</div>
-            </div>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    ventana.print();
-    ventana.close();
+    if (!compSeleccionadoId) return alert('Seleccione un componente.');
+    alert('Etiqueta Componente #' + compSeleccionadoId);
 }
 
-async function filtrarComponentes() {
-    const q = document.getElementById("buscarCompInput").value.toLowerCase();
-    const res = await fetch('/api/repuestos');
-    const list = await res.json();
-    const filt = list.filter(r =>
-        r.nombre.toLowerCase().includes(q) ||
-        (r.categoria && r.categoria.toLowerCase().includes(q))
-    );
-    renderStock(filt);
-}
-
-// --- VENTAS Y USADOS ---
-async function cargarPublicaciones() {
-    const res = await fetch('/api/publicaciones');
-    const data = await res.json();
-    renderPublicaciones(data);
-}
-
-function renderPublicaciones(lista) {
-    const tbody = document.getElementById("tablaVentasBody");
-    tbody.innerHTML = "";
-    lista.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-bordercolor/50";
-        tr.innerHTML = `
-            <td class="py-2 px-3 text-cyan-400 font-bold">${p.id}</td>
-            <td class="py-2 px-3 text-white font-medium">${p.producto}</td>
-            <td class="py-2 px-3 text-emerald-400 font-bold">$${p.precio.toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
+function filtrarComponentes() {
+    const q = document.getElementById('buscarCompInput').value.toLowerCase();
+    document.querySelectorAll('#tablaStockBody tr').forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
     });
 }
 
-async function guardarPublicacion(e) {
+// --- VENTAS ---
+function cargarPublicaciones() {
+    fetch('/api/publicaciones')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaVentasBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(v => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800';
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${v.id}</td>
+                <td class="py-2 px-3 font-semibold">${v.producto}</td>
+                <td class="py-2 px-3 font-bold text-emerald-400">$${v.precio}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+function guardarPublicacion(e) {
     e.preventDefault();
-    const p = {
-        producto: document.getElementById("ventProducto").value,
-        precio: parseFloat(document.getElementById("ventPrecio").value || 0),
-        estado: document.getElementById("ventEstado").value
+    const payload = {
+        producto: document.getElementById('ventProducto').value,
+        precio: parseFloat(document.getElementById('ventPrecio').value || 0),
+        estado: document.getElementById('ventEstado').value
     };
-    await fetch('/api/publicaciones', {
+    fetch('/api/publicaciones', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(p)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('ventProducto').value = '';
+            document.getElementById('ventPrecio').value = '';
+            cargarPublicaciones();
+        }
     });
-    document.getElementById("ventProducto").value = "";
-    document.getElementById("ventPrecio").value = "";
-    cargarPublicaciones();
 }
 
 function consultarMercadoLibre() {
-    const prod = document.getElementById("ventProducto").value.trim();
-    if (!prod) return alert("Ingresá el nombre o código del producto en el campo 'Producto / Equipo'.");
-    window.open(`https://listado.mercadolibre.com.ar/${encodeURIComponent(prod)}`, '_blank');
+    window.open('https://www.mercadolibre.com.ar', '_blank');
 }
 
-// --- CAJA Y FINANZAS ---
-async function cargarCaja() {
-    const res = await fetch('/api/caja');
-    const data = await res.json();
-    renderCaja(data);
-}
+// --- CAJA ---
+function cargarCaja() {
+    fetch('/api/caja')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaCajaBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        let ing = 0, egr = 0;
+        data.forEach(c => {
+            if (c.tipo === 'Ingreso') ing += c.monto;
+            else egr += c.monto;
 
-function renderCaja(lista) {
-    const tbody = document.getElementById("tablaCajaBody");
-    tbody.innerHTML = "";
-    let ingresos = 0;
-    let egresos = 0;
-
-    lista.forEach(m => {
-        if (m.tipo.toLowerCase() === "ingreso") ingresos += m.monto;
-        if (m.tipo.toLowerCase() === "egreso") egresos += m.monto;
-
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-bordercolor/50";
-        const esIng = m.tipo.toLowerCase() === "ingreso";
-        tr.innerHTML = `
-            <td class="py-2 px-3 text-cyan-400 font-bold">${m.id}</td>
-            <td class="py-2 px-3 text-slate-400">${m.fecha}</td>
-            <td class="py-2 px-3 ${esIng ? 'text-emerald-400' : 'text-rose-400'} font-semibold">${m.tipo}</td>
-            <td class="py-2 px-3 text-white font-medium">${m.concepto}</td>
-            <td class="py-2 px-3 ${esIng ? 'text-emerald-400' : 'text-rose-400'} font-bold">$${m.monto.toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800';
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${c.id}</td>
+                <td class="py-2 px-3 text-slate-400">${c.fecha}</td>
+                <td class="py-2 px-3 font-bold ${c.tipo === 'Ingreso' ? 'text-emerald-400' : 'text-rose-400'}">${c.tipo}</td>
+                <td class="py-2 px-3">${c.concepto}</td>
+                <td class="py-2 px-3 font-bold">$${c.monto}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('lblIngresos').innerText = '$' + ing.toFixed(2);
+        document.getElementById('lblEgresos').innerText = '$' + egr.toFixed(2);
     });
-
-    document.getElementById("lblIngresos").innerText = `$${ingresos.toLocaleString()}`;
-    document.getElementById("lblEgresos").innerText = `$${egresos.toLocaleString()}`;
 }
 
-async function registrarMovimientoCaja(e) {
+function registrarMovimientoCaja(e) {
     e.preventDefault();
-    const m = {
-        tipo: document.getElementById("cajaTipo").value,
-        concepto: document.getElementById("cajaConcepto").value,
-        monto: parseFloat(document.getElementById("cajaMonto").value || 0),
-        fecha: new Date().toISOString().replace('T', ' ').substring(0, 16)
+    const payload = {
+        tipo: document.getElementById('cajaTipo').value,
+        concepto: document.getElementById('cajaConcepto').value,
+        monto: parseFloat(document.getElementById('cajaMonto').value || 0),
+        fecha: new Date().toLocaleString()
     };
-    await fetch('/api/caja', {
+    fetch('/api/caja', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(m)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.status === 'ok') {
+            document.getElementById('cajaConcepto').value = '';
+            document.getElementById('cajaMonto').value = '';
+            cargarCaja();
+        }
     });
-    document.getElementById("cajaConcepto").value = "";
-    document.getElementById("cajaMonto").value = "";
-    cargarCaja();
 }
 
 // --- FIRMWARES ---
-async function cargarFirmwares() {
-    const res = await fetch('/api/firmwares');
-    const data = await res.json();
-    renderFirmwares(data);
-}
-
-function renderFirmwares(lista) {
-    const tbody = document.getElementById("tablaFirmwaresBody");
-    tbody.innerHTML = "";
-    lista.forEach(f => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-bordercolor/50 hover:bg-slate-800/50 cursor-pointer";
-        tr.onclick = () => {
-            document.querySelectorAll("#tablaFirmwaresBody tr").forEach(row => row.classList.remove("bg-slate-800"));
-            tr.classList.add("bg-slate-800");
-            firmwareSeleccionadoUrl = f.url_archivo;
-        };
-        tr.innerHTML = `
-            <td class="py-2 px-3 text-cyan-400 font-bold">${f.id}</td>
-            <td class="py-2 px-3 text-white font-medium">${f.chasis}</td>
-            <td class="py-2 px-3 text-slate-300">${f.modelo}</td>
-            <td class="py-2 px-3 text-cyan-300">${f.memoria || '-'}</td>
-            <td class="py-2 px-3 text-slate-400">${f.tamano || '-'}</td>
-        `;
-        tbody.appendChild(tr);
+function cargarFirmwares() {
+    fetch('/api/firmwares')
+    .then(r => r.json())
+    .then(data => {
+        const tbody = document.getElementById('tablaFirmwaresBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-bordercolor hover:bg-slate-800';
+            tr.innerHTML = `
+                <td class="py-2 px-3 font-mono text-cyan-400">#${f.id}</td>
+                <td class="py-2 px-3 font-mono font-bold">${f.chasis}</td>
+                <td class="py-2 px-3">${f.modelo}</td>
+                <td class="py-2 px-3">${f.memoria || '-'}</td>
+                <td class="py-2 px-3">${f.tamano || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
 }
 
-async function filtrarFirmwares() {
-    const q = document.getElementById("buscarFirmwareInput").value.toLowerCase();
-    const res = await fetch('/api/firmwares');
-    const list = await res.json();
-    const filt = list.filter(f =>
-        f.chasis.toLowerCase().includes(q) ||
-        f.modelo.toLowerCase().includes(q) ||
-        (f.memoria && f.memoria.toLowerCase().includes(q))
-    );
-    renderFirmwares(filt);
+function descargarFirmwareSeleccionado() {
+    alert('Seleccione un firmware de la lista.');
 }
 
-function descargarFirmwareSeleccionado() {
-    if (!firmwareSeleccionadoUrl) return alert("Seleccioná un archivo de la lista de firmwares.");
-    window.open(firmwareSeleccionadoUrl, '_blank');
+function filtrarFirmwares() {
+    const q = document.getElementById('buscarFirmwareInput').value.toLowerCase();
+    document.querySelectorAll('#tablaFirmwaresBody tr').forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
 }
