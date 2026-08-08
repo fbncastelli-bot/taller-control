@@ -3,175 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taller Control - Sistema Integrado</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Taller Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        .sidebar { background-color: #1e293b; min-height: 100vh; padding: 20px; }
+        .nav-link { color: #94a3b8; margin-bottom: 10px; cursor: pointer; border-radius: 8px; }
+        .nav-link.active { background-color: #0284c7; color: white; }
+        .card-custom { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .btn-violeta { background-color: #7c3aed; color: white; }
+        .btn-violeta:hover { background-color: #6d28d9; color: white; }
+        pre { background-color: #0f172a; color: #38bdf8; padding: 15px; border-radius: 8px; white-space: pre-wrap; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
-
-    <!-- HEADER -->
-    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🔧</span>
-            <h1 class="text-xl font-bold text-white tracking-wide">Taller Control</h1>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">DB: Online</span>
-        </div>
-    </header>
-
-    <div class="flex-1 flex w-full mx-auto">
-        <!-- NAVEGACIÓN LATERAL -->
-        <aside class="w-64 bg-slate-800/60 border-r border-slate-700/60 p-4 flex flex-col gap-2">
-            <button onclick="cambiarPestana('sec-ordenes', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium bg-blue-600 text-white flex items-center gap-3 transition">
-                📋 <span>Órdenes de Trabajo</span>
-            </button>
-            <button onclick="cambiarPestana('sec-repuestos', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
-                📦 <span>Stock Componentes</span>
-            </button>
-            <button onclick="cambiarPestana('sec-placas', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
-                🧩 <span>Banco de Placas</span>
-            </button>
-            <button onclick="cambiarPestana('sec-firmwares', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
-                💾 <span>Firmwares en la Nube</span>
-            </button>
-        </aside>
-
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="flex-1 p-6 space-y-6 overflow-y-auto">
-
-            <!-- MODAL / DIAGNÓSTICO IA -->
-            <div id="panelResultadoIA" class="hidden bg-slate-800 border border-purple-500/50 rounded-xl p-5 space-y-3 shadow-2xl">
-                <div class="flex justify-between items-center border-b border-slate-700 pb-3">
-                    <h4 class="text-md font-bold text-purple-400 flex items-center gap-2">🤖 Diagnóstico Técnico IA</h4>
-                    <button onclick="document.getElementById('panelResultadoIA').classList.add('hidden')" class="text-slate-400 hover:text-white font-bold">✕ Cerrar</button>
-                </div>
-                <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm text-slate-200 font-sans leading-relaxed bg-slate-900/60 p-4 rounded-lg border border-slate-700/50"></pre>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Menú Lateral -->
+            <div class="col-md-3 sidebar">
+                <h3 class="mb-4 text-info">Taller Control</h3>
+                <ul class="nav flex-column">
+                    <li class="nav-link active" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</li>
+                    <li class="nav-link" onclick="mostrarSeccion('placas')">🧩 Banco de Placas & Test Points</li>
+                    <li class="nav-link" onclick="mostrarSeccion('backlight')">⚡ Calculadora Backlight</li>
+                    <li class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock Componentes</li>
+                    <li class="nav-link" onclick="mostrarSeccion('firmwares')">☁️ Firmwares en la Nube</li>
+                </ul>
             </div>
 
-            <!-- ÓRDENES DE TRABAJO -->
-            <section id="sec-ordenes" class="space-y-6">
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
-                    <h3 class="text-md font-semibold text-white">➕ Nueva Orden de Trabajo</h3>
-                    <form id="formOrden" onsubmit="guardarOrden(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input type="text" id="ot_cliente" placeholder="Cliente" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                        <input type="text" id="ot_equipo" placeholder="Equipo / Modelo (ej: Samsung UN40J5200)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                        <input type="text" id="ot_falla" placeholder="Falla reportada" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                        <input type="number" id="ot_presupuesto" placeholder="Presupuesto $" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                        <button type="submit" class="md:col-span-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Orden</button>
-                    </form>
+            <!-- Contenido Principal -->
+            <div class="col-md-9 p-4">
+                
+                <!-- SECCIÓN ÓRDENES DE TRABAJO -->
+                <div id="sec-ordenes">
+                    <div class="card-custom">
+                        <h5>🤖 Diagnóstico Técnico IA</h5>
+                        <div id="box-diagnostico" class="mt-3 text-secondary">Seleccioná una orden y presioná "Analizar Falla".</div>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>+ Nueva Orden de Trabajo</h5>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3"><input type="text" id="ot-cliente" class="form-control" placeholder="Cliente"></div>
+                            <div class="col-md-3"><input type="text" id="ot-equipo" class="form-control" placeholder="Equipo / Modelo"></div>
+                            <div class="col-md-4"><input type="text" id="ot-falla" class="form-control" placeholder="Falla reportada"></div>
+                            <div class="col-md-2"><button onclick="guardarOrden()" class="btn btn-primary w-100">Guardar</button></div>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr><th>OT #</th><th>CLIENTE</th><th>EQUIPO</th><th>FALLA</th><th>ACCIÓN</th></tr>
+                            </thead>
+                            <tbody id="tabla-ordenes"></tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
-                                <th class="p-4">OT #</th>
-                                <th class="p-4">Cliente</th>
-                                <th class="p-4">Equipo / Modelo</th>
-                                <th class="p-4">Falla</th>
-                                <th class="p-4">Presupuesto</th>
-                                <th class="p-4 text-center">Análisis IA</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaOrdenesBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- STOCK COMPONENTES -->
-            <section id="sec-repuestos" class="space-y-6 hidden">
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
-                    <h3 class="text-md font-semibold text-white">➕ Agregar Componente / SMD</h3>
-                    <form id="formRepuesto" onsubmit="guardarRepuesto(event)" class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <input type="text" id="rep_categoria" placeholder="Categoría (IC, Mosfet, Cap)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <input type="text" id="rep_nombre" placeholder="Componente (ej: RT6905)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <input type="text" id="rep_ubicacion" placeholder="Ubicación (Caja 1)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <input type="number" id="rep_cantidad" placeholder="Cantidad" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Componente</button>
-                    </form>
+                <!-- SECCIÓN BANCO DE PLACAS & TEST POINTS -->
+                <div id="sec-placas" style="display: none;">
+                    <div class="card-custom">
+                        <h5>🔎 Consulta de Test Points por Chasis (IA)</h5>
+                        <div class="input-group mt-2">
+                            <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: 715G5155 o MS33930.PB751">
+                            <button onclick="buscarTestPoints()" class="btn btn-info">Consultar Tenciones & Test Points</button>
+                        </div>
+                        <pre id="box-test-points" class="mt-3">Ingresá un código de chasis para obtener tensiones de referencia (VGH, VGL, VDD, Sub-fuentes SMD).</pre>
+                    </div>
                 </div>
 
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
-                                <th class="p-4">Categoría</th>
-                                <th class="p-4">Componente</th>
-                                <th class="p-4">Ubicación</th>
-                                <th class="p-4">Stock</th>
-                                <th class="p-4 text-center">Ajuste</th>
-                                <th class="p-4 text-center">Búsquedas / Archivos</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaRepuestosBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- BANCO DE PLACAS -->
-            <section id="sec-placas" class="space-y-6 hidden">
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
-                    <h3 class="text-md font-semibold text-white">➕ Registrar Placa</h3>
-                    <form id="formPlaca" onsubmit="guardarPlaca(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input type="text" id="placa_tipo" placeholder="Tipo (Main, Power, T-Con)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <input type="text" id="placa_codigo" placeholder="Código PCB / Chasis" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <input type="text" id="placa_modelo" placeholder="Modelo TV Compatible" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Placa</button>
-                    </form>
+                <!-- SECCIÓN CALCULADORA BACKLIGHT -->
+                <div id="sec-backlight" style="display: none;">
+                    <div class="card-custom">
+                        <h5>⚡ Reducción de Corriente LED (Modificación ISET/IREF)</h5>
+                        <div class="input-group mt-2">
+                            <input type="text" id="input-driver" class="form-control" placeholder="Ej: OB3350, MAP3202, BIT3267">
+                            <button onclick="calcularDriver()" class="btn btn-warning">Obtener Modificación</button>
+                        </div>
+                        <pre id="box-driver-resultado" class="mt-3">Ingresá el código del CI Driver LED montado en la placa.</pre>
+                    </div>
                 </div>
 
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
-                                <th class="p-4">Tipo</th>
-                                <th class="p-4">Código Chasis</th>
-                                <th class="p-4">Modelo TV</th>
-                                <th class="p-4 text-center">Consultas / Repuestos</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaPlacasBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
-                    </table>
+                <!-- SECCIÓN REPUESTOS -->
+                <div id="sec-repuestos" style="display: none;">
+                    <div class="card-custom">
+                        <h5>📦 Stock de Componentes SMD / Dip</h5>
+                        <table class="table table-dark">
+                            <thead><tr><th>ID</th><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th></tr></thead>
+                            <tbody id="tabla-repuestos"></tbody>
+                        </table>
+                    </div>
                 </div>
-            </section>
 
-            <!-- FIRMWARES EN LA NUBE -->
-            <section id="sec-firmwares" class="space-y-6 hidden">
-                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                    <h2 class="text-lg font-semibold text-white">💾 Repositorio de Firmwares (SPI Flash / eMMC)</h2>
+                <!-- SECCIÓN FIRMWARES -->
+                <div id="sec-firmwares" style="display: none;">
+                    <div class="card-custom">
+                        <h5>☁️ Banco de Firmwares (Nube)</h5>
+                        <table class="table table-dark">
+                            <thead><tr><th>Chasis</th><th>Modelo</th><th>Memoria</th><th>Enlace</th></tr></thead>
+                            <tbody id="tabla-firmwares"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase border-b border-slate-700">
-                                <th class="p-4">Chasis / PCB</th>
-                                <th class="p-4">Modelo TV</th>
-                                <th class="p-4">Tipo Memoria</th>
-                                <th class="p-4 text-center">Descarga</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaFirmwaresBody" class="divide-y divide-slate-700/50 text-sm"></tbody>
-                    </table>
-                </div>
-            </section>
 
-        </main>
+            </div>
+        </div>
     </div>
 
-    <script>
-        function cambiarPestana(idSec, elemento) {
-            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(idSec).classList.remove('hidden');
-
-            document.querySelectorAll('.btn-nav').forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('text-slate-400');
-            });
-
-            elemento.classList.add('bg-blue-600', 'text-white');
-            elemento.classList.remove('text-slate-400');
-        }
-    </script>
     <script src="/static/app.js"></script>
 </body>
 </html>
