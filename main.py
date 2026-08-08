@@ -9,7 +9,7 @@ GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
 
-# Datos iniciales en memoria
+# Base de datos local en memoria
 db_ordenes = [
     {
         "id": 1,
@@ -35,7 +35,8 @@ db_placas = [
         "id": 1,
         "tipo": "Main Board",
         "codigo": "715G5155-M01-002-005K",
-        "modelo": "Philips 32PFL3008D/77"
+        "modelo": "Philips 32PFL3008D/77",
+        "test_points": "VGH: 28V | VGL: -7V | VDD: 3.3V | VCOM: 6.5V | 12V_STB: 12V"
     }
 ]
 
@@ -44,9 +45,19 @@ db_firmwares = [
         "id": 1,
         "chasis": "MS33930.PB751",
         "modelo": "Noblex 32LD870HI",
-        "memoria": "SPI Flash 25Q64"
+        "memoria": "SPI Flash 25Q64",
+        "url_nube": "https://drive.google.com"
     }
 ]
+
+# Tabla estática de referencia para drivers LED más comunes
+DRIVERS_LED = {
+    "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
+    "MAP3202": "Aumentar el valor de la resistencia conectada en la línea R_ISET (pin 6).",
+    "BIT3267": "Retirar una resistencia de la red conectada entre ISET (pin 4) y masa.",
+    "AP3041": "Modificar el divisor en el pin ISET incrementando el valor de R_SET.",
+    "OZ9998": "Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama."
+}
 
 @app.route('/')
 def index():
@@ -100,7 +111,8 @@ def add_placa():
         "id": len(db_placas) + 1,
         "tipo": data.get("tipo", ""),
         "codigo": data.get("codigo", ""),
-        "modelo": data.get("modelo", "")
+        "modelo": data.get("modelo", ""),
+        "test_points": data.get("test_points", "Sin datos")
     }
     db_placas.append(nueva_placa)
     return jsonify(nueva_placa), 201
@@ -110,7 +122,7 @@ def add_placa():
 def get_firmwares():
     return jsonify(db_firmwares)
 
-# DIAGNÓSTICO IA CON FALLBACK DINÁMICO
+# DIAGNÓSTICO IA (ESPAÑOL FORZADO)
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
@@ -121,12 +133,13 @@ def analizar_falla():
         if not GEMINI_KEY:
             return jsonify({'error': 'La variable GEMINI_API_KEY no está configurada'}), 500
 
-        prompt = f"""Sos un técnico especializado en electrónica de TV, consolas y audio.
-Analizá el siguiente caso:
+        prompt = f"""Sos un técnico profesional especializado en reparación de electrónica de Smart TVs, consolas y audio.
+Analizá el siguiente caso y responde OBLIGATORIAMENTE Y ÚNICAMENTE EN ESPAÑOL TÉCNICO:
+
 - Equipo / Modelo: {equipo}
 - Falla reportada: {falla}
 
-Proporcioná una guía técnica directa:
+Proporcioná una guía estructurada:
 1. Mediciones clave (VGH, VGL, VDD, PFC, sub-fuentes SMD, señales LVDS).
 2. Métodos de aislamiento o descarte de etapas.
 3. Componentes o sectores propensos a falla en este chasis."""
@@ -141,7 +154,6 @@ Proporcioná una guía técnica directa:
         respuesta_texto = None
         ultimo_error = None
 
-        # 1. Probar modelos candidatos
         for nombre in candidatos:
             try:
                 model = genai.GenerativeModel(nombre)
@@ -152,7 +164,6 @@ Proporcioná una guía técnica directa:
             except Exception as e:
                 ultimo_error = str(e)
 
-        # 2. Si fallan los nombres fijos, listar modelos disponibles en la cuenta
         if not respuesta_texto:
             try:
                 for m in genai.list_models():
@@ -175,6 +186,44 @@ Proporcioná una guía técnica directa:
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ENDPOINT: TEST POINTS VÍA IA
+@app.route('/api/obtener-test-points', methods=['POST'])
+def obtener_test_points():
+    try:
+        data = request.json or {}
+        chasis = data.get('chasis', '')
+
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Sos un técnico experto en reparación de TV LED y LCD. 
+Generá en ESPAÑOL la tabla de puntos de prueba (Test Points) y tensiones nominales de referencia para el chasis o placa: {chasis}.
+
+Detallá:
+1. Tensiones T-CON (VGH, VGL, VDD, VCOM).
+2. Sub-fuentes SMD y bobinas de la Main (Core, RAM, 3.3V, 5V, 12V).
+3. Prueba de resistencia/diodos típica respecto a masa para descartar cortos."""
+
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        res = model.generate_content(prompt)
+
+        return jsonify({'test_points': res.text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ENDPOINT: CALCULADORA BACKLIGHT
+@app.route('/api/calcular-backlight', methods=['POST'])
+def calcular_backlight():
+    data = request.json or {}
+    driver = data.get('driver', '').upper().strip()
+
+    instruccion = DRIVERS_LED.get(
+        driver, 
+        "Driver no registrado en la base fija. Regla general: Identificar el pin ISET/IREF del CI y aumentar un 25-50% el valor de la resistencia a masa o retirar una resistencia SMD en paralelo para bajar la corriente de LEDs."
+    )
+
+    return jsonify({'driver': driver, 'procedimiento': instruccion})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
