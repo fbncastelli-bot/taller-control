@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
 
@@ -58,36 +59,39 @@ DRIVERS_LED = {
     "OZ9998": "Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama."
 }
 
-def consultar_gemini_dinamico(prompt):
+def consultar_gemini_limpio(prompt):
     candidatos = [
         'gemini-1.5-flash',
         'gemini-1.5-pro',
         'gemini-2.0-flash',
         'gemini-pro'
     ]
+    
+    system_instruction = (
+        "Sos un asistente técnico de laboratorio electrónico de Smart TVs. "
+        "Tu única función es responder directamente en español técnico. "
+        "Queda estrictamente prohibido escribir frases, análisis, verificaciones o encabezados en inglés."
+    )
+
     ultimo_error = None
 
     for nombre in candidatos:
         try:
-            model = genai.GenerativeModel(nombre)
+            model = genai.GenerativeModel(
+                model_name=nombre,
+                system_instruction=system_instruction
+            )
             res = model.generate_content(prompt)
             if res and res.text:
-                return res.text, None
+                texto_limpio = re.sub(
+                    r'^(Role:|Constraints:|Input Case:|Required Structure:|Model:).*?\n\n', 
+                    '', 
+                    res.text, 
+                    flags=re.DOTALL | re.IGNORECASE
+                )
+                return texto_limpio.strip(), None
         except Exception as e:
             ultimo_error = str(e)
-
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                try:
-                    model = genai.GenerativeModel(m.name)
-                    res = model.generate_content(prompt)
-                    if res and res.text:
-                        return res.text, None
-                except Exception as e:
-                    ultimo_error = str(e)
-    except Exception as e:
-        ultimo_error = str(e)
 
     return None, ultimo_error
 
@@ -165,27 +169,23 @@ def analizar_falla():
         if not GEMINI_KEY:
             return jsonify({'error': 'La variable GEMINI_API_KEY no está configurada'}), 500
 
-        prompt = f"""REGLA ABSOLUTA: Responde ÚNICAMENTE EN ESPAÑOL TÉCNICO. Está PROHIBIDO usar idioma inglés o explicaciones introductorias.
-
-Sos un técnico profesional especializado en reparación de electrónica de Smart TVs, consolas y audio.
-Analizá el siguiente caso:
-
+        prompt = f"""Analizá la siguiente reparación de taller:
 - Equipo / Modelo: {equipo}
 - Falla reportada: {falla}
 
-Proporcioná una guía estructurada:
-1. Mediciones clave (VGH, VGL, VDD, PFC, sub-fuentes SMD, señales LVDS).
-2. Métodos de aislamiento o descarte de etapas.
-3. Componentes o sectores propensos a falla en este chasis."""
+Entregá una guía técnica directa:
+1. Mediciones de voltaje clave.
+2. Método de descarte paso a paso.
+3. Componentes propensos a falla en esta etapa."""
 
-        texto, err = consultar_gemini_dinamico(prompt)
+        texto, err = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'diagnostico': texto})
-        return jsonify({'error': f'No se pudo conectar a un modelo activo: {err}'}), 500
+        return jsonify({'error': f'Error de conexión: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# TEST POINTS VÍA IA (UBICACIÓN FÍSICA Y ESPAÑOL ESTRICTO)
+# TEST POINTS VÍA IA (REFERENCIA A PINES DE CIs Y BOBINAS)
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
@@ -195,27 +195,25 @@ def obtener_test_points():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        prompt = f"""REGLA ABSOLUTA: Responde ÚNICAMENTE en ESPAÑOL TÉCNICO. Está PROHIBIDO incluir texto o introducciones en inglés.
+        prompt = f"""Analizá el chasis / placa de TV: {chasis}
 
-Sos un técnico especialista en microelectrónica de TV LED.
-Analizá la placa/chasis específico: {chasis}
+Proporcioná la guía de mediciones referenciando prioritariamente a PINES DE CIRCUITOS INTEGRADOS y BOBINAS DE PASO SMD:
 
-Proporcioná una guía de PUNTOS DE PRUEBA FÍSICOS (Test Points) en la placa:
+1. PUNTOS DE MEDICIÓN EN CIs Y BOBINAS:
+   - Indicá los integrados reguladores Buck/LDO clave de la placa y sus pines de entrada/salida (ej. Pin VCC, Pin LX/OUT, Pin EN).
+   - Identificá las bobinas asociadas a las sub-fuentes (1.1V Core, 1.5V/1.8V RAM, 3.3V_STB, 5V, 12V).
+   - En el sector T-CON / Panel, indicá los pines del CI generador de VGH, VGL, VDD, VCOM o sus diodos de salida directos.
 
-1. UBICACIÓN Y SERIGRAFÍA DE COMPONENTES SMD:
-   - Identificá la serigrafía de componentes de prueba de este chasis (ej. "Medir VGH en el diodo D...", "Medir 3.3V_STB en la bobina L...", "Medir tensiones en los pines del regulador U...").
-   - Señalá componentes clave (CIs reguladores Buck SMD, MOSFETs de conmutación, fusibles SMD).
+2. TABLA DE TENSIONES ESPERADAS:
+   - Componente / Pin de CI | Tensión Standby | Tensión ON (Encendido)
 
-2. TABLA DE TENSIONES DE REFERENCIA EN PLACA:
-   - Componente / Serigrafía | Línea / Señal | Tensión Standby | Tensión ON (Encendido)
+3. PRUEBAS DE RESISTENCIA EN FRÍO:
+   - Valores de resistencia a masa (GND) en las bobinas principales para descartar micros o memorias en corto."""
 
-3. PRUEBAS DE RESISTENCIA EN FRÍO (Aislamiento de Cortos):
-   - Indicar en qué bobinas o capacitores medir resistencia respecto a masa (GND) antes de energizar la placa."""
-
-        texto, err = consultar_gemini_dinamico(prompt)
+        texto, err = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'test_points': texto})
-        return jsonify({'error': f'No se pudo conectar a un modelo activo: {err}'}), 500
+        return jsonify({'error': f'Error de conexión: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
