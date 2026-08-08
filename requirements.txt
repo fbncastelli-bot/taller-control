@@ -1,3 +1,4 @@
-fastapi
-uvicorn
-pydantic
+flask
+psycopg2-binary
+gunicorn
+google-genai 
