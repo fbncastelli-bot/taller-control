@@ -38,6 +38,13 @@ db_placas = [
         "codigo": "715G5155-M01-002-005K",
         "modelo": "Philips 32PFL3008D/77",
         "test_points": "VGH: 28V | VGL: -7V | VDD: 3.3V | VCOM: 6.5V | 12V_STB: 12V"
+    },
+    {
+        "id": 2,
+        "tipo": "Main / Power Combo",
+        "codigo": "RSAG7.820.4680",
+        "modelo": "BGH / Hisense / Noblex 32-40",
+        "test_points": "12V_MAIN: 12V en diodo salida | 3.3V_STB: 3.3V en bobina L | 1.1V_CORE: Bobina Buck Core | VGH: 28V (T-CON) | VGL: -7V (T-CON) | VDD: 3.3V"
     }
 ]
 
@@ -61,13 +68,12 @@ DRIVERS_LED = {
 
 def consultar_gemini_limpio(prompt):
     system_instruction = (
-        "Sos un asistente de laboratorio electrónico. Tu función es entregar tablas directas de datos en español. "
-        "No escribas introducciones, no saludes, no expliques qué vas a hacer, ni incluyas ningún texto en inglés."
+        "Sos un asistente técnico de laboratorio electrónico. Respondé exclusivamente en español técnico. "
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos/introducciones."
     )
     
     ultimo_error = None
 
-    # Intentar obtener un modelo activo de la API
     try:
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
@@ -78,22 +84,23 @@ def consultar_gemini_limpio(prompt):
                     )
                     res = model.generate_content(prompt)
                     if res and res.text:
-                        # Filtro estricto por código para eliminar cualquier fragmento en inglés residual
                         texto = res.text
-                        # Eliminar bloques comunes de system prompt en inglés si se filtran
-                        texto = re.sub(r'(?i)(role|constraints|input case|required structure|model|verification|language).*?\n', '', texto)
-                        # Cortar si hay explicaciones en inglés antes de la tabla en español
                         if '|' in texto:
-                            # Retener desde la primera ocurrencia de la tabla Markdown
                             pos_tabla = texto.find('|')
                             texto = texto[pos_tabla:]
+                        else:
+                            lineas = texto.split('\n')
+                            lineas_filtradas = [
+                                l for l in lineas 
+                                if not re.search(r'\b(role|constraints|input|structure|model|verification|english|language|the|and|is|for|with)\b', l, re.IGNORECASE)
+                            ]
+                            texto = '\n'.join(lineas_filtradas)
                         return texto.strip(), None
                 except Exception as e:
                     ultimo_error = str(e)
     except Exception as e:
         ultimo_error = str(e)
 
-    # Reintento con modelos flash directo
     candidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
     for nombre in candidatos:
         try:
@@ -104,7 +111,6 @@ def consultar_gemini_limpio(prompt):
             res = model.generate_content(prompt)
             if res and res.text:
                 texto = res.text
-                texto = re.sub(r'(?i)(role|constraints|input case|required structure|model|verification|language).*?\n', '', texto)
                 if '|' in texto:
                     pos_tabla = texto.find('|')
                     texto = texto[pos_tabla:]
@@ -164,7 +170,7 @@ def add_placa():
     data = request.json or {}
     nueva_placa = {
         "id": len(db_placas) + 1,
-        "tipo": data.get("tipo", ""),
+        "tipo": data.get("tipo", "Main Board"),
         "codigo": data.get("codigo", ""),
         "modelo": data.get("modelo", ""),
         "test_points": data.get("test_points", "Sin datos")
@@ -192,7 +198,7 @@ def analizar_falla():
 - Equipo / Modelo: {equipo}
 - Falla reportada: {falla}
 
-Entregá una guía técnica directa:
+Entregá una guía técnica directa en español:
 1. Mediciones de voltaje clave.
 2. Método de descarte paso a paso.
 3. Componentes propensos a falla en esta etapa."""
@@ -204,31 +210,60 @@ Entregá una guía técnica directa:
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# TEST POINTS VÍA IA (TABLA DIRECTA DE ICs Y BOBINAS SIN TEXTO EN INGLÉS)
+# CONSULTA DE TEST POINTS (1. BASE LOCAL -> 2. BÚSQUEDA TÉCNICA EXTERNA)
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
         data = request.json or {}
-        chasis = data.get('chasis', '')
+        chasis_buscado = data.get('chasis', '').strip().upper()
+
+        # 1. Búsqueda prioritaria en la base local del taller
+        for placa in db_placas:
+            if chasis_buscado in placa['codigo'].upper():
+                respuesta_local = f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points: {placa['test_points']}"
+                return jsonify({'test_points': respuesta_local})
 
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        prompt = f"""Generá la tabla de mediciones de laboratorio para el chasis: {chasis}.
+        # 2. Búsqueda y análisis en la red/base técnica de diagramas
+        prompt = f"""Sos un analista de esquemáticos de TV LED. 
+Buscá y analizá el diagrama/esquema del chasis: {chasis_buscado}.
 
-Regla: No incluyas texto antes o después. Devolvé ÚNICAMENTE la tabla en formato Markdown con las columnas:
-| Sub-fuente / Etapa | IC Regulador o Diodo | Pin o Punto de Medición | Tensión Standby | Tensión ON | Resistencia a GND (Aislamiento) |
+Generá la tabla de mediciones asociadas a INTEGRADOS REGULADORES y BOBINAS SMD.
+Devolvé ÚNICAMENTE la tabla Markdown en español sin texto introductorio:
 
-Incluí las líneas clave de la placa:
-- 12V Main
-- 3.3V Standby
-- 1.1V / 1.5V Core y RAM (Sub-fuentes Buck)
-- VCC e ISET del Driver LED
-- VGH, VGL, VDD del sector T-CON / Panel"""
+| Sub-fuente / Etapa | IC Regulador / Componente | Pin o Punto de Medición | Tensión Standby | Tensión ON | Resistencia a Masa |
+"""
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'test_points': texto})
+        return jsonify({'error': f'Error de conexión: {err}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ANALIZAR TEXTO/DATOS DE ESQUEMÁTICO CARGADO
+@app.route('/api/analizar-esquematico', methods=['POST'])
+def analizar_esquematico():
+    try:
+        data = request.json or {}
+        chasis = data.get('chasis', '')
+        texto_esquema = data.get('texto_esquema', '')
+
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Analizá el siguiente extracto/diagrama del chasis {chasis}:
+
+{texto_esquema}
+
+Extraé las líneas de alimentación principales, los CIs reguladores con sus pines de salida y las tensiones nominales. 
+Devolvé una tabla Markdown en español."""
+
+        texto, err = consultar_gemini_limpio(prompt)
+        if texto:
+            return jsonify({'resultado': texto})
         return jsonify({'error': f'Error de conexión: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
