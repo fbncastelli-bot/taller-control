@@ -2,62 +2,172 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Taller Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Control - Sistema de Gestión Técnica</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex">
-    <aside class="w-64 bg-slate-800 p-6 border-r border-slate-700">
-        <h1 class="text-xl font-bold mb-8">🔧 Taller Control</h1>
-        <nav class="space-y-4">
-            <button onclick="cambiarPestana('sec-ordenes')" class="w-full text-left">📋 Órdenes</button>
-            <button onclick="cambiarPestana('sec-repuestos')" class="w-full text-left">📦 Stock Componentes</button>
-            <button onclick="cambiarPestana('sec-placas')" class="w-full text-left">🧩 Banco de Placas</button>
-        </nav>
-    </aside>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
 
-    <main class="flex-1 p-8">
-        <!-- ÓRDENES -->
-        <section id="sec-ordenes">
-            <form id="formOrden" onsubmit="guardarOrden(event)" class="bg-slate-800 p-6 rounded-lg mb-6 grid grid-cols-2 gap-4">
-                <input type="text" id="ot_cliente" placeholder="Cliente" class="bg-slate-900 p-2 rounded">
-                <input type="text" id="ot_equipo" placeholder="Equipo" class="bg-slate-900 p-2 rounded">
-                <input type="text" id="ot_falla" placeholder="Falla" class="bg-slate-900 p-2 rounded">
-                <input type="number" id="ot_presupuesto" placeholder="Presupuesto" class="bg-slate-900 p-2 rounded">
-                <button type="submit" class="bg-blue-600 col-span-2 p-2 rounded">Guardar Orden</button>
-            </form>
-            <div id="panelResultadoIA" class="hidden bg-purple-900/50 p-6 rounded-lg mb-6 border border-purple-500">
-                <h3 class="font-bold mb-2">🤖 Diagnóstico IA:</h3>
-                <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm"></pre>
-            </div>
-            <table class="w-full text-left bg-slate-800 rounded">
-                <thead><tr class="border-b border-slate-700"><th class="p-4">OT #</th><th>Cliente</th><th>Equipo</th><th>Falla</th><th>$</th><th>Acción</th></tr></thead>
-                <tbody id="tablaOrdenesBody"></tbody>
-            </table>
-        </section>
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🔧</span>
+            <h1 class="text-xl font-bold text-white tracking-wide">Taller Control</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">DB: Online</span>
+        </div>
+    </header>
 
-        <!-- STOCK -->
-        <section id="sec-repuestos" class="hidden">
-            <h2 class="text-xl font-bold mb-4">Stock Componentes</h2>
-            <table class="w-full text-left bg-slate-800 rounded">
-                <thead><tr class="border-b border-slate-700"><th class="p-4">Categoría</th><th>Componente</th><th>Ubicación</th><th>Cantidad</th></tr></thead>
-                <tbody id="tablaRepuestosBody"></tbody>
-            </table>
-        </section>
+    <div class="flex-1 flex max-w-[1600px] w-full mx-auto">
+        
+        <!-- NAVEGACIÓN LATERAL COMPLETA -->
+        <aside class="w-64 bg-slate-800/50 border-r border-slate-700/50 p-4 flex flex-col gap-2">
+            <button onclick="cambiarPestana('sec-ordenes', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium bg-blue-600 text-white flex items-center gap-3 transition">
+                📋 <span>Órdenes de Trabajo</span>
+            </button>
+            <button onclick="cambiarPestana('sec-repuestos', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                📦 <span>Stock Componentes</span>
+            </button>
+            <button onclick="cambiarPestana('sec-placas', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                🧩 <span>Banco de Placas</span>
+            </button>
+            <button onclick="cambiarPestana('sec-firmwares', this)" class="btn-nav w-full text-left px-4 py-3 rounded-lg font-medium text-slate-400 hover:bg-slate-700/50 hover:text-white flex items-center gap-3 transition">
+                💾 <span>Firmwares en la Nube</span>
+            </button>
+        </aside>
 
-        <!-- PLACAS -->
-        <section id="sec-placas" class="hidden">
-            <h2 class="text-xl font-bold mb-4">Banco de Placas</h2>
-            <table class="w-full text-left bg-slate-800 rounded">
-                <thead><tr class="border-b border-slate-700"><th class="p-4">Tipo</th><th>Código</th><th>Modelo</th></tr></thead>
-                <tbody id="tablaPlacasBody"></tbody>
-            </table>
-        </section>
-    </main>
+        <main class="flex-1 p-6 overflow-y-auto space-y-6">
+            
+            <!-- ÓRDENES DE TRABAJO -->
+            <section id="sec-ordenes" class="space-y-6">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                    <h3 class="text-md font-semibold text-white flex items-center gap-2">➕ Nueva Orden de Trabajo</h3>
+                    <form id="formOrden" onsubmit="guardarOrden(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="text" id="ot_cliente" placeholder="Cliente" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <input type="text" id="ot_equipo" placeholder="Equipo / Modelo (ej: Samsung UN40J5200)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <input type="text" id="ot_falla" placeholder="Falla reportada" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <input type="number" id="ot_presupuesto" placeholder="Presupuesto $" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <button type="submit" class="md:col-span-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Orden</button>
+                    </form>
+                </div>
+
+                <!-- PANEL DIAGNÓSTICO IA INTEGRADO -->
+                <div id="panelResultadoIA" class="hidden bg-slate-800 border border-purple-500/40 rounded-xl p-5 space-y-3">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                        <h4 class="text-md font-bold text-purple-400 flex items-center gap-2">🤖 Diagnóstico Técnico IA</h4>
+                        <button onclick="document.getElementById('panelResultadoIA').classList.add('hidden')" class="text-slate-400 hover:text-white font-bold">✕ Cerrar</button>
+                    </div>
+                    <pre id="textoResultadoIA" class="whitespace-pre-wrap text-sm text-slate-200 font-sans leading-relaxed"></pre>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">OT #</th>
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Equipo / Modelo</th>
+                                <th class="p-4">Falla</th>
+                                <th class="p-4">Presupuesto</th>
+                                <th class="p-4">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaOrdenesBody" class="divide-y divide-slate-700/50 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- STOCK COMPONENTES -->
+            <section id="sec-repuestos" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                    <h3 class="text-md font-semibold text-white">➕ Agregar Componente / SMD</h3>
+                    <form id="formRepuesto" onsubmit="guardarRepuesto(event)" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <input type="text" id="rep_categoria" placeholder="Categoría (IC, Mosfet, Cap)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="rep_nombre" placeholder="Componente (ej: RT6905)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="rep_ubicacion" placeholder="Ubicación (Caja 1)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="number" id="rep_cantidad" placeholder="Cantidad" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Componente</button>
+                    </form>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">Categoría</th>
+                                <th class="p-4">Componente</th>
+                                <th class="p-4">Ubicación</th>
+                                <th class="p-4">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRepuestosBody" class="divide-y divide-slate-700/50 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- BANCO DE PLACAS -->
+            <section id="sec-placas" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                    <h3 class="text-md font-semibold text-white">➕ Registrar Placa</h3>
+                    <form id="formPlaca" onsubmit="guardarPlaca(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="text" id="placa_tipo" placeholder="Tipo (Main, Power, T-Con)" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="placa_codigo" placeholder="Código PCB / Chasis" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="placa_modelo" placeholder="Modelo TV Compatible" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">Guardar Placa</button>
+                    </form>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Código Chasis</th>
+                                <th class="p-4">Modelo TV</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPlacasBody" class="divide-y divide-slate-700/50 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- FIRMWARES -->
+            <section id="sec-firmwares" class="space-y-6 hidden">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <h2 class="text-lg font-semibold text-white">Archivos de Firmware SPI / eMMC</h2>
+                </div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-700/50 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+                                <th class="p-4">Chasis</th>
+                                <th class="p-4">Modelo TV</th>
+                                <th class="p-4">Memoria</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaFirmwaresBody" class="divide-y divide-slate-700/50 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
 
     <script>
-        function cambiarPestana(id) {
+        function cambiarPestana(idSec, elemento) {
             document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(idSec).classList.remove('hidden');
+
+            document.querySelectorAll('.btn-nav').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+
+            elemento.classList.add('bg-blue-600', 'text-white');
+            elemento.classList.remove('text-slate-400');
         }
     </script>
     <script src="/static/app.js"></script>
