@@ -4,12 +4,12 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Configurar API Key de Gemini
+# Configuración API Key
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
 
-# Memoria temporal / DB Mock
+# Memoria temporal
 db_ordenes = []
 db_repuestos = []
 db_placas = []
@@ -36,7 +36,7 @@ def add_orden():
     db_ordenes.append(nueva_ot)
     return jsonify(nueva_ot), 201
 
-# RUTAS REPUESTOS / STOCK
+# RUTAS REPUESTOS
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
     return jsonify(db_repuestos)
@@ -71,23 +71,22 @@ def add_placa():
     db_placas.append(nueva_placa)
     return jsonify(nueva_placa), 201
 
-# IA ANALIZADOR DE FALLAS
+# ANALIZADOR IA
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
         data = request.json or {}
-        equipo = data.get('equipo', 'TV LED')
-        falla = data.get('falla', 'Sin imagen / Con audio')
+        equipo = data.get('equipo', '')
+        falla = data.get('falla', '')
 
         if not GEMINI_KEY:
-            return jsonify({'error': 'GEMINI_API_KEY no está configurada'}), 500
+            return jsonify({'error': 'API Key no configurada'}), 500
 
         model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Analizá la siguiente falla técnica en electrónica. Equipo: {equipo}. Falla: {falla}. Brindá diagnóstico directo, puntos de medición (VGH, VGL, VDD, etc.) y 3 pruebas concretas."
+        prompt = f"Técnico de TV: Analizá este equipo: {equipo}. Falla: {falla}. Indicá mediciones, pruebas de aislamiento y componentes críticos."
 
         response = model.generate_content(prompt)
         return jsonify({'diagnostico': response.text})
-
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
