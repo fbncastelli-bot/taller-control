@@ -1,32 +1,25 @@
-import requests
-import sqlite3
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# URL del servidor backend SaaS (en desarrollo local o en producción)
-API_BASE_URL = "http://localhost:8000"
+# Obtiene la URL de la base de datos desde Render
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-def autenticar_taller(email: str, password: str):
-    """
-    Envía credenciales al servidor SaaS y retorna el token con los permisos
-    de la suscripción (Plan Básico / Plan Pro).
-    """
-    url = f"{API_BASE_URL}/auth/login"
-    payload = {
-        "email": email,
-        "password": password
-    }
-    
+if DATABASE_URL:
+    # Ajuste de compatibilidad para SQLAlchemy con la URI de PostgreSQL
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    engine = create_engine(DATABASE_URL)
+else:
+    # Fallback local SQLite si no hay variable configurada
+    engine = create_engine("sqlite:///taller.db", connect_args={"check_same_thread": False})
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
     try:
-        response = requests.post(url, json=payload, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            # Guardamos el token y permisos de suscripción localmente
-            return {
-                "exito": True,
-                "token": data.get("access_token"),
-                "plan": data["tenant"]["plan"],
-                "puedo_descargar": data["tenant"]["can_download_firmwares"]
-            }
-        else:
-            return {"exito": False, "error": response.json().get("detail", "Error de autenticación")}
-    except Exception as e:
-        return {"exito": False, "error": f"Error de conexión con el servidor SaaS: {str(e)}"}
+        yield db
+    finally:
+        db.close()
