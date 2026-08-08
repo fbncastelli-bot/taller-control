@@ -9,7 +9,7 @@ GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
 
-# Datos iniciales
+# Datos iniciales en memoria
 db_ordenes = [
     {
         "id": 1,
@@ -110,7 +110,7 @@ def add_placa():
 def get_firmwares():
     return jsonify(db_firmwares)
 
-# DIAGNÓSTICO IA
+# DIAGNÓSTICO IA CON FALLBACK DINÁMICO
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
@@ -120,9 +120,6 @@ def analizar_falla():
 
         if not GEMINI_KEY:
             return jsonify({'error': 'La variable GEMINI_API_KEY no está configurada'}), 500
-
-        # Modelo estandarizado
-        model = genai.GenerativeModel('gemini-1.5-flash')
 
         prompt = f"""Sos un técnico especializado en electrónica de TV, consolas y audio.
 Analizá el siguiente caso:
@@ -134,8 +131,47 @@ Proporcioná una guía técnica directa:
 2. Métodos de aislamiento o descarte de etapas.
 3. Componentes o sectores propensos a falla en este chasis."""
 
-        response = model.generate_content(prompt)
-        return jsonify({'diagnostico': response.text})
+        candidatos = [
+            'gemini-1.5-flash',
+            'gemini-1.5-pro',
+            'gemini-2.0-flash',
+            'gemini-pro'
+        ]
+
+        respuesta_texto = None
+        ultimo_error = None
+
+        # 1. Probar modelos candidatos
+        for nombre in candidatos:
+            try:
+                model = genai.GenerativeModel(nombre)
+                res = model.generate_content(prompt)
+                if res and res.text:
+                    respuesta_texto = res.text
+                    break
+            except Exception as e:
+                ultimo_error = str(e)
+
+        # 2. Si fallan los nombres fijos, listar modelos disponibles en la cuenta
+        if not respuesta_texto:
+            try:
+                for m in genai.list_models():
+                    if 'generateContent' in m.supported_generation_methods:
+                        try:
+                            model = genai.GenerativeModel(m.name)
+                            res = model.generate_content(prompt)
+                            if res and res.text:
+                                respuesta_texto = res.text
+                                break
+                        except Exception as e:
+                            ultimo_error = str(e)
+            except Exception as e:
+                ultimo_error = str(e)
+
+        if respuesta_texto:
+            return jsonify({'diagnostico': respuesta_texto})
+        else:
+            return jsonify({'error': f'No se pudo conectar a un modelo activo: {ultimo_error}'}), 500
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
