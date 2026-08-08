@@ -165,8 +165,10 @@ def analizar_falla():
         if not GEMINI_KEY:
             return jsonify({'error': 'La variable GEMINI_API_KEY no está configurada'}), 500
 
-        prompt = f"""Sos un técnico profesional especializado en reparación de electrónica de Smart TVs, consolas y audio.
-Analizá el siguiente caso y responde OBLIGATORIAMENTE Y ÚNICAMENTE EN ESPAÑOL TÉCNICO:
+        prompt = f"""REGLA ABSOLUTA: Responde ÚNICAMENTE EN ESPAÑOL TÉCNICO. Está PROHIBIDO usar idioma inglés o explicaciones introductorias.
+
+Sos un técnico profesional especializado en reparación de electrónica de Smart TVs, consolas y audio.
+Analizá el siguiente caso:
 
 - Equipo / Modelo: {equipo}
 - Falla reportada: {falla}
@@ -183,7 +185,7 @@ Proporcioná una guía estructurada:
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# TEST POINTS VÍA IA
+# TEST POINTS VÍA IA (UBICACIÓN FÍSICA Y ESPAÑOL ESTRICTO)
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
     try:
@@ -193,13 +195,22 @@ def obtener_test_points():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        prompt = f"""Sos un técnico experto en reparación de TV LED y LCD. 
-Generá en ESPAÑOL la tabla de puntos de prueba (Test Points) y tensiones nominales de referencia para el chasis o placa: {chasis}.
+        prompt = f"""REGLA ABSOLUTA: Responde ÚNICAMENTE en ESPAÑOL TÉCNICO. Está PROHIBIDO incluir texto o introducciones en inglés.
 
-Detallá:
-1. Tensiones T-CON (VGH, VGL, VDD, VCOM).
-2. Sub-fuentes SMD y bobinas de la Main (Core, RAM, 3.3V, 5V, 12V).
-3. Prueba de resistencia/diodos típica respecto a masa para descartar cortos."""
+Sos un técnico especialista en microelectrónica de TV LED.
+Analizá la placa/chasis específico: {chasis}
+
+Proporcioná una guía de PUNTOS DE PRUEBA FÍSICOS (Test Points) en la placa:
+
+1. UBICACIÓN Y SERIGRAFÍA DE COMPONENTES SMD:
+   - Identificá la serigrafía de componentes de prueba de este chasis (ej. "Medir VGH en el diodo D...", "Medir 3.3V_STB en la bobina L...", "Medir tensiones en los pines del regulador U...").
+   - Señalá componentes clave (CIs reguladores Buck SMD, MOSFETs de conmutación, fusibles SMD).
+
+2. TABLA DE TENSIONES DE REFERENCIA EN PLACA:
+   - Componente / Serigrafía | Línea / Señal | Tensión Standby | Tensión ON (Encendido)
+
+3. PRUEBAS DE RESISTENCIA EN FRÍO (Aislamiento de Cortos):
+   - Indicar en qué bobinas o capacitores medir resistencia respecto a masa (GND) antes de energizar la placa."""
 
         texto, err = consultar_gemini_dinamico(prompt)
         if texto:
