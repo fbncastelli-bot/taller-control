@@ -29,6 +29,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
             cliente VARCHAR(100),
+            telefono VARCHAR(50),
             equipo VARCHAR(100),
             falla TEXT,
             presupuesto NUMERIC(10,2),
@@ -83,7 +84,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -124,7 +125,7 @@ def consultar_gemini_limpio(prompt):
 def index():
     return render_template('index.html')
 
-# ENDPOINTS ÓRDENES (PostgreSQL)
+# ENDPOINTS ÓRDENES
 @app.route('/api/ordenes', methods=['GET'])
 def get_ordenes():
     conn = get_db_connection()
@@ -145,8 +146,8 @@ def add_orden():
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        "INSERT INTO ordenes (cliente, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
-        (data.get("cliente", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
+        "INSERT INTO ordenes (cliente, telefono, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
+        (data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
     )
     nuevo = cur.fetchone()
     conn.commit()
@@ -165,7 +166,7 @@ def delete_orden(ot_id):
         conn.close()
     return jsonify({"status": "deleted"})
 
-# ENDPOINTS STOCK / REPUESTOS (PostgreSQL)
+# ENDPOINTS STOCK / REPUESTOS
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
     conn = get_db_connection()
@@ -212,7 +213,7 @@ def update_repuesto(rep_id):
     conn.close()
     return jsonify(res)
 
-# ENDPOINTS VENTAS Y USADOS (PostgreSQL)
+# ENDPOINTS VENTAS Y USADOS
 @app.route('/api/ventas', methods=['GET'])
 def get_ventas():
     conn = get_db_connection()
@@ -273,7 +274,7 @@ def get_firmwares():
         {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
     ])
 
-# ENDPOINTS CAJA Y FINANZAS (PostgreSQL)
+# ENDPOINTS CAJA Y FINANZAS
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
     conn = get_db_connection()
