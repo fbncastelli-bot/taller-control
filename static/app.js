@@ -1,6 +1,7 @@
 let otSeleccionadaId = null;
 let repSeleccionadoId = null;
 let ventaSeleccionadaId = null;
+let movSeleccionadoId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     cargarOrdenes();
@@ -259,7 +260,7 @@ function consultarML() {
     window.open(`https://listado.mercadolibre.com.ar/${prod}`, '_blank');
 }
 
-// BANCO DE PLACAS Y ESQUEMÁTICOS
+// 4. BANCO DE PLACAS Y ESQUEMÁTICOS
 function buscarTestPoints() {
     const chasis = document.getElementById('input-chasis-tp').value;
     if(!chasis) return;
@@ -307,22 +308,73 @@ function preguntarSobreEsquema() {
     });
 }
 
-// CAJA Y FIRMWARES
+// 5. CAJA Y FINANZAS
 function cargarCaja() {
     fetch('/api/caja').then(r => r.json()).then(data => {
-        document.getElementById('caja-ingresos').innerText = `$${data.ingresos.toLocaleString()}`;
-        document.getElementById('caja-egresos').innerText = `$${data.egresos.toLocaleString()}`;
-        document.getElementById('caja-balance').innerText = `$${data.balance.toLocaleString()}`;
+        document.getElementById('caja-ingresos').innerText = `$${data.ingresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+        document.getElementById('caja-egresos').innerText = `$${data.egresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+        document.getElementById('caja-balance').innerText = `$${data.balance.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
 
         let html = '';
         data.movimientos.forEach(m => {
-            const color = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
-            html += `<tr><td>${m.fecha}</td><td><span class="badge ${m.tipo === 'Ingreso' ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td><td>${m.concepto}</td><td class="${color}">$${m.monto}</td></tr>`;
+            const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
+            html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)">
+                <td>${m.id}</td>
+                <td>${m.fecha}</td>
+                <td>${m.tipo}</td>
+                <td>${m.concepto}</td>
+                <td class="${colorClass}">$${m.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+            </tr>`;
         });
         document.getElementById('tabla-caja').innerHTML = html;
     });
 }
 
+function seleccionarMovimientoCaja(id, fila) {
+    movSeleccionadoId = id;
+    document.querySelectorAll('#tabla-caja tr').forEach(r => r.classList.remove('table-active'));
+    fila.classList.add('table-active');
+}
+
+function guardarMovimientoCaja() {
+    const tipo = document.getElementById('caja-tipo').value;
+    const concepto = document.getElementById('caja-concepto').value;
+    const monto = document.getElementById('caja-monto').value;
+
+    if (!concepto || !monto) {
+        alert("Completá el concepto y el monto.");
+        return;
+    }
+
+    fetch('/api/caja', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tipo, concepto, monto})
+    }).then(() => {
+        document.getElementById('caja-concepto').value = '';
+        document.getElementById('caja-monto').value = '';
+        cargarCaja();
+    });
+}
+
+function eliminarMovimientoSeleccionado() {
+    if (!movSeleccionadoId) return alert("Seleccioná un movimiento de la lista.");
+    if (confirm(`¿Eliminar el movimiento N° ${movSeleccionadoId}?`)) {
+        fetch(`/api/caja/${movSeleccionadoId}`, { method: 'DELETE' }).then(() => {
+            movSeleccionadoId = null;
+            cargarCaja();
+        });
+    }
+}
+
+function filtrarCaja() {
+    const q = document.getElementById('buscar-caja').value.toLowerCase();
+    document.querySelectorAll('#tabla-caja tr').forEach(f => {
+        f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+// 6. FIRMWARES
 function cargarFirmwares() {
     fetch('/api/firmwares').then(r => r.json()).then(data => {
         let html = '';
