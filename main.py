@@ -40,7 +40,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
