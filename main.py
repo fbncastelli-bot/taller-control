@@ -2,6 +2,7 @@ import os
 import re
 from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
+from pypdf import PdfReader
 
 app = Flask(__name__)
 
@@ -200,9 +201,15 @@ def obtener_test_points():
         data = request.json or {}
         chasis_buscado = data.get('chasis', '').strip().upper()
         
+        # 1. Búsqueda prioritaria en base local guardada
+        for placa in db_placas:
+            if chasis_buscado in placa['codigo'].upper():
+                return jsonify({'test_points': f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points:\n{placa['test_points']}"})
+
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
+        # 2. Búsqueda con IA si no existe localmente
         prompt = f"""Analizá la arquitectura del chasis / placa de TV LED: {chasis_buscado}.
 
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs reguladores y bobinas de paso SMD, indicando la comparación entre Standby y ON:
@@ -218,16 +225,56 @@ Incluí las líneas clave: 12V Main, 3.3V_STB, Sub-fuentes Buck Core/RAM (1.1V /
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/analizar-esquematico', methods=['POST'])
-def analizar_esquematico():
+# ANALIZAR Y GUARDAR ARCHIVO PDF COMPLETO
+@app.route('/api/analizar-esquematico-pdf', methods=['POST'])
+def analizar_esquematico_pdf():
     try:
-        data = request.json or {}
-        chasis, texto_esquema = data.get('chasis', ''), data.get('texto_esquema', '')
+        if 'archivo' not in request.files:
+            return jsonify({'error': 'No se adjuntó ningún archivo PDF'}), 400
+        
+        file = request.files['archivo']
+        chasis = request.form.get('chasis', '').strip().upper()
+
+        if file.filename == '':
+            return jsonify({'error': 'Archivo no seleccionado'}), 400
+
+        reader = PdfReader(file)
+        texto_extraido = ""
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                texto_extraido += t + "\n"
+
+        if not texto_extraido.strip():
+            return jsonify({'error': 'El PDF es un documento escaneado como imagen pura. Si podés, seleccioná el texto del diagrama.'}), 400
+
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
-        prompt = f"Analizá el esquema del chasis {chasis}:\n{texto_esquema}\nExtraé las sub-fuentes, integrados y tensiones (Standby/ON) en una tabla Markdown."
+
+        prompt = f"""Analizá el esquema técnico del chasis/fuente: {chasis}.
+
+Contenido del plano extraído:
+{texto_extraido[:8000]}
+
+Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la serigrafía real del plano:
+| Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |
+
+No agregues preámbulos ni texto en inglés."""
+
         texto, err = consultar_gemini_limpio(prompt)
-        return jsonify({'resultado': texto}) if texto else jsonify({'error': str(err)}), 500
+        if texto:
+            nueva_placa = {
+                "id": len(db_placas) + 1,
+                "tipo": "Esquemático PDF Cargado",
+                "codigo": chasis,
+                "modelo": file.filename,
+                "test_points": texto
+            }
+            db_placas.append(nueva_placa)
+            return jsonify({'resultado': texto})
+            
+        return jsonify({'error': f'Error de procesamiento: {err}'}), 500
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
