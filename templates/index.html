@@ -48,8 +48,9 @@
             <div class="card-custom">
                 <div class="row g-2">
                     <div class="col-md-3"><label class="small text-secondary">Cliente:</label><input type="text" id="ot-cliente" class="form-control form-control-sm"></div>
+                    <div class="col-md-2"><label class="small text-secondary">Teléfono (WhatsApp):</label><input type="text" id="ot-telefono" class="form-control form-control-sm" placeholder="1112345678"></div>
                     <div class="col-md-3"><label class="small text-secondary">Equipo/Modelo:</label><input type="text" id="ot-equipo" class="form-control form-control-sm"></div>
-                    <div class="col-md-3"><label class="small text-secondary">Estado:</label>
+                    <div class="col-md-2"><label class="small text-secondary">Estado:</label>
                         <select id="ot-estado" class="form-select form-select-sm">
                             <option value="Ingresado">Ingresado</option>
                             <option value="Presupuestado">Presupuestado</option>
@@ -57,7 +58,7 @@
                             <option value="Finalizado">Finalizado</option>
                         </select>
                     </div>
-                    <div class="col-md-3"><label class="small text-secondary">Falla Reportada:</label><input type="text" id="ot-falla" class="form-control form-control-sm"></div>
+                    <div class="col-md-4"><label class="small text-secondary">Falla Reportada:</label><input type="text" id="ot-falla" class="form-control form-control-sm"></div>
                     <div class="col-md-3"><label class="small text-secondary">Presupuesto $:</label><input type="number" id="ot-presupuesto" class="form-control form-control-sm"></div>
                     <div class="col-md-3 align-self-end"><button onclick="guardarOrden()" class="btn btn-cyan btn-sm w-100">Guardar Orden</button></div>
                 </div>
@@ -65,7 +66,7 @@
 
             <div class="card-custom">
                 <div class="row g-2 mb-2">
-                    <div class="col-md-6"><input type="text" id="buscar-ot" onkeyup="filtrarTablaOT()" class="form-control form-control-sm" placeholder="🔎 Buscar Orden: Cliente, Equipo o N° de Orden..."></div>
+                    <div class="col-md-6"><input type="text" id="buscar-ot" onkeyup="filtrarTablaOT()" class="form-control form-control-sm" placeholder="🔎 Buscar Orden: Cliente, Teléfono, Equipo o N°..."></div>
                     <div class="col-md-3"><button onclick="filtrarTablaOT()" class="btn btn-info btn-sm w-100">Filtrar</button></div>
                     <div class="col-md-3"><button onclick="cargarOrdenes()" class="btn btn-secondary btn-sm w-100">Ver Todas</button></div>
                 </div>
@@ -73,7 +74,7 @@
                 <div class="table-responsive">
                     <table class="table table-dark table-hover small">
                         <thead>
-                            <tr><th>N°</th><th>Cliente</th><th>Equipo / Modelo</th><th>Falla Reportada</th><th>Estado Trabajo</th><th>Presupuesto</th></tr>
+                            <tr><th>N°</th><th>Cliente</th><th>Teléfono</th><th>Equipo / Modelo</th><th>Falla Reportada</th><th>Estado Trabajo</th><th>Presupuesto</th></tr>
                         </thead>
                         <tbody id="tabla-ordenes"></tbody>
                     </table>
@@ -81,9 +82,21 @@
 
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <button onclick="verFichaOT()" class="btn btn-primary btn-sm">📄 Ver Ficha / Informe</button>
-                    <button onclick="imprimirComprobante()" class="btn btn-success btn-sm">🖨️ Imprimir Comprobante Cliente</button>
-                    <button onclick="imprimirTicketTV()" class="btn btn-info btn-sm text-white">🏷️ Ticket para Tapa TV</button>
+                    <button onclick="enviarWhatsApp()" class="btn btn-success btn-sm">💬 Enviar WhatsApp al Cliente</button>
+                    <button onclick="imprimirComprobante()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante</button>
                     <button onclick="eliminarOrdenSeleccionada()" class="btn btn-danger btn-sm ms-auto">❌ Eliminar Orden Seleccionada</button>
+                </div>
+            </div>
+
+            <!-- Modal / Visualizador de Ficha e Informe -->
+            <div id="modal-ficha" class="card-custom mt-3" style="display: none; border: 1px solid #0284c7;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="text-info m-0">📋 Ficha de Trabajo e Informe Técnico</h5>
+                    <button onclick="cerrarFicha()" class="btn btn-outline-danger btn-sm">Cerrar ✖</button>
+                </div>
+                <div id="contenido-ficha" class="p-2 bg-dark rounded text-light small"></div>
+                <div class="mt-3 text-end">
+                    <button onclick="enviarWhatsAppModal()" class="btn btn-success btn-sm">💬 Enviar este Informe por WhatsApp</button>
                 </div>
             </div>
 
@@ -93,7 +106,7 @@
             </div>
         </div>
 
-        <!-- 2. STOCK COMPONENTES (CATEGORÍAS AMPLIADAS) -->
+        <!-- 2. STOCK COMPONENTES -->
         <div id="sec-repuestos" style="display: none;">
             <div class="card-custom">
                 <div class="row g-2">
