@@ -1,4 +1,4 @@
-let otSeleccionadaId = null;
+let otSeleccionada = null;
 let repSeleccionadoId = null;
 let ventaSeleccionadaId = null;
 let movSeleccionadoId = null;
@@ -25,53 +25,57 @@ function mostrarSeccion(sec) {
     }
 }
 
+function escapeQuotes(str) {
+    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
 // 1. ÓRDENES DE TRABAJO
 function cargarOrdenes() {
     fetch('/api/ordenes').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(o => {
-            html += `<tr onclick="seleccionarOT(${o.id}, '${escapeQuotes(o.equipo)}', '${escapeQuotes(o.falla)}', this)" style="cursor: pointer;">
+            const jsonStr = escapeQuotes(JSON.stringify(o));
+            html += `<tr onclick="seleccionarOTObj(${jsonStr}, this)" style="cursor: pointer;">
                 <td>${o.id}</td>
                 <td>${o.cliente}</td>
+                <td>${o.telefono || '-'}</td>
                 <td>${o.equipo}</td>
                 <td>${o.falla}</td>
                 <td><span class="badge bg-info">${o.estado}</span></td>
-                <td>$${o.presupuesto}</td>
+                <td>$${Number(o.presupuesto).toLocaleString('es-AR')}</td>
             </tr>`;
         });
         document.getElementById('tabla-ordenes').innerHTML = html;
     }).catch(err => console.error("Error cargando órdenes:", err));
 }
 
-function escapeQuotes(str) {
-    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
-function seleccionarOT(id, equipo, falla, fila) {
-    otSeleccionadaId = id;
+function seleccionarOTObj(obj, fila) {
+    otSeleccionada = obj;
     document.querySelectorAll('#tabla-ordenes tr').forEach(r => r.classList.remove('table-active'));
     fila.classList.add('table-active');
-    analizarFalla(equipo, falla);
+    analizarFalla(obj.equipo, obj.falla);
 }
 
 function guardarOrden() {
     const cliente = document.getElementById('ot-cliente').value;
+    const telefono = document.getElementById('ot-telefono').value;
     const equipo = document.getElementById('ot-equipo').value;
     const falla = document.getElementById('ot-falla').value;
     const presupuesto = document.getElementById('ot-presupuesto').value;
     const estado = document.getElementById('ot-estado').value;
 
     if (!cliente || !equipo) {
-        alert("Ingresá al menos el cliente y el equipo.");
+        alert("Ingresá al menos el nombre del cliente y el equipo.");
         return;
     }
 
     fetch('/api/ordenes', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({cliente, equipo, falla, presupuesto, estado})
+        body: JSON.stringify({cliente, telefono, equipo, falla, presupuesto, estado})
     }).then(() => {
         document.getElementById('ot-cliente').value = '';
+        document.getElementById('ot-telefono').value = '';
         document.getElementById('ot-equipo').value = '';
         document.getElementById('ot-falla').value = '';
         document.getElementById('ot-presupuesto').value = '';
@@ -80,10 +84,11 @@ function guardarOrden() {
 }
 
 function eliminarOrdenSeleccionada() {
-    if (!otSeleccionadaId) return alert("Seleccioná una orden de la lista.");
-    if (confirm(`¿Eliminar la orden N° ${otSeleccionadaId}?`)) {
-        fetch(`/api/ordenes/${otSeleccionadaId}`, { method: 'DELETE' }).then(() => {
-            otSeleccionadaId = null;
+    if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
+    if (confirm(`¿Eliminar la orden N° ${otSeleccionada.id}?`)) {
+        fetch(`/api/ordenes/${otSeleccionada.id}`, { method: 'DELETE' }).then(() => {
+            otSeleccionada = null;
+            cerrarFicha();
             cargarOrdenes();
         });
     }
@@ -91,33 +96,66 @@ function eliminarOrdenSeleccionada() {
 
 function filtrarTablaOT() {
     const q = document.getElementById('buscar-ot').value.toLowerCase();
-    const filas = document.querySelectorAll('#tabla-ordenes tr');
-    filas.forEach(f => {
+    document.querySelectorAll('#tabla-ordenes tr').forEach(f => {
         f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
     });
 }
 
 function verFichaOT() {
-    if (!otSeleccionadaId) return alert("Seleccioná una orden primero.");
-    alert(`Generando Ficha e Informe Técnico para Orden N° ${otSeleccionadaId}...`);
+    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
+    const modal = document.getElementById('modal-ficha');
+    const cont = document.getElementById('contenido-ficha');
+
+    cont.innerHTML = `
+        <div class="row g-2">
+            <div class="col-md-6"><strong>N° ORDEN:</strong> #${otSeleccionada.id}</div>
+            <div class="col-md-6"><strong>CLIENTE:</strong> ${otSeleccionada.cliente}</div>
+            <div class="col-md-6"><strong>TELÉFONO:</strong> ${otSeleccionada.telefono || 'No registrado'}</div>
+            <div class="col-md-6"><strong>EQUIPO:</strong> ${otSeleccionada.equipo}</div>
+            <div class="col-md-6"><strong>FALLA REPORTADA:</strong> ${otSeleccionada.falla}</div>
+            <div class="col-md-6"><strong>ESTADO DEL TRABAJO:</strong> ${otSeleccionada.estado}</div>
+            <div class="col-md-12 text-warning fs-6"><strong>PRESUPUESTO:</strong> $${Number(otSeleccionada.presupuesto).toLocaleString('es-AR')}</div>
+        </div>
+    `;
+
+    modal.style.display = 'block';
+    modal.scrollIntoView({ behavior: 'smooth' });
+}
+
+function cerrarFicha() {
+    document.getElementById('modal-ficha').style.display = 'none';
+}
+
+function enviarWhatsApp() {
+    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
+    if (!otSeleccionada.telefono) return alert("Esta orden no tiene cargado un número de teléfono.");
+
+    let num = otSeleccionada.telefono.replace(/\D/g, '');
+    if (!num.startsWith('549') && num.length <= 11) {
+        num = '549' + num;
+    }
+
+    const mensaje = `Hola ${otSeleccionada.cliente}, te escribimos de *SERVICIO TÉCNICO*. 
+Le informamos que su equipo *${otSeleccionada.equipo}* ingresado con falla *"${otSeleccionada.falla}"* se encuentra en estado: *${otSeleccionada.estado}*.
+Presupuesto: *$${Number(otSeleccionada.presupuesto).toLocaleString('es-AR')}*.
+Cualquier consulta quedamos a disposición.`;
+
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+}
+
+function enviarWhatsAppModal() {
+    enviarWhatsApp();
 }
 
 function imprimirComprobante() {
-    if (!otSeleccionadaId) return alert("Seleccioná una orden primero.");
+    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
     window.print();
-}
-
-function imprimirTicketTV() {
-    if (!otSeleccionadaId) return alert("Seleccioná una orden primero.");
-    alert(`Imprimiendo Etiqueta Adhesiva para Tapa de TV (Orden #${otSeleccionadaId})...`);
 }
 
 function analizarFalla(equipo, falla) {
     const box = document.getElementById('box-diagnostico');
     box.innerHTML = `⏳ Analizando circuito y falla para ${equipo}...`;
-    
-    // Auto-scroll al cuadro de diagnóstico en el celular
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     fetch('/api/analizar-falla', {
         method: 'POST',
@@ -235,7 +273,7 @@ function cargarVentas() {
             html += `<tr onclick="seleccionarVenta(${v.id}, this)" style="cursor: pointer;">
                 <td>${v.id}</td>
                 <td>${v.producto}</td>
-                <td>$${v.precio.toLocaleString()}</td>
+                <td>$${Number(v.precio).toLocaleString('es-AR')}</td>
                 <td><span class="badge bg-success">${v.estado}</span></td>
             </tr>`;
         });
