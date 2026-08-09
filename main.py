@@ -40,7 +40,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -201,7 +201,6 @@ def obtener_test_points():
         data = request.json or {}
         chasis_buscado = data.get('chasis', '').strip().upper()
         
-        # 1. Búsqueda prioritaria en base local guardada
         for placa in db_placas:
             if chasis_buscado in placa['codigo'].upper():
                 return jsonify({'test_points': f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points:\n{placa['test_points']}"})
@@ -209,7 +208,6 @@ def obtener_test_points():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        # 2. Búsqueda con IA si no existe localmente
         prompt = f"""Analizá la arquitectura del chasis / placa de TV LED: {chasis_buscado}.
 
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs reguladores y bobinas de paso SMD, indicando la comparación entre Standby y ON:
@@ -275,6 +273,34 @@ No agregues preámbulos ni texto en inglés."""
             
         return jsonify({'error': f'Error de procesamiento: {err}'}), 500
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# CONSULTA TÉCNICA INTERACTIVA SOBRE EL ESQUEMÁTICO PROCESADO
+@app.route('/api/preguntar-esquematico', methods=['POST'])
+def preguntar_esquematico():
+    try:
+        data = request.json or {}
+        chasis = data.get('chasis', '')
+        pregunta = data.get('pregunta', '')
+        contexto = data.get('contexto', '')
+
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Basándote en el plano esquemático del chasis/fuente {chasis} con la siguiente estructura de componentes y mediciones:
+
+{contexto}
+
+Respondé la siguiente consulta técnica de taller:
+{pregunta}
+
+Respondé de forma directa y técnica en español, indicando componentes específicos (diodos, CIs, transistores o pines) a verificar o sus posibles reemplazos directos."""
+
+        texto, err = consultar_gemini_limpio(prompt)
+        if texto:
+            return jsonify({'respuesta': texto})
+        return jsonify({'error': f'Error al procesar: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
