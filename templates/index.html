@@ -26,8 +26,8 @@
             <span class="fw-bold text-info fs-5">⚙️ SERVICIO TÉCNICO & FIRMWARES</span>
             <span class="badge bg-success ms-2">BBDD: ONLINE</span>
         </div>
-        <div class="small text-secondary">
-            👤 USER: ADMINISTRATOR | 📅 FECHA: 09/08/2026
+        <div class="small text-secondary fw-bold">
+            👤 USER: ADMINISTRATOR | 📅 FECHA Y HORA: <span id="reloj-vivo" class="text-info">--/--/---- --:--:--</span>
         </div>
     </div>
 
@@ -183,7 +183,7 @@
             </div>
         </div>
 
-        <!-- 5. CAJA Y FINANZAS (CLONADA DE TU PROGRAMA LOCAL) -->
+        <!-- 5. CAJA Y FINANZAS -->
         <div id="sec-caja" style="display: none;">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <div>
@@ -258,5 +258,16 @@
     </div>
 
     <script src="/static/app.js"></script>
+    <script>
+        // Actualizar reloj en vivo en la cabecera
+        function actualizarReloj() {
+            const ahora = new Date();
+            const fechaStr = ahora.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const horaStr = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('reloj-vivo').innerText = `${fechaStr} ${horaStr}`;
+        }
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+    </script>
 </body>
 </html>
