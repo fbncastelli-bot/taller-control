@@ -12,21 +12,28 @@ if GEMINI_KEY:
 
 # BASES DE DATOS EN MEMORIA
 db_ordenes = [
-    {"id": 1, "cliente": "Jose RCA", "equipo": "RCA L40T20SMART", "falla": "Leds quemados, cambio de tiras", "presupuesto": 45000, "estado": "En Proceso"}
+    {"id": 1, "cliente": "aldo", "equipo": "radio bt usb radio", "falla": "pote volumen", "presupuesto": 0, "estado": "Presupuestado"},
+    {"id": 2, "cliente": "guille", "equipo": "samsung", "falla": "difusores mancha panel", "presupuesto": 0, "estado": "Ingresado"}
 ]
 
 db_repuestos = [
-    {"id": 1, "categoria": "IC Fuente", "nombre": "RT6905", "ubicacion": "Caja 1 - SMD", "cantidad": 5, "precio": 3500}
+    {"id": 1, "categoria": "Transistores Bipolares", "nombre": "bf422", "ubicacion": "1", "cantidad": 1, "precio": 0},
+    {"id": 2, "categoria": "Integrados PWM/Fuente", "nombre": "uc3842", "ubicacion": "3", "cantidad": 1, "precio": 0}
 ]
 
 db_placas = []
+
+db_ventas = [
+    {"id": 1, "producto": "rsag7.820.4680", "precio": 67000, "estado": "En Venta"},
+    {"id": 2, "producto": "rsag7.820.1234", "precio": 30000, "estado": "En Venta"}
+]
 
 db_firmwares = [
     {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
 ]
 
 db_caja = [
-    {"id": 1, "tipo": "Ingreso", "concepto": "Cobro OT #1 - RCA L40T20SMART", "monto": 45000, "fecha": "2026-08-08"}
+    {"id": 1, "tipo": "Ingreso", "concepto": "Cobro OT #1 - aldo", "monto": 45000, "fecha": "2026-08-09"}
 ]
 
 DRIVERS_LED = {
@@ -40,7 +47,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -100,6 +107,12 @@ def add_orden():
     db_ordenes.append(nueva_ot)
     return jsonify(nueva_ot), 201
 
+@app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
+def delete_orden(ot_id):
+    global db_ordenes
+    db_ordenes = [o for o in db_ordenes if o['id'] != ot_id]
+    return jsonify({"status": "deleted"})
+
 # ENDPOINTS STOCK / REPUESTOS
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
@@ -119,43 +132,52 @@ def add_repuesto():
     db_repuestos.append(nuevo_rep)
     return jsonify(nuevo_rep), 201
 
+@app.route('/api/repuestos/<int:rep_id>', methods=['PUT'])
+def update_repuesto(rep_id):
+    data = request.json or {}
+    for r in db_repuestos:
+        if r['id'] == rep_id:
+            if 'cantidad' in data:
+                r['cantidad'] = int(data['cantidad'])
+            if 'ubicacion' in data:
+                r['ubicacion'] = data['ubicacion']
+            return jsonify(r)
+    return jsonify({'error': 'No encontrado'}), 404
+
+# ENDPOINTS VENTAS Y USADOS
+@app.route('/api/ventas', methods=['GET'])
+def get_ventas():
+    return jsonify(db_ventas)
+
+@app.route('/api/ventas', methods=['POST'])
+def add_venta():
+    data = request.json or {}
+    nueva_v = {
+        "id": len(db_ventas) + 1,
+        "producto": data.get("producto", ""),
+        "precio": float(data.get("precio", 0)),
+        "estado": data.get("estado", "En Venta")
+    }
+    db_ventas.append(nueva_v)
+    return jsonify(nueva_v), 201
+
+@app.route('/api/ventas/<int:v_id>', methods=['DELETE'])
+def delete_venta(v_id):
+    global db_ventas
+    db_ventas = [v for v in db_ventas if v['id'] != v_id]
+    return jsonify({"status": "deleted"})
+
 # ENDPOINTS BANCO DE PLACAS
 @app.route('/api/placas', methods=['GET'])
 def get_placas():
     return jsonify(db_placas)
-
-@app.route('/api/placas', methods=['POST'])
-def add_placa():
-    data = request.json or {}
-    nueva_placa = {
-        "id": len(db_placas) + 1,
-        "tipo": data.get("tipo", "Main Board"),
-        "codigo": data.get("codigo", ""),
-        "modelo": data.get("modelo", ""),
-        "test_points": data.get("test_points", "Sin datos")
-    }
-    db_placas.append(nueva_placa)
-    return jsonify(nueva_placa), 201
 
 # ENDPOINTS FIRMWARES
 @app.route('/api/firmwares', methods=['GET'])
 def get_firmwares():
     return jsonify(db_firmwares)
 
-@app.route('/api/firmwares', methods=['POST'])
-def add_firmware():
-    data = request.json or {}
-    nuevo_fw = {
-        "id": len(db_firmwares) + 1,
-        "chasis": data.get("chasis", ""),
-        "modelo": data.get("modelo", ""),
-        "memoria": data.get("memoria", ""),
-        "url_nube": data.get("url_nube", "")
-    }
-    db_firmwares.append(nuevo_fw)
-    return jsonify(nuevo_fw), 201
-
-# ENDPOINTS CAJA Y BALANCES
+# ENDPOINTS CAJA
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
     total_ingresos = sum(item['monto'] for item in db_caja if item['tipo'] == 'Ingreso')
@@ -167,19 +189,6 @@ def get_caja():
         "egresos": total_egresos,
         "balance": balance
     })
-
-@app.route('/api/caja', methods=['POST'])
-def add_movimiento():
-    data = request.json or {}
-    nuevo_mov = {
-        "id": len(db_caja) + 1,
-        "tipo": data.get("tipo", "Ingreso"),
-        "concepto": data.get("concepto", ""),
-        "monto": float(data.get("monto", 0)),
-        "fecha": data.get("fecha", "2026-08-08")
-    }
-    db_caja.append(nuevo_mov)
-    return jsonify(nuevo_mov), 201
 
 # CONSULTAS IA Y TEST POINTS
 @app.route('/api/analizar-falla', methods=['POST'])
@@ -212,9 +221,7 @@ def obtener_test_points():
 
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs reguladores y bobinas de paso SMD, indicando la comparación entre Standby y ON:
 
-| Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |
-
-Incluí las líneas clave: 12V Main, 3.3V_STB, Sub-fuentes Buck Core/RAM (1.1V / 1.5V / 1.8V), Driver LED (VCC/ISET), y T-CON (VGH, VGL, VDD)."""
+| Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |"""
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
@@ -223,7 +230,6 @@ Incluí las líneas clave: 12V Main, 3.3V_STB, Sub-fuentes Buck Core/RAM (1.1V /
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ANALIZAR Y GUARDAR ARCHIVO PDF COMPLETO
 @app.route('/api/analizar-esquematico-pdf', methods=['POST'])
 def analizar_esquematico_pdf():
     try:
@@ -244,7 +250,7 @@ def analizar_esquematico_pdf():
                 texto_extraido += t + "\n"
 
         if not texto_extraido.strip():
-            return jsonify({'error': 'El PDF es un documento escaneado como imagen pura. Si podés, seleccioná el texto del diagrama.'}), 400
+            return jsonify({'error': 'El PDF es un documento escaneado como imagen pura. Seleccioná el texto del diagrama.'}), 400
 
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
@@ -255,9 +261,7 @@ Contenido del plano extraído:
 {texto_extraido[:8000]}
 
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la serigrafía real del plano:
-| Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |
-
-No agregues preámbulos ni texto en inglés."""
+| Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |"""
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
@@ -276,7 +280,6 @@ No agregues preámbulos ni texto en inglés."""
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# CONSULTA TÉCNICA INTERACTIVA SOBRE EL ESQUEMÁTICO PROCESADO
 @app.route('/api/preguntar-esquematico', methods=['POST'])
 def preguntar_esquematico():
     try:
@@ -288,14 +291,14 @@ def preguntar_esquematico():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
 
-        prompt = f"""Basándote en el plano esquemático del chasis/fuente {chasis} con la siguiente estructura de componentes y mediciones:
+        prompt = f"""Basándote en el plano esquemático del chasis/fuente {chasis} con la siguiente estructura:
 
 {contexto}
 
-Respondé la siguiente consulta técnica de taller:
+Consulta técnica:
 {pregunta}
 
-Respondé de forma directa y técnica en español, indicando componentes específicos (diodos, CIs, transistores o pines) a verificar o sus posibles reemplazos directos."""
+Respondé de forma directa y técnica en español, indicando componentes o reemplazos directos."""
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
@@ -308,7 +311,7 @@ Respondé de forma directa y técnica en español, indicando componentes especí
 def calcular_backlight():
     data = request.json or {}
     driver = data.get('driver', '').upper().strip()
-    instruccion = DRIVERS_LED.get(driver, "Driver no registrado en la base fija. Modificar la resistencia en el pin ISET/IREF para reducir corriente un 25-30%.")
+    instruccion = DRIVERS_LED.get(driver, "Driver no registrado. Modificar la resistencia en el pin ISET/IREF para reducir corriente un 25-30%.")
     return jsonify({'driver': driver, 'procedimiento': instruccion})
 
 if __name__ == '__main__':
