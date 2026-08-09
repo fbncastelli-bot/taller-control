@@ -30,7 +30,7 @@ function cargarOrdenes() {
     fetch('/api/ordenes').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(o => {
-            html += `<tr onclick="seleccionarOT(${o.id}, '${o.equipo}', '${o.falla}', this)">
+            html += `<tr onclick="seleccionarOT(${o.id}, '${escapeQuotes(o.equipo)}', '${escapeQuotes(o.falla)}', this)" style="cursor: pointer;">
                 <td>${o.id}</td>
                 <td>${o.cliente}</td>
                 <td>${o.equipo}</td>
@@ -40,7 +40,11 @@ function cargarOrdenes() {
             </tr>`;
         });
         document.getElementById('tabla-ordenes').innerHTML = html;
-    });
+    }).catch(err => console.error("Error cargando órdenes:", err));
+}
+
+function escapeQuotes(str) {
+    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function seleccionarOT(id, equipo, falla, fila) {
@@ -56,6 +60,11 @@ function guardarOrden() {
     const falla = document.getElementById('ot-falla').value;
     const presupuesto = document.getElementById('ot-presupuesto').value;
     const estado = document.getElementById('ot-estado').value;
+
+    if (!cliente || !equipo) {
+        alert("Ingresá al menos el cliente y el equipo.");
+        return;
+    }
 
     fetch('/api/ordenes', {
         method: 'POST',
@@ -104,13 +113,23 @@ function imprimirTicketTV() {
 }
 
 function analizarFalla(equipo, falla) {
-    document.getElementById('box-diagnostico').innerHTML = `⏳ Analizando circuito y falla para ${equipo}...`;
+    const box = document.getElementById('box-diagnostico');
+    box.innerHTML = `⏳ Analizando circuito y falla para ${equipo}...`;
+    
+    // Auto-scroll al cuadro de diagnóstico en el celular
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     fetch('/api/analizar-falla', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({equipo, falla})
-    }).then(r => r.json()).then(data => {
-        document.getElementById('box-diagnostico').innerHTML = `<pre>${data.diagnostico || data.error}</pre>`;
+    })
+    .then(r => r.json())
+    .then(data => {
+        box.innerHTML = `<pre>${data.diagnostico || data.error || 'Sin respuesta'}</pre>`;
+    })
+    .catch(err => {
+        box.innerHTML = `<pre class="text-danger">Error de conexión: ${err}</pre>`;
     });
 }
 
@@ -119,7 +138,7 @@ function cargarRepuestos() {
     fetch('/api/repuestos').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(r => {
-            html += `<tr onclick="seleccionarRepuesto(${r.id}, ${r.cantidad}, '${r.ubicacion}', '${r.nombre}', this)">
+            html += `<tr onclick="seleccionarRepuesto(${r.id}, ${r.cantidad}, '${escapeQuotes(r.ubicacion)}', '${escapeQuotes(r.nombre)}', this)" style="cursor: pointer;">
                 <td>${r.id}</td>
                 <td>${r.categoria}</td>
                 <td>${r.nombre}</td>
@@ -213,7 +232,7 @@ function cargarVentas() {
     fetch('/api/ventas').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(v => {
-            html += `<tr onclick="seleccionarVenta(${v.id}, this)">
+            html += `<tr onclick="seleccionarVenta(${v.id}, this)" style="cursor: pointer;">
                 <td>${v.id}</td>
                 <td>${v.producto}</td>
                 <td>$${v.precio.toLocaleString()}</td>
@@ -318,12 +337,12 @@ function cargarCaja() {
         let html = '';
         data.movimientos.forEach(m => {
             const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
-            html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)">
+            html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)" style="cursor: pointer;">
                 <td>${m.id}</td>
                 <td>${m.fecha}</td>
                 <td>${m.tipo}</td>
                 <td>${m.concepto}</td>
-                <td class="${colorClass}">$${m.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                <td class="${colorClass}">$${Number(m.monto).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
             </tr>`;
         });
         document.getElementById('tabla-caja').innerHTML = html;
