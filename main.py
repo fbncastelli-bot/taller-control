@@ -4,38 +4,73 @@ from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
 from pypdf import PdfReader
 from datetime import datetime, timedelta
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
 
-# BASES DE DATOS EN MEMORIA
-db_ordenes = [
-    {"id": 1, "cliente": "aldo", "equipo": "radio bt usb radio", "falla": "pote volumen", "presupuesto": 0, "estado": "Presupuestado"},
-    {"id": 2, "cliente": "guille", "equipo": "samsung", "falla": "difusores mancha panel", "presupuesto": 0, "estado": "Ingresado"}
-]
+def get_db_connection():
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    return None
 
-db_repuestos = [
-    {"id": 1, "categoria": "Transistores Bipolares", "nombre": "bf422", "ubicacion": "1", "cantidad": 1, "precio": 0},
-    {"id": 2, "categoria": "Integrados PWM/Fuente", "nombre": "uc3842", "ubicacion": "3", "cantidad": 1, "precio": 0}
-]
+def init_db():
+    conn = get_db_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS ordenes (
+            id SERIAL PRIMARY KEY,
+            cliente VARCHAR(100),
+            equipo VARCHAR(100),
+            falla TEXT,
+            presupuesto NUMERIC(10,2),
+            estado VARCHAR(50)
+        );
+        CREATE TABLE IF NOT EXISTS repuestos (
+            id SERIAL PRIMARY KEY,
+            categoria VARCHAR(100),
+            nombre VARCHAR(100),
+            ubicacion VARCHAR(100),
+            cantidad INT,
+            precio NUMERIC(10,2)
+        );
+        CREATE TABLE IF NOT EXISTS ventas (
+            id SERIAL PRIMARY KEY,
+            producto VARCHAR(100),
+            precio NUMERIC(10,2),
+            estado VARCHAR(50)
+        );
+        CREATE TABLE IF NOT EXISTS caja (
+            id SERIAL PRIMARY KEY,
+            fecha VARCHAR(50),
+            tipo VARCHAR(20),
+            concepto TEXT,
+            monto NUMERIC(10,2)
+        );
+        CREATE TABLE IF NOT EXISTS placas (
+            id SERIAL PRIMARY KEY,
+            tipo VARCHAR(50),
+            codigo VARCHAR(100),
+            modelo VARCHAR(100),
+            test_points TEXT
+        );
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
 
-db_placas = []
-
-db_ventas = [
-    {"id": 1, "producto": "rsag7.820.4680", "precio": 67000, "estado": "En Venta"},
-    {"id": 2, "producto": "rsag7.820.1234", "precio": 30000, "estado": "En Venta"}
-]
-
-db_firmwares = [
-    {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
-]
-
-db_caja = [
-    {"id": 1, "fecha": "2026-07-26 12:50", "tipo": "Ingreso", "concepto": "rep tv samsung 55\"", "monto": 135000.0}
-]
+try:
+    init_db()
+except Exception as e:
+    print("Error iniciando BBDD PostgreSQL:", e)
 
 DRIVERS_LED = {
     "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
@@ -89,103 +124,173 @@ def consultar_gemini_limpio(prompt):
 def index():
     return render_template('index.html')
 
-# ENDPOINTS ÓRDENES
+# ENDPOINTS ÓRDENES (PostgreSQL)
 @app.route('/api/ordenes', methods=['GET'])
 def get_ordenes():
-    return jsonify(db_ordenes)
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM ordenes ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
 
 @app.route('/api/ordenes', methods=['POST'])
 def add_orden():
     data = request.json or {}
-    nueva_ot = {
-        "id": len(db_ordenes) + 1,
-        "cliente": data.get("cliente", ""),
-        "equipo": data.get("equipo", ""),
-        "falla": data.get("falla", ""),
-        "presupuesto": float(data.get("presupuesto", 0)),
-        "estado": data.get("estado", "Ingresado")
-    }
-    db_ordenes.append(nueva_ot)
-    return jsonify(nueva_ot), 201
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO ordenes (cliente, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
+        (data.get("cliente", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
 def delete_orden(ot_id):
-    global db_ordenes
-    db_ordenes = [o for o in db_ordenes if o['id'] != ot_id]
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM ordenes WHERE id = %s;", (ot_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
     return jsonify({"status": "deleted"})
 
-# ENDPOINTS STOCK / REPUESTOS
+# ENDPOINTS STOCK / REPUESTOS (PostgreSQL)
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
-    return jsonify(db_repuestos)
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM repuestos ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
 
 @app.route('/api/repuestos', methods=['POST'])
 def add_repuesto():
     data = request.json or {}
-    nuevo_rep = {
-        "id": len(db_repuestos) + 1,
-        "categoria": data.get("categoria", ""),
-        "nombre": data.get("nombre", ""),
-        "ubicacion": data.get("ubicacion", ""),
-        "cantidad": int(data.get("cantidad", 1)),
-        "precio": float(data.get("precio", 0))
-    }
-    db_repuestos.append(nuevo_rep)
-    return jsonify(nuevo_rep), 201
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO repuestos (categoria, nombre, ubicacion, cantidad, precio) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
+        (data.get("categoria", ""), data.get("nombre", ""), data.get("ubicacion", ""), int(data.get("cantidad", 1)), float(data.get("precio", 0)))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/repuestos/<int:rep_id>', methods=['PUT'])
 def update_repuesto(rep_id):
     data = request.json or {}
-    for r in db_repuestos:
-        if r['id'] == rep_id:
-            if 'cantidad' in data:
-                r['cantidad'] = int(data['cantidad'])
-            if 'ubicacion' in data:
-                r['ubicacion'] = data['ubicacion']
-            return jsonify(r)
-    return jsonify({'error': 'No encontrado'}), 404
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    if 'cantidad' in data:
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s RETURNING *;", (int(data['cantidad']), rep_id))
+    elif 'ubicacion' in data:
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s RETURNING *;", (data['ubicacion'], rep_id))
+    res = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(res)
 
-# ENDPOINTS VENTAS Y USADOS
+# ENDPOINTS VENTAS Y USADOS (PostgreSQL)
 @app.route('/api/ventas', methods=['GET'])
 def get_ventas():
-    return jsonify(db_ventas)
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM ventas ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
 
 @app.route('/api/ventas', methods=['POST'])
 def add_venta():
     data = request.json or {}
-    nueva_v = {
-        "id": len(db_ventas) + 1,
-        "producto": data.get("producto", ""),
-        "precio": float(data.get("precio", 0)),
-        "estado": data.get("estado", "En Venta")
-    }
-    db_ventas.append(nueva_v)
-    return jsonify(nueva_v), 201
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO ventas (producto, precio, estado) VALUES (%s, %s, %s) RETURNING *;",
+        (data.get("producto", ""), float(data.get("precio", 0)), data.get("estado", "En Venta"))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/ventas/<int:v_id>', methods=['DELETE'])
 def delete_venta(v_id):
-    global db_ventas
-    db_ventas = [v for v in db_ventas if v['id'] != v_id]
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM ventas WHERE id = %s;", (v_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
     return jsonify({"status": "deleted"})
 
 # ENDPOINTS BANCO DE PLACAS
 @app.route('/api/placas', methods=['GET'])
 def get_placas():
-    return jsonify(db_placas)
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM placas ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
 
 # ENDPOINTS FIRMWARES
 @app.route('/api/firmwares', methods=['GET'])
 def get_firmwares():
-    return jsonify(db_firmwares)
+    return jsonify([
+        {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
+    ])
 
-# ENDPOINTS CAJA Y FINANZAS
+# ENDPOINTS CAJA Y FINANZAS (PostgreSQL)
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
-    total_ingresos = sum(item['monto'] for item in db_caja if item['tipo'] == 'Ingreso')
-    total_egresos = sum(item['monto'] for item in db_caja if item['tipo'] == 'Egreso')
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM caja ORDER BY id ASC;")
+    movimientos = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    total_ingresos = sum(float(m['monto']) for m in movimientos if m['tipo'] == 'Ingreso')
+    total_egresos = sum(float(m['monto']) for m in movimientos if m['tipo'] == 'Egreso')
     balance = total_ingresos - total_egresos
+
     return jsonify({
-        "movimientos": db_caja,
+        "movimientos": movimientos,
         "ingresos": total_ingresos,
         "egresos": total_egresos,
         "balance": balance
@@ -194,24 +299,33 @@ def get_caja():
 @app.route('/api/caja', methods=['POST'])
 def add_movimiento():
     data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
     
-    # Cálculo hora exacta Argentina (UTC - 3)
     hora_arg = datetime.utcnow() - timedelta(hours=3)
-    
-    nuevo_mov = {
-        "id": len(db_caja) + 1,
-        "fecha": hora_arg.strftime("%Y-%m-%d %H:%M"),
-        "tipo": data.get("tipo", "Ingreso"),
-        "concepto": data.get("concepto", ""),
-        "monto": float(data.get("monto", 0))
-    }
-    db_caja.append(nuevo_mov)
-    return jsonify(nuevo_mov), 201
+    fecha_str = hora_arg.strftime("%Y-%m-%d %H:%M")
+
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO caja (fecha, tipo, concepto, monto) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (fecha_str, data.get("tipo", "Ingreso"), data.get("concepto", ""), float(data.get("monto", 0)))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
 def delete_movimiento(mov_id):
-    global db_caja
-    db_caja = [m for m in db_caja if m['id'] != mov_id]
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM caja WHERE id = %s;", (mov_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
     return jsonify({"status": "deleted"})
 
 # CONSULTAS IA Y TEST POINTS
@@ -234,8 +348,14 @@ def obtener_test_points():
         data = request.json or {}
         chasis_buscado = data.get('chasis', '').strip().upper()
         
-        for placa in db_placas:
-            if chasis_buscado in placa['codigo'].upper():
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM placas WHERE UPPER(codigo) LIKE %s;", (f"%{chasis_buscado}%",))
+            placa = cur.fetchone()
+            cur.close()
+            conn.close()
+            if placa:
                 return jsonify({'test_points': f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points:\n{placa['test_points']}"})
 
         if not GEMINI_KEY:
@@ -289,14 +409,16 @@ Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la s
 
         texto, err = consultar_gemini_limpio(prompt)
         if texto:
-            nueva_placa = {
-                "id": len(db_placas) + 1,
-                "tipo": "Esquemático PDF Cargado",
-                "codigo": chasis,
-                "modelo": file.filename,
-                "test_points": texto
-            }
-            db_placas.append(nueva_placa)
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s);",
+                    ("Esquemático PDF Cargado", chasis, file.filename, texto)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
             return jsonify({'resultado': texto})
             
         return jsonify({'error': f'Error de procesamiento: {err}'}), 500
