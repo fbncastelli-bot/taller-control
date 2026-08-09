@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taller Control</title>
+    <title>Taller Control - Sistema Integral</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
         .sidebar { background-color: #1e293b; min-height: 100vh; padding: 20px; }
-        .nav-link { color: #94a3b8; margin-bottom: 10px; cursor: pointer; border-radius: 8px; }
-        .nav-link.active { background-color: #0284c7; color: white; }
+        .nav-link { color: #94a3b8; margin-bottom: 8px; cursor: pointer; border-radius: 8px; padding: 10px 15px; }
+        .nav-link.active { background-color: #0284c7; color: white; font-weight: bold; }
         .card-custom { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         .btn-violeta { background-color: #7c3aed; color: white; }
         .btn-violeta:hover { background-color: #6d28d9; color: white; }
@@ -19,22 +19,23 @@
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Menú Lateral -->
+            <!-- Menú Lateral Completo -->
             <div class="col-md-3 sidebar">
                 <h3 class="mb-4 text-info">Taller Control</h3>
                 <ul class="nav flex-column">
                     <li class="nav-link active" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</li>
+                    <li class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock de Componentes</li>
                     <li class="nav-link" onclick="mostrarSeccion('placas')">🧩 Banco de Placas & Test Points</li>
                     <li class="nav-link" onclick="mostrarSeccion('backlight')">⚡ Calculadora Backlight</li>
-                    <li class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock Componentes</li>
                     <li class="nav-link" onclick="mostrarSeccion('firmwares')">☁️ Firmwares en la Nube</li>
+                    <li class="nav-link" onclick="mostrarSeccion('caja')">💵 Caja & Movimientos</li>
                 </ul>
             </div>
 
             <!-- Contenido Principal -->
             <div class="col-md-9 p-4">
                 
-                <!-- SECCIÓN ÓRDENES DE TRABAJO -->
+                <!-- 1. ÓRDENES DE TRABAJO -->
                 <div id="sec-ordenes">
                     <div class="card-custom">
                         <h5>🤖 Diagnóstico Técnico IA</h5>
@@ -46,34 +47,83 @@
                         <div class="row g-2 mt-1">
                             <div class="col-md-3"><input type="text" id="ot-cliente" class="form-control" placeholder="Cliente"></div>
                             <div class="col-md-3"><input type="text" id="ot-equipo" class="form-control" placeholder="Equipo / Modelo"></div>
-                            <div class="col-md-4"><input type="text" id="ot-falla" class="form-control" placeholder="Falla reportada"></div>
-                            <div class="col-md-2"><button onclick="guardarOrden()" class="btn btn-primary w-100">Guardar</button></div>
+                            <div class="col-md-3"><input type="text" id="ot-falla" class="form-control" placeholder="Falla reportada"></div>
+                            <div class="col-md-2"><input type="number" id="ot-presupuesto" class="form-control" placeholder="Presupuesto $"></div>
+                            <div class="col-md-1"><button onclick="guardarOrden()" class="btn btn-primary w-100">Guardar</button></div>
                         </div>
                     </div>
 
                     <div class="card-custom">
                         <table class="table table-dark table-hover">
                             <thead>
-                                <tr><th>OT #</th><th>CLIENTE</th><th>EQUIPO</th><th>FALLA</th><th>ACCIÓN</th></tr>
+                                <tr><th>OT #</th><th>CLIENTE</th><th>EQUIPO</th><th>FALLA</th><th>PRESUPUESTO</th><th>ESTADO</th><th>ACCIÓN</th></tr>
                             </thead>
                             <tbody id="tabla-ordenes"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- SECCIÓN BANCO DE PLACAS & TEST POINTS -->
-                <div id="sec-placas" style="display: none;">
+                <!-- 2. STOCK DE COMPONENTES & DATASHEETS -->
+                <div id="sec-repuestos" style="display: none;">
                     <div class="card-custom">
-                        <h5>🔎 Consulta de Test Points por Chasis (IA)</h5>
+                        <h5>🔎 Buscador de Datasheets / Pinout (IA)</h5>
                         <div class="input-group mt-2">
-                            <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: 715G5155 o MS33930.PB751">
-                            <button onclick="buscarTestPoints()" class="btn btn-info">Consultar Tenciones & Test Points</button>
+                            <input type="text" id="input-ds-componente" class="form-control" placeholder="Ej: RT6905, MAP3202, 24C16, FAN6755">
+                            <button onclick="buscarDatasheet()" class="btn btn-info">Consultar Datasheet</button>
                         </div>
-                        <pre id="box-test-points" class="mt-3">Ingresá un código de chasis para obtener tensiones de referencia (VGH, VGL, VDD, Sub-fuentes SMD).</pre>
+                        <pre id="box-datasheet-resultado" class="mt-3 text-info">Ingresá la matrícula de un CI o transistor para ver su pinout y reemplazos.</pre>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>+ Cargar Nuevo Repuesto / Componente</h5>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3"><input type="text" id="rep-cat" class="form-control" placeholder="Categoría (ej: IC Fuente)"></div>
+                            <div class="col-md-3"><input type="text" id="rep-nombre" class="form-control" placeholder="Nombre / Código (ej: RT6905)"></div>
+                            <div class="col-md-2"><input type="text" id="rep-ubicacion" class="form-control" placeholder="Ubicación (ej: Caja 1)"></div>
+                            <div class="col-md-2"><input type="number" id="rep-cant" class="form-control" placeholder="Cantidad"></div>
+                            <div class="col-md-2"><input type="number" id="rep-precio" class="form-control" placeholder="Precio $"></div>
+                            <div class="col-md-12 text-end mt-2">
+                                <button onclick="guardarRepuesto()" class="btn btn-success">Guardar Componente</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>📦 Inventario de Componentes SMD / DIP</h5>
+                        <table class="table table-dark table-hover align-middle">
+                            <thead><tr><th>ID</th><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th><th>Precio $</th><th>Ajuste Rápido</th></tr></thead>
+                            <tbody id="tabla-repuestos"></tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- SECCIÓN CALCULADORA BACKLIGHT -->
+                <!-- 3. BANCO DE PLACAS & TEST POINTS -->
+                <div id="sec-placas" style="display: none;">
+                    <div class="card-custom">
+                        <h5>🔎 Buscador de Test Points por Chasis</h5>
+                        <div class="input-group mt-2">
+                            <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: RSAG7.820.4680">
+                            <button onclick="buscarTestPoints()" class="btn btn-info">Consultar Test Points</button>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>📄 Procesar Esquemático / Diagrama PDF (IA)</h5>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-4"><input type="text" id="pdf-chasis-nombre" class="form-control" placeholder="Código de Chasis"></div>
+                            <div class="col-md-8"><textarea id="pdf-texto-esquema" class="form-control" rows="3" placeholder="Pegá el texto extraído del diagrama PDF para mapear sub-fuentes e integrados..."></textarea></div>
+                            <div class="col-md-12 text-end mt-2">
+                                <button onclick="procesarEsquematicoTexto()" class="btn btn-warning">Analizar Esquemático y Guardar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <pre id="box-test-points">Ingresá un chasis o procesá un diagrama para ver los puntos de prueba (Standby vs ON).</pre>
+                    </div>
+                </div>
+
+                <!-- 4. CALCULADORA BACKLIGHT -->
                 <div id="sec-backlight" style="display: none;">
                     <div class="card-custom">
                         <h5>⚡ Reducción de Corriente LED (Modificación ISET/IREF)</h5>
@@ -85,24 +135,73 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN REPUESTOS -->
-                <div id="sec-repuestos" style="display: none;">
+                <!-- 5. FIRMWARES EN LA NUBE -->
+                <div id="sec-firmwares" style="display: none;">
                     <div class="card-custom">
-                        <h5>📦 Stock de Componentes SMD / Dip</h5>
+                        <h5>+ Agregar Nuevo Firmware</h5>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3"><input type="text" id="fw-chasis" class="form-control" placeholder="Chasis"></div>
+                            <div class="col-md-3"><input type="text" id="fw-modelo" class="form-control" placeholder="Modelo TV"></div>
+                            <div class="col-md-3"><input type="text" id="fw-memoria" class="form-control" placeholder="Memoria (ej: 25Q64)"></div>
+                            <div class="col-md-3"><input type="text" id="fw-url" class="form-control" placeholder="Enlace Google Drive/Mega"></div>
+                            <div class="col-md-12 text-end mt-2">
+                                <button onclick="guardarFirmware()" class="btn btn-info">Guardar Firmware</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>☁️ Banco de Firmwares Almacenados</h5>
                         <table class="table table-dark">
-                            <thead><tr><th>ID</th><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th></tr></thead>
-                            <tbody id="tabla-repuestos"></tbody>
+                            <thead><tr><th>Chasis</th><th>Modelo</th><th>Memoria</th><th>Enlace</th></tr></thead>
+                            <tbody id="tabla-firmwares"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- SECCIÓN FIRMWARES -->
-                <div id="sec-firmwares" style="display: none;">
+                <!-- 6. CAJA Y BALANCE DEL TALLER -->
+                <div id="sec-caja" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card-custom text-center border-success">
+                                <small class="text-secondary">Ingresos Totales</small>
+                                <h3 id="caja-ingresos" class="text-success">$0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-custom text-center border-danger">
+                                <small class="text-secondary">Egresos / Repuestos</small>
+                                <h3 id="caja-egresos" class="text-danger">$0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-custom text-center border-info">
+                                <small class="text-secondary">Balance Neto</small>
+                                <h3 id="caja-balance" class="text-info">$0</h3>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card-custom">
-                        <h5>☁️ Banco de Firmwares (Nube)</h5>
-                        <table class="table table-dark">
-                            <thead><tr><th>Chasis</th><th>Modelo</th><th>Memoria</th><th>Enlace</th></tr></thead>
-                            <tbody id="tabla-firmwares"></tbody>
+                        <h5>+ Registrar Movimiento de Caja</h5>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-3">
+                                <select id="caja-tipo" class="form-select">
+                                    <option value="Ingreso">Ingreso (+)</option>
+                                    <option value="Egreso">Egreso (-)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5"><input type="text" id="caja-concepto" class="form-control" placeholder="Concepto (ej: Cobro reparación OT #2)"></div>
+                            <div class="col-md-2"><input type="number" id="caja-monto" class="form-control" placeholder="Monto $"></div>
+                            <div class="col-md-2"><button onclick="guardarMovimientoCaja()" class="btn btn-success w-100">Registrar</button></div>
+                        </div>
+                    </div>
+
+                    <div class="card-custom">
+                        <h5>💵 Historial de Caja</h5>
+                        <table class="table table-dark table-hover">
+                            <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th></tr></thead>
+                            <tbody id="tabla-caja"></tbody>
                         </table>
                     </div>
                 </div>
