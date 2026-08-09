@@ -3,7 +3,7 @@ import re
 from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
 from pypdf import PdfReader
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -194,9 +194,13 @@ def get_caja():
 @app.route('/api/caja', methods=['POST'])
 def add_movimiento():
     data = request.json or {}
+    
+    # Cálculo hora exacta Argentina (UTC - 3)
+    hora_arg = datetime.utcnow() - timedelta(hours=3)
+    
     nuevo_mov = {
         "id": len(db_caja) + 1,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "fecha": hora_arg.strftime("%Y-%m-%d %H:%M"),
         "tipo": data.get("tipo", "Ingreso"),
         "concepto": data.get("concepto", ""),
         "monto": float(data.get("monto", 0))
