@@ -3,6 +3,7 @@ import re
 from flask import Flask, render_template, jsonify, request
 import google.generativeai as genai
 from pypdf import PdfReader
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -33,7 +34,7 @@ db_firmwares = [
 ]
 
 db_caja = [
-    {"id": 1, "tipo": "Ingreso", "concepto": "Cobro OT #1 - aldo", "monto": 45000, "fecha": "2026-08-09"}
+    {"id": 1, "fecha": "2026-07-26 12:50", "tipo": "Ingreso", "concepto": "rep tv samsung 55\"", "monto": 135000.0}
 ]
 
 DRIVERS_LED = {
@@ -47,7 +48,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -177,7 +178,7 @@ def get_placas():
 def get_firmwares():
     return jsonify(db_firmwares)
 
-# ENDPOINTS CAJA
+# ENDPOINTS CAJA Y FINANZAS
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
     total_ingresos = sum(item['monto'] for item in db_caja if item['tipo'] == 'Ingreso')
@@ -189,6 +190,25 @@ def get_caja():
         "egresos": total_egresos,
         "balance": balance
     })
+
+@app.route('/api/caja', methods=['POST'])
+def add_movimiento():
+    data = request.json or {}
+    nuevo_mov = {
+        "id": len(db_caja) + 1,
+        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "tipo": data.get("tipo", "Ingreso"),
+        "concepto": data.get("concepto", ""),
+        "monto": float(data.get("monto", 0))
+    }
+    db_caja.append(nuevo_mov)
+    return jsonify(nuevo_mov), 201
+
+@app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
+def delete_movimiento(mov_id):
+    global db_caja
+    db_caja = [m for m in db_caja if m['id'] != mov_id]
+    return jsonify({"status": "deleted"})
 
 # CONSULTAS IA Y TEST POINTS
 @app.route('/api/analizar-falla', methods=['POST'])
