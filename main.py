@@ -15,19 +15,10 @@ db_ordenes = [
 ]
 
 db_repuestos = [
-    {"id": 1, "categoria": "IC Fuente", "nombre": "RT6905", "ubicacion": "Caja 1 - SMD", "cantidad": 5, "precio": 3500},
-    {"id": 2, "categoria": "Driver LED", "nombre": "MAP3202", "ubicacion": "Caja 2 - SMD", "cantidad": 3, "precio": 2800}
+    {"id": 1, "categoria": "IC Fuente", "nombre": "RT6905", "ubicacion": "Caja 1 - SMD", "cantidad": 5, "precio": 3500}
 ]
 
-db_placas = [
-    {
-        "id": 1,
-        "tipo": "Main / Power Combo",
-        "codigo": "RSAG7.820.4680",
-        "modelo": "BGH / Hisense / Noblex 32-40",
-        "test_points": "12V_MAIN: 12V | 3.3V_STB: 3.3V | 1.1V_CORE: 1.1V | VGH: 28V | VGL: -7V | VDD: 3.3V"
-    }
-]
+db_placas = []
 
 db_firmwares = [
     {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
@@ -47,9 +38,8 @@ DRIVERS_LED = {
 
 def consultar_gemini_limpio(prompt):
     system_instruction = (
-        "Sos un asistente técnico de laboratorio electrónico de Smart TVs y audio. "
-        "Tu única función es responder directamente en español técnico. "
-        "Queda estrictamente prohibido escribir frases, análisis, verificaciones o encabezados en inglés."
+        "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -104,7 +94,7 @@ def add_orden():
         "equipo": data.get("equipo", ""),
         "falla": data.get("falla", ""),
         "presupuesto": float(data.get("presupuesto", 0)),
-        "estado": data.get("estado", "En Taller")
+        "estado": data.get("estado", "Ingresado")
     }
     db_ordenes.append(nueva_ot)
     return jsonify(nueva_ot), 201
@@ -128,37 +118,7 @@ def add_repuesto():
     db_repuestos.append(nuevo_rep)
     return jsonify(nuevo_rep), 201
 
-@app.route('/api/repuestos/<int:rep_id>/stock', methods=['PUT'])
-def update_stock(rep_id):
-    data = request.json or {}
-    delta = int(data.get('delta', 0))
-    for r in db_repuestos:
-        if r['id'] == rep_id:
-            r['cantidad'] = max(0, r['cantidad'] + delta)
-            return jsonify(r)
-    return jsonify({'error': 'Repuesto no encontrado'}), 404
-
-@app.route('/api/consultar-datasheet', methods=['POST'])
-def consultar_datasheet():
-    try:
-        data = request.json or {}
-        componente = data.get('componente', '').strip()
-        if not GEMINI_KEY:
-            return jsonify({'error': 'Clave API no configurada'}), 500
-        
-        prompt = f"""Proporcioná la ficha técnica directa (Datasheet) del componente/IC: {componente}.
-Entregá la respuesta en español técnico con la siguiente estructura:
-1. Función principal y empaquetado (Encapsulado).
-2. Pinout y función de pines clave (VCC, GND, FB/ISET, OUT/LX, EN).
-3. Tensiones máximas de trabajo y rangos de operación.
-4. Reemplazos directos o equivalentes recomendados."""
-        
-        texto, err = consultar_gemini_limpio(prompt)
-        return jsonify({'datasheet': texto}) if texto else jsonify({'error': str(err)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# ENDPOINTS PLACAS / TEST POINTS
+# ENDPOINTS BANCO DE PLACAS
 @app.route('/api/placas', methods=['GET'])
 def get_placas():
     return jsonify(db_placas)
@@ -175,35 +135,6 @@ def add_placa():
     }
     db_placas.append(nueva_placa)
     return jsonify(nueva_placa), 201
-
-@app.route('/api/obtener-test-points', methods=['POST'])
-def obtener_test_points():
-    try:
-        data = request.json or {}
-        chasis_buscado = data.get('chasis', '').strip().upper()
-        for placa in db_placas:
-            if chasis_buscado in placa['codigo'].upper():
-                return jsonify({'test_points': f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points: {placa['test_points']}"})
-        if not GEMINI_KEY:
-            return jsonify({'error': 'Clave API no configurada'}), 500
-        prompt = f"Tabla técnica de test points para el chasis {chasis_buscado}. Devolvé únicamente tabla Markdown en español con columnas: Sub-fuente, IC/Componente, Tensión Standby, Tensión ON, Resistencia a GND."
-        texto, err = consultar_gemini_limpio(prompt)
-        return jsonify({'test_points': texto}) if texto else jsonify({'error': str(err)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/analizar-esquematico', methods=['POST'])
-def analizar_esquematico():
-    try:
-        data = request.json or {}
-        chasis, texto_esquema = data.get('chasis', ''), data.get('texto_esquema', '')
-        if not GEMINI_KEY:
-            return jsonify({'error': 'Clave API no configurada'}), 500
-        prompt = f"Analizá el esquema del chasis {chasis}:\n{texto_esquema}\nExtraé las sub-fuentes, integrados y tensiones (Standby/ON) en una tabla Markdown."
-        texto, err = consultar_gemini_limpio(prompt)
-        return jsonify({'resultado': texto}) if texto else jsonify({'error': str(err)}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 # ENDPOINTS FIRMWARES
 @app.route('/api/firmwares', methods=['GET'])
@@ -223,7 +154,7 @@ def add_firmware():
     db_firmwares.append(nuevo_fw)
     return jsonify(nuevo_fw), 201
 
-# ENDPOINTS CAJA
+# ENDPOINTS CAJA Y BALANCES
 @app.route('/api/caja', methods=['GET'])
 def get_caja():
     total_ingresos = sum(item['monto'] for item in db_caja if item['tipo'] == 'Ingreso')
@@ -249,7 +180,7 @@ def add_movimiento():
     db_caja.append(nuevo_mov)
     return jsonify(nuevo_mov), 201
 
-# DIAGNÓSTICO Y CALCULADORA
+# CONSULTAS IA Y TEST POINTS
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
@@ -260,6 +191,43 @@ def analizar_falla():
         prompt = f"Analizá la falla técnica del equipo {equipo} con síntoma {falla}. Brindá mediciones clave, descarte y componentes propensos a falla en español."
         texto, err = consultar_gemini_limpio(prompt)
         return jsonify({'diagnostico': texto}) if texto else jsonify({'error': str(err)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/obtener-test-points', methods=['POST'])
+def obtener_test_points():
+    try:
+        data = request.json or {}
+        chasis_buscado = data.get('chasis', '').strip().upper()
+        
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Analizá la arquitectura del chasis / placa de TV LED: {chasis_buscado}.
+
+Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs reguladores y bobinas de paso SMD, indicando la comparación entre Standby y ON:
+
+| Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |
+
+Incluí las líneas clave: 12V Main, 3.3V_STB, Sub-fuentes Buck Core/RAM (1.1V / 1.5V / 1.8V), Driver LED (VCC/ISET), y T-CON (VGH, VGL, VDD)."""
+
+        texto, err = consultar_gemini_limpio(prompt)
+        if texto:
+            return jsonify({'test_points': texto})
+        return jsonify({'error': f'Error de conexión: {err}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analizar-esquematico', methods=['POST'])
+def analizar_esquematico():
+    try:
+        data = request.json or {}
+        chasis, texto_esquema = data.get('chasis', ''), data.get('texto_esquema', '')
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+        prompt = f"Analizá el esquema del chasis {chasis}:\n{texto_esquema}\nExtraé las sub-fuentes, integrados y tensiones (Standby/ON) en una tabla Markdown."
+        texto, err = consultar_gemini_limpio(prompt)
+        return jsonify({'resultado': texto}) if texto else jsonify({'error': str(err)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
