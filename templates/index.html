@@ -63,17 +63,8 @@
                     </div>
                 </div>
 
-                <!-- 2. STOCK DE COMPONENTES & DATASHEETS -->
+                <!-- 2. STOCK DE COMPONENTES -->
                 <div id="sec-repuestos" style="display: none;">
-                    <div class="card-custom">
-                        <h5>🔎 Buscador de Datasheets / Pinout (IA)</h5>
-                        <div class="input-group mt-2">
-                            <input type="text" id="input-ds-componente" class="form-control" placeholder="Ej: RT6905, MAP3202, 24C16, FAN6755">
-                            <button onclick="buscarDatasheet()" class="btn btn-info">Consultar Datasheet</button>
-                        </div>
-                        <pre id="box-datasheet-resultado" class="mt-3 text-info">Ingresá la matrícula de un CI o transistor para ver su pinout y reemplazos.</pre>
-                    </div>
-
                     <div class="card-custom">
                         <h5>+ Cargar Nuevo Repuesto / Componente</h5>
                         <div class="row g-2 mt-1">
@@ -90,8 +81,8 @@
 
                     <div class="card-custom">
                         <h5>📦 Inventario de Componentes SMD / DIP</h5>
-                        <table class="table table-dark table-hover align-middle">
-                            <thead><tr><th>ID</th><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th><th>Precio $</th><th>Ajuste Rápido</th></tr></thead>
+                        <table class="table table-dark table-hover">
+                            <thead><tr><th>ID</th><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th><th>Precio $</th></tr></thead>
                             <tbody id="tabla-repuestos"></tbody>
                         </table>
                     </div>
@@ -102,24 +93,28 @@
                     <div class="card-custom">
                         <h5>🔎 Buscador de Test Points por Chasis</h5>
                         <div class="input-group mt-2">
-                            <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: RSAG7.820.4680">
+                            <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: RSAG7.820.4680 o 3122 427 24420">
                             <button onclick="buscarTestPoints()" class="btn btn-info">Consultar Test Points</button>
                         </div>
                     </div>
 
                     <div class="card-custom">
-                        <h5>📄 Procesar Esquemático / Diagrama PDF (IA)</h5>
+                        <h5>📄 Subir Esquemático / Diagrama en PDF (IA)</h5>
                         <div class="row g-2 mt-2">
-                            <div class="col-md-4"><input type="text" id="pdf-chasis-nombre" class="form-control" placeholder="Código de Chasis"></div>
-                            <div class="col-md-8"><textarea id="pdf-texto-esquema" class="form-control" rows="3" placeholder="Pegá el texto extraído del diagrama PDF para mapear sub-fuentes e integrados..."></textarea></div>
+                            <div class="col-md-4">
+                                <input type="text" id="pdf-chasis-nombre" class="form-control" placeholder="Código de Chasis / Modelo">
+                            </div>
+                            <div class="col-md-8">
+                                <input type="file" id="pdf-archivo" class="form-control" accept=".pdf">
+                            </div>
                             <div class="col-md-12 text-end mt-2">
-                                <button onclick="procesarEsquematicoTexto()" class="btn btn-warning">Analizar Esquemático y Guardar</button>
+                                <button onclick="procesarEsquematicoPDF()" class="btn btn-warning">Subir PDF, Analizar y Guardar</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="card-custom">
-                        <pre id="box-test-points">Ingresá un chasis o procesá un diagrama para ver los puntos de prueba (Standby vs ON).</pre>
+                        <pre id="box-test-points">Ingresá un chasis o subí un PDF para ver los puntos de prueba (Standby vs ON).</pre>
                     </div>
                 </div>
 
