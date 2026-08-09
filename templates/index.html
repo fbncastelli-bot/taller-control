@@ -9,12 +9,13 @@
         body { background-color: #0d1527; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .header-top { background-color: #0b1120; border-bottom: 1px solid #1e293b; padding: 10px 20px; }
         .nav-tabs-custom { background-color: #1e293b; border-radius: 8px; padding: 5px; }
-        .nav-tabs-custom .nav-link { color: #94a3b8; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }
+        .nav-tabs-custom .nav-link { color: #94a3b8; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; cursor: pointer; }
         .nav-tabs-custom .nav-link.active { background-color: #0284c7; color: white; }
         .card-custom { background-color: #111c35; border: 1px solid #1e293b; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .table-dark-custom { background-color: #0b1120; color: #38bdf8; }
         .btn-cyan { background-color: #06b6d4; color: white; }
         .btn-cyan:hover { background-color: #0891b2; color: white; }
+        .btn-verde-registro { background-color: #22c55e; color: white; font-weight: bold; }
+        .btn-verde-registro:hover { background-color: #16a34a; color: white; }
         pre { background-color: #0b1120; color: #38bdf8; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
     </style>
 </head>
@@ -182,18 +183,64 @@
             </div>
         </div>
 
-        <!-- 5. CAJA Y FINANZAS -->
+        <!-- 5. CAJA Y FINANZAS (CLONADA DE TU PROGRAMA LOCAL) -->
         <div id="sec-caja" style="display: none;">
-            <div class="row">
-                <div class="col-md-4"><div class="card-custom text-center border-success"><small class="text-secondary">Ingresos Totales</small><h4 id="caja-ingresos" class="text-success">$0</h4></div></div>
-                <div class="col-md-4"><div class="card-custom text-center border-danger"><small class="text-secondary">Egresos / Repuestos</small><h4 id="caja-egresos" class="text-danger">$0</h4></div></div>
-                <div class="col-md-4"><div class="card-custom text-center border-info"><small class="text-secondary">Balance Neto</small><h4 id="caja-balance" class="text-info">$0</h4></div></div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <span class="text-success fw-bold me-3 fs-6">Ingresos: <span id="caja-ingresos">$0.00</span></span>
+                    <span class="text-danger fw-bold fs-6">Egresos: <span id="caja-egresos">$0.00</span></span>
+                </div>
+                <div>
+                    <span class="text-info fw-bold fs-6">Balance Neto: <span id="caja-balance">$0.00</span></span>
+                </div>
             </div>
+
             <div class="card-custom">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Tipo Movimiento:</label>
+                        <select id="caja-tipo" class="form-select form-select-sm">
+                            <option value="Ingreso">Ingreso</option>
+                            <option value="Egreso">Egreso</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small text-secondary">Concepto / Detalle:</label>
+                        <input type="text" id="caja-concepto" class="form-control form-control-sm" placeholder="Ej: rep tv samsung 55&quot;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Monto $:</label>
+                        <input type="number" id="caja-monto" class="form-control form-control-sm" placeholder="0">
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button onclick="guardarMovimientoCaja()" class="btn btn-verde-registro btn-sm w-100">Registrar Movimiento</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <input type="text" id="buscar-caja" onkeyup="filtrarCaja()" class="form-control form-control-sm" placeholder="🔎 Buscar en Caja: Concepto, Tipo, Fecha...">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="filtrarCaja()" class="btn btn-cyan btn-sm w-100">Filtrar</button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="cargarCaja()" class="btn btn-secondary btn-sm w-100">Ver Todos</button>
+                    </div>
+                </div>
+
                 <table class="table table-dark table-hover small">
-                    <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th></tr></thead>
+                    <thead>
+                        <tr><th>N°</th><th>Fecha y Hora</th><th>Tipo</th><th>Concepto / Detalle</th><th>Monto ($)</th></tr>
+                    </thead>
                     <tbody id="tabla-caja"></tbody>
                 </table>
+
+                <div class="text-end mt-3">
+                    <button onclick="eliminarMovimientoSeleccionado()" class="btn btn-danger btn-sm">❌ Eliminar Movimiento Seleccionado</button>
+                </div>
             </div>
         </div>
 
