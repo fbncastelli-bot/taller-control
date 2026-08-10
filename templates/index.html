@@ -1,1 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAB-CONTROL PRO | Gestión de Laboratorio Electrónico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: #151c2c;
+            --card-border: #232d42;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
 
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .top-navbar {
+            background-color: #0f172a;
+            border-bottom: 1px solid var(--card-border);
+            padding: 12px 24px;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+
+        .kpi-title { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+
+        .nav-pills-custom {
+            background-color: #1e293b;
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            gap: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            list-style: none;
+        }
+
+        .nav-pills-custom .nav-link {
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-pills-custom .nav-link.active {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #2563eb 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .card-custom {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-title-custom {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-control, .form-select {
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            padding: 8px 12px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: #0f172a;
+            border-color: var(--accent-cyan);
+            color: var(--text-main);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        }
+
+        .form-label-custom {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .table-custom {
+            color: var(--text-main);
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        .table-custom thead th {
+            background-color: #0f172a;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--card-border);
+            padding: 12px;
+        }
+
+        .table-custom tbody td {
+            border-bottom: 1px solid var(--card-border);
+            padding: 12px;
+            font-size: 0.875rem;
+            vertical-align: middle;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: rgba(30, 41, 59, 0.5);
+            cursor: pointer;
+        }
+
+        .table-custom tbody tr.table-active {
+            background-color: rgba(6, 182, 212, 0.15) !important;
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .btn-action {
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8125rem;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cyan { background-color: var(--accent-cyan); color: #000; border: none; }
+        .btn-cyan:hover { background-color: #22d3ee; color: #000; box-shadow: 0 0 12px rgba(6, 182, 212, 0.4); }
+
+        pre {
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            color: #38bdf8;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #area-impresion, #area-impresion * { visibility: visible; }
+            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="area-impresion" style="display: none;"></div>
+
+    <div class="top-navbar d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <span class="fw-bold text-white fs-5 tracking-wide">⚡ LAB-CONTROL <span class="text-info fw-normal fs-6">PRO v4.5</span></span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">● BBDD CONECTADA</span>
+        </div>
+        <div class="d-flex align-items-center gap-3 text-muted small">
+            <div>👤 OPERADOR: <span class="text-white fw-semibold">ADMINISTRADOR</span></div>
+            <div class="border-start border-secondary ps-3">📅 <span id="reloj-vivo" class="text-info fw-medium">--/--/---- --:--:--</span></div>
+        </div>
+    </div>
+
+    <div class="container-fluid p-4">
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Módulo Activo</div>
+                    <div class="kpi-value text-info">Servicio Técnico</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Resguardo BBDD</div>
+                    <div class="kpi-value text-success">PostgreSQL Cloud</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Motor IA Detectado</div>
+                    <div class="kpi-value text-warning" id="kpi-ia-modelo">Cargando...</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Servicio Taller</div>
+                    <div class="kpi-value text-white">Smart TV & Audio</div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav-pills-custom mb-4">
+            <li class="nav-item"><a class="nav-link active" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('placas')">🧩 Banco de Placas & IA</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock Componentes</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('ventas')">🏷️ Ventas y Usados</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('caja')">💵 Caja & Finanzas</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('firmwares')">☁️ Firmwares Nube</a></li>
+        </ul>
+
+        <!-- 1. ÓRDENES DE TRABAJO -->
+        <div id="sec-ordenes">
+            <div class="card-custom">
+                <div class="card-title-custom">📝 Ingresar Nueva Orden de Reparación</div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Nombre del Cliente</label>
+                        <input type="text" id="ot-cliente" class="form-control" placeholder="Ej: Roberto Gómez">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-custom">WhatsApp / Teléfono</label>
+                        <input type="text" id="ot-telefono" class="form-control" placeholder="1112345678">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Equipo / Modelo</label>
+                        <input type="text" id="ot-equipo" class="form-control" placeholder="Ej: Samsung UN49K5500">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-custom">Estado Inicial</label>
+                        <select id="ot-estado" class="form-select">
+                            <option value="Ingresado">Ingresado</option>
+                            <option value="Presupuestado">Presupuestado</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Falla Reportada</label>
+                        <input type="text" id="ot-falla" class="form-control" placeholder="Ej: Sin imagen, hay sonido">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Presupuesto ($)</label>
+                        <input type="number" id="ot-presupuesto" class="form-control" placeholder="0">
+                    </div>
+                    <div class="col-md-3 align-self-end">
+                        <button onclick="guardarOrden()" class="btn btn-cyan btn-action w-100">💾 Guardar Orden</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-3 align-items-center">
+                    <div class="col-md-6">
+                        <input type="text" id="buscar-ot" onkeyup="filtrarTablaOT()" class="form-control" placeholder="🔎 Buscar por Cliente, Teléfono, Equipo o N° Orden...">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="filtrarTablaOT()" class="btn btn-outline-info btn-action w-100">Filtrar Lista</button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="cargarOrdenes()" class="btn btn-outline-secondary btn-action w-100">Restablecer Ver Todas</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>N° Orden</th>
+                                <th>Cliente</th>
+                                <th>WhatsApp</th>
+                                <th>Equipo / Modelo</th>
+                                <th>Falla Reportada</th>
+                                <th>Estado</th>
+                                <th>Presupuesto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-ordenes"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button onclick="verFichaOT()" class="btn btn-primary btn-action">📄 Ver Ficha Técnica</button>
+                    <button onclick="enviarWhatsApp()" class="btn btn-success btn-action">💬 Notificar por WhatsApp</button>
+                    <button onclick="imprimirComprobanteCliente()" class="btn btn-info btn-action text-white">🖨️ Recibo Cliente</button>
+                    <button onclick="imprimirTicketTapaTV()" class="btn btn-warning btn-action">🏷️ Etiqueta QR para Tapa</button>
+                    <button onclick="eliminarOrdenSeleccionada()" class="btn btn-outline-danger btn-action ms-auto">❌ Eliminar Orden</button>
+                </div>
+            </div>
+
+            <div id="modal-ficha" class="card-custom" style="display: none; border-color: var(--accent-cyan);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="m-0 text-info fw-bold">📋 Ficha Técnica Consolidada</h6>
+                    <button onclick="cerrarFicha()" class="btn btn-sm btn-outline-secondary">Cerrar ✖</button>
+                </div>
+                <div id="contenido-ficha" class="p-3 bg-dark rounded small"></div>
+            </div>
+
+            <div class="card-custom">
+                <div class="card-title-custom">🤖 Asistente IA de Diagnóstico de Circuito</div>
+                <div id="box-diagnostico" class="small text-muted">Seleccioná una orden de la lista para ejecutar el análisis automático del chasis.</div>
+            </div>
+        </div>
+
+        <!-- 2. STOCK COMPONENTES -->
+        <div id="sec-repuestos" style="display: none;">
+            <div class="card-custom">
+                <div class="card-title-custom">📦 Alta de Componente en Inventario</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Categoría Técnica</label>
+                        <select id="rep-cat" class="form-select">
+                            <optgroup label="Semiconductores">
+                                <option value="Integrados PWM/Fuente">Integrados PWM / Fuente</option>
+                                <option value="Microcontroladores / MPU">Microcontroladores / MPU / Flash</option>
+                                <option value="Transistores Bipolares">Transistores Bipolares (BJT)</option>
+                                <option value="MOSFETs / IGBTs">MOSFETs / IGBTs</option>
+                                <option value="Diodos / Zener / Schottky">Diodos (Rectificadores / Zener / Schottky)</option>
+                                <option value="Optoacopladores">Optoacopladores / Reg. TL431</option>
+                            </optgroup>
+                            <optgroup label="Pasivos">
+                                <option value="Resistencias THT">Resistencias THT (Carbón / Metal Film / Potencia)</option>
+                                <option value="Resistencias SMD">Resistencias SMD (0603 / 0805 / 1206 / Shunt)</option>
+                                <option value="Capacitores Electrolíticos">Capacitores Electrolíticos</option>
+                                <option value="Capacitores Cerámicos">Capacitores Cerámicos / SMD</option>
+                                <option value="Capacitores Poliéster">Capacitores de Poliéster / Film</option>
+                                <option value="Bobinas e Inductores">Bobinas / Inductores / Choques SMD</option>
+                                <option value="Potenciómetros / Trimmers">Potenciómetros / Preset / Trimmers</option>
+                            </optgroup>
+                            <optgroup label="Protección y Conectividad">
+                                <option value="Fusibles / Varistores / NTC">Protección (Fusibles / NTC / Varistores)</option>
+                                <option value="Cristales / Osciladores">Cristales Cuarzo / Osciladores</option>
+                                <option value="Conectores / Fichas">Conectores / Fichas / Flex</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Código / Descripción</label>
+                        <input type="text" id="rep-nombre" class="form-control" placeholder="Ej: 10uF 50V / 1N4148">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Gavetero / Ubicación</label>
+                        <input type="text" id="rep-ubicacion" class="form-control" placeholder="Ej: Gaveta A-12">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-custom">Stock Inicial</label>
+                        <input type="number" id="rep-cant" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button onclick="guardarRepuesto()" class="btn btn-cyan btn-action">💾 Registrar Componente</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <input type="text" id="buscar-comp" onkeyup="filtrarComp()" class="form-control" placeholder="🔎 Filtrar componentes por código o gaveta...">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="filtrarComp()" class="btn btn-outline-info btn-action w-100">Buscar</button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="cargarRepuestos()" class="btn btn-outline-secondary btn-action w-100">Ver Todos</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr><th>ID</th><th>Familia</th><th>Código Componente</th><th>Ubicación / Gavetero</th><th>Stock Disponible</th></tr>
+                        </thead>
+                        <tbody id="tabla-repuestos"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button onclick="modificarStock(1)" class="btn btn-success btn-action">+1 Stock</button>
+                    <button onclick="modificarStock(-1)" class="btn btn-warning btn-action">-1 Stock</button>
+                    <button onclick="cambiarCantidadModal()" class="btn btn-primary btn-action">Ajustar Cantidad</button>
+                    <button onclick="cambiarUbicacionModal()" class="btn btn-info btn-action text-white">Editar Gaveta</button>
+                    <button onclick="buscarDatasheet()" class="btn btn-secondary btn-action">📄 Hoja de Datos (Datasheet)</button>
+                    <button onclick="imprimirEtiqueta()" class="btn btn-outline-light btn-action">🖨️ Etiqueta Gaveta</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. VENTAS Y USADOS -->
+        <div id="sec-ventas" style="display: none;">
+            <div class="card-custom">
+                <div class="card-title-custom">🏷️ Registro de Equipos y Placas en Venta</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Producto / Placa / TV</label>
+                        <input type="text" id="v-producto" class="form-control" placeholder="Ej: Main LG 32LN540B">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Precio Publicado ($)</label>
+                        <input type="number" id="v-precio" class="form-control" placeholder="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Estado Publicación</label>
+                        <select id="v-estado" class="form-select"><option value="En Venta">En Venta</option></select>
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button onclick="guardarVenta()" class="btn btn-cyan btn-action w-100">Publicar</button>
+                    </div>
+                </div>
+                <div class="mt-3 text-end">
+                    <button onclick="consultarML()" class="btn btn-outline-info btn-action">🔎 Cotizar en MercadoLibre</button>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead><tr><th>ID</th><th>Producto / Repuesto</th><th>Precio ($)</th><th>Estado</th></tr></thead>
+                        <tbody id="tabla-ventas"></tbody>
+                    </table>
+                </div>
+                <div class="text-end mt-3">
+                    <button onclick="eliminarVentaSeleccionada()" class="btn btn-outline-danger btn-action">❌ Eliminar Publicación</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. BANCO DE PLACAS & CALCULADORA REFORMA LED -->
+        <div id="sec-placas" style="display: none;">
+            <div class="card-custom" style="border-color: #f59e0b;">
+                <div class="card-title-custom text-warning">⚡ Calculadora de Reforma de Corriente LED (Backlight)</div>
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-4">
+                        <input type="text" id="input-driver-led" class="form-control" placeholder="Ej: OB3350, MAP3202, BIT3267, BD9488F">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="consultarReformaLED()" class="btn btn-warning btn-action w-100">Consultar Pin ISET</button>
+                    </div>
+                </div>
+                <pre id="box-resultado-reforma" class="mt-3 text-warning mb-0">Ingresá la serigrafía del IC Driver de la fuente LED para ver el procedimiento de reducción de corriente.</pre>
+            </div>
+
+            <div class="card-custom">
+                <div class="card-title-custom">🔎 Consultar Test Points por Código de Chasis</div>
+                <div class="input-group">
+                    <input type="text" id="input-chasis-tp" class="form-control" placeholder="Ej: RSAG7.820.4680 o 3122 427 24420">
+                    <button onclick="buscarTestPoints()" class="btn btn-info btn-action">Buscar Puntos de Prueba</button>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="card-title-custom">📄 Procesador Inteligente de Esquemáticos PDF</div>
+                <div class="row g-3">
+                    <div class="col-md-4"><input type="text" id="pdf-chasis-nombre" class="form-control" placeholder="Código de Chasis"></div>
+                    <div class="col-md-8"><input type="file" id="pdf-archivo" class="form-control" accept=".pdf"></div>
+                    <div class="col-md-12 text-end">
+                        <button onclick="procesarEsquematicoPDF()" class="btn btn-warning btn-action">Analizar Diagrama PDF con IA</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom"><pre id="box-test-points">Ingresá un chasis o subí un diagrama en PDF para extraer voltajes nominales.</pre></div>
+
+            <div class="card-custom">
+                <div class="card-title-custom">💬 Consultas Técnicas sobre el Esquemático Analizado</div>
+                <div class="input-group">
+                    <input type="text" id="input-pregunta-esquema" class="form-control" placeholder="Ej: ¿Qué componente revisar si falta la tensión de +24V en el conector a la Inverter?">
+                    <button onclick="preguntarSobreEsquema()" class="btn btn-primary btn-action">Consultar a la IA</button>
+                </div>
+                <pre id="box-respuesta-esquema" class="mt-3 text-info">Ingresá tu inquietud técnica sobre el plano.</pre>
+            </div>
+        </div>
+
+        <!-- 5. CAJA Y FINANZAS -->
+        <div id="sec-caja" style="display: none;">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Ingresos Totales</div>
+                        <div class="kpi-value text-success" id="caja-ingresos">$0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Egresos Totales</div>
+                        <div class="kpi-value text-danger" id="caja-egresos">$0.00</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Balance Neto en Caja</div>
+                        <div class="kpi-value text-info" id="caja-balance">$0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="card-title-custom">💵 Registrar Movimiento Financiero</div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Tipo de Movimiento</label>
+                        <select id="caja-tipo" class="form-select">
+                            <option value="Ingreso">Ingreso (+)</option>
+                            <option value="Egreso">Egreso (-)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label-custom">Concepto / Detalle</label>
+                        <input type="text" id="caja-concepto" class="form-control" placeholder="Ej: Cobro reparación TV Samsung">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label-custom">Monto ($)</label>
+                        <input type="number" id="caja-monto" class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button onclick="guardarMovimientoCaja()" class="btn btn-success btn-action w-100">Guardar Registros</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <input type="text" id="buscar-caja" onkeyup="filtrarCajaTexto()" class="form-control" placeholder="🔎 Filtrar conceptos o fechas...">
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="filtrarCajaHoy()" class="btn btn-outline-info btn-action w-100">Caja de Hoy</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="filtrarCajaMes()" class="btn btn-outline-primary btn-action w-100">Caja del Mes</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="cargarCaja()" class="btn btn-outline-secondary btn-action w-100">Ver Todo</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="imprimirReporteCaja()" class="btn btn-outline-success btn-action w-100">🖨️ Imprimir Cierre</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr><th>ID</th><th>Fecha / Hora</th><th>Tipo</th><th>Concepto</th><th>Monto ($)</th></tr>
+                        </thead>
+                        <tbody id="tabla-caja"></tbody>
+                    </table>
+                </div>
+
+                <div class="text-end mt-3">
+                    <button onclick="eliminarMovimientoSeleccionado()" class="btn btn-outline-danger btn-action">❌ Eliminar Registro</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. FIRMWARES NUBE -->
+        <div id="sec-firmwares" style="display: none;">
+            <div class="card-custom">
+                <div class="card-title-custom">☁️ Repositorio de Firmwares y Dumps de Memoria</div>
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead><tr><th>Código Chasis</th><th>Modelo TV</th><th>Tipo Memoria SPI/NAND</th><th>Enlace Descarga</th></tr></thead>
+                        <tbody id="tabla-firmwares"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>
+        function actualizarReloj() {
+            const ahora = new Date();
+            const fechaStr = ahora.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const horaStr = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('reloj-vivo').innerText = `${fechaStr} ${horaStr}`;
+        }
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+    </script>
+</body>
+</html>
