@@ -95,7 +95,6 @@ def inicializar_bd():
         """)
         conn.commit()
 
-        # REASIGNACIÓN AUTOMÁTICA DE DATOS HISTÓRICOS AL USUARIO FABIAN
         cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
         user_fabian = cur.fetchone()
         if user_fabian:
@@ -254,11 +253,11 @@ def handle_ordenes():
     cur = conn.cursor()
 
     if request.method == 'POST':
-        d = request.json
+        d = request.json or {}
         cur.execute("""
             INSERT INTO ordenes (usuario_id, cliente, telefono, equipo, falla, solucion, presupuesto, estado)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (uid, d.get('cliente'), d.get('telefono'), d.get('equipo'), d.get('falla'), d.get('solucion'), d.get('presupuesto', 0), d.get('estado', 'Ingresado')))
+        """, (uid, d.get('cliente', ''), d.get('telefono', ''), d.get('equipo', ''), d.get('falla', ''), d.get('solucion', ''), d.get('presupuesto', 0), d.get('estado', 'Ingresado')))
         conn.commit()
         cur.close()
         conn.close()
@@ -294,11 +293,24 @@ def handle_repuestos():
     cur = conn.cursor()
 
     if request.method == 'POST':
-        d = request.json
+        d = request.json or {}
+        categoria = d.get('categoria', 'General')
+        nombre = d.get('nombre', '').strip()
+        ubicacion = d.get('ubicacion', '').strip()
+        try:
+            cantidad = int(d.get('cantidad', 1))
+        except (ValueError, TypeError):
+            cantidad = 1
+
+        if not nombre:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'El nombre del componente es obligatorio'}), 400
+
         cur.execute("""
             INSERT INTO repuestos (usuario_id, categoria, nombre, ubicacion, cantidad)
             VALUES (%s, %s, %s, %s, %s)
-        """, (uid, d.get('categoria'), d.get('nombre'), d.get('ubicacion'), d.get('cantidad', 1)))
+        """, (uid, categoria, nombre, ubicacion, cantidad))
         conn.commit()
         cur.close()
         conn.close()
@@ -315,7 +327,7 @@ def update_repuesto(rid):
     if 'usuario_id' not in session:
         return jsonify({'error': 'No autorizado'}), 401
     
-    d = request.json
+    d = request.json or {}
     conn = get_db_connection()
     cur = conn.cursor()
     
@@ -340,11 +352,11 @@ def handle_caja():
     cur = conn.cursor()
 
     if request.method == 'POST':
-        d = request.json
+        d = request.json or {}
         cur.execute("""
             INSERT INTO caja (usuario_id, tipo, concepto, monto)
             VALUES (%s, %s, %s, %s)
-        """, (uid, d.get('tipo'), d.get('concepto'), d.get('monto', 0)))
+        """, (uid, d.get('tipo', 'Ingreso'), d.get('concepto', ''), d.get('monto', 0)))
         conn.commit()
         cur.close()
         conn.close()
@@ -389,11 +401,11 @@ def handle_ventas():
     cur = conn.cursor()
 
     if request.method == 'POST':
-        d = request.json
+        d = request.json or {}
         cur.execute("""
             INSERT INTO ventas (usuario_id, producto, precio, estado)
             VALUES (%s, %s, %s, %s)
-        """, (uid, d.get('producto'), d.get('precio', 0), d.get('estado', 'En Venta')))
+        """, (uid, d.get('producto', ''), d.get('precio', 0), d.get('estado', 'En Venta')))
         conn.commit()
         cur.close()
         conn.close()
@@ -432,7 +444,7 @@ def handle_firmwares():
 # API IA DIAGNÓSTICO
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
-    d = request.json
+    d = request.json or {}
     equipo = d.get('equipo', '')
     falla = d.get('falla', '')
 
@@ -450,7 +462,7 @@ def analizar_falla():
 
 @app.route('/api/fallas-recurrentes', methods=['POST'])
 def fallas_recurrentes():
-    d = request.json
+    d = request.json or {}
     chasis = d.get('chasis', '')
 
     if not GEMINI_API_KEY:
