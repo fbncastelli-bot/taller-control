@@ -222,7 +222,7 @@ function buscarEnPlataforma(plataforma) {
     if (plataforma === 'youtube') {
         url = `https://www.youtube.com/results?search_query=${encodeURIComponent(chasis + " reparacion falla tv")}`;
     } else if (plataforma === 'telegram') {
-        url = `https://t.me/s/tv_repair_dump?q=${encodeURIComponent(chasis)}`;
+        url = `https://www.google.com/search?q=${encodeURIComponent('site:t.me OR site:telegram.me "' + chasis + '" (dump OR firmware OR bin OR falla)')}`;
     } else if (plataforma === 'google') {
         url = `https://www.google.com/search?q=${encodeURIComponent(chasis + " falla resuelta diagrama firmware")}`;
     }
@@ -522,7 +522,6 @@ function pedirFirmwareWhatsApp() {
     const buscado = document.getElementById('fw-buscar').value.trim();
     const textoChasis = buscado ? `*${buscado}*` : 'un equipo/chasis';
     
-    // Podés reemplazar este número por el tuyo de soporte directo
     const numSoporte = "5491112345678"; 
     const msj = `Hola, necesito solicitar el firmware / dump para el chasis o modelo: ${textoChasis}. Quedo a la espera. ¡Gracias!`;
     
