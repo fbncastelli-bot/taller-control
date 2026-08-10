@@ -25,7 +25,6 @@ def inicializar_bd():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Crear tabla de usuarios con campos flexibles si no existe
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
@@ -38,7 +37,6 @@ def inicializar_bd():
             );
         """)
         
-        # Intentar agregar la columna password_hash si faltaba en la base vieja
         try:
             cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
             cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100) DEFAULT 'Mi Taller';")
@@ -122,7 +120,6 @@ def login_view():
         conn.close()
 
         if u:
-            # Verificar si coincide con hash nuevo o con clave plana vieja
             pwd_guardada = u.get('password_hash') or u.get('password') or ''
             valido = False
             
@@ -142,6 +139,9 @@ def login_view():
     return render_template('login.html')
 
 @app.route('/registro', methods=['GET', 'POST'])
+@app.route('/registro_taller', methods=['GET', 'POST'])
+@app.route('/crear_taller', methods=['GET', 'POST'])
+@app.route('/crear-taller', methods=['GET', 'POST'])
 def registro_view():
     if request.method == 'POST':
         data = request.form
@@ -149,6 +149,9 @@ def registro_view():
         pwd = data.get('password')
         taller = data.get('nombre_taller', 'Mi Taller')
         tel = data.get('telefono_taller', '')
+
+        if not user or not pwd:
+            return "Faltan datos requeridos (usuario y contraseña)", 400
 
         pwd_hash = generate_password_hash(pwd)
 
@@ -164,9 +167,12 @@ def registro_view():
             conn.close()
             return redirect(url_for('login_view'))
         except Exception as e:
-            return render_template('registro.html', error="El nombre de usuario ya existe.")
+            return render_template('registro.html', error="El nombre de usuario ya existe o hubo un error.")
 
-    return render_template('registro.html')
+    try:
+        return render_template('registro.html')
+    except Exception:
+        return render_template('login.html', error="Completá los datos de registro")
 
 @app.route('/logout')
 def logout():
