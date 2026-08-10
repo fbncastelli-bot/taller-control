@@ -149,17 +149,26 @@ function enviarWhatsAppModal() {
     enviarWhatsApp();
 }
 
-// IMPRESIÓN COMPROBANTE CLIENTE
+// IMPRESIÓN COMPROBANTE CLIENTE CON QR
 function imprimirComprobanteCliente() {
     if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
 
     const area = document.getElementById('area-impresion');
     const fechaActual = new Date().toLocaleDateString('es-AR');
+    
+    // Contenido codificado para el QR
+    const qrTexto = encodeURIComponent(`OT:${otSeleccionada.id}|Cliente:${otSeleccionada.cliente}|Equipo:${otSeleccionada.equipo}|Falla:${otSeleccionada.falla}`);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qrTexto}`;
 
     area.innerHTML = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 2px solid #000; padding: 20px;">
-            <h2 style="text-align: center; margin-bottom: 5px;">SERVICIO TÉCNICO ELECTRÓNICO</h2>
-            <p style="text-align: center; font-size: 14px; margin-top: 0;">Comprobante de Recepción de Equipo</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin: 0;">SERVICIO TÉCNICO ELECTRÓNICO</h2>
+                    <p style="font-size: 14px; margin: 2px 0;">Comprobante de Recepción de Equipo</p>
+                </div>
+                <img src="${qrUrl}" alt="QR OT" style="width: 90px; height: 90px;">
+            </div>
             <hr>
             <p><strong>N° Orden:</strong> #${otSeleccionada.id} &nbsp;&nbsp;&nbsp;&nbsp; <strong>Fecha:</strong> ${fechaActual}</p>
             <p><strong>Cliente:</strong> ${otSeleccionada.cliente} &nbsp;&nbsp;&nbsp;&nbsp; <strong>Teléfono:</strong> ${otSeleccionada.telefono || '-'}</p>
@@ -172,8 +181,8 @@ function imprimirComprobanteCliente() {
                 * Transcurridos los 90 días del aviso de reparación o presupuesto, los equipos no retirados serán considerados en abandono.
                 * Indispensable presentar este comprobante para el retiro del equipo.
             </p>
-            <br><br>
-            <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+            <br>
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                 <div style="border-top: 1px solid #000; width: 40%; text-align: center; font-size: 12px;">Firma del Cliente</div>
                 <div style="border-top: 1px solid #000; width: 40%; text-align: center; font-size: 12px;">Firma Servicio Técnico</div>
             </div>
@@ -181,33 +190,45 @@ function imprimirComprobanteCliente() {
     `;
 
     area.style.display = 'block';
-    window.print();
-    area.style.display = 'none';
+    setTimeout(() => {
+        window.print();
+        area.style.display = 'none';
+    }, 300);
 }
 
-// IMPRESIÓN TICKET TAPA TV
+// IMPRESIÓN TICKET PARA TAPA DE TV CON QR
 function imprimirTicketTapaTV() {
     if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
 
     const area = document.getElementById('area-impresion');
     const fechaActual = new Date().toLocaleDateString('es-AR');
+    
+    const qrTexto = encodeURIComponent(`OT:${otSeleccionada.id}|Cliente:${otSeleccionada.cliente}|Equipo:${otSeleccionada.equipo}|Falla:${otSeleccionada.falla}`);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrTexto}`;
 
     area.innerHTML = `
-        <div style="font-family: Arial, sans-serif; width: 280px; border: 2px dashed #000; padding: 10px; font-size: 12px;">
-            <h3 style="margin: 0; text-align: center;">TALLER ELECTRÓNICO</h3>
-            <p style="text-align: center; margin: 2px 0; font-weight: bold;">ORDEN #${otSeleccionada.id}</p>
+        <div style="font-family: Arial, sans-serif; width: 260px; border: 2px solid #000; padding: 10px; text-align: center;">
+            <h3 style="margin: 0; font-size: 16px;">TALLER ELECTRÓNICO</h3>
+            <h2 style="margin: 4px 0; font-size: 20px; font-weight: bold;">ORDEN #${otSeleccionada.id}</h2>
+            
+            <div style="margin: 8px 0;">
+                <img src="${qrUrl}" alt="QR Tapa TV" style="width: 120px; height: 120px;">
+            </div>
+
             <hr style="margin: 4px 0;">
-            <p style="margin: 2px 0;"><strong>Cliente:</strong> ${otSeleccionada.cliente}</p>
-            <p style="margin: 2px 0;"><strong>Tel:</strong> ${otSeleccionada.telefono || '-'}</p>
-            <p style="margin: 2px 0;"><strong>Equipo:</strong> ${otSeleccionada.equipo}</p>
-            <p style="margin: 2px 0;"><strong>Falla:</strong> ${otSeleccionada.falla}</p>
-            <p style="margin: 2px 0;"><strong>Fecha:</strong> ${fechaActual}</p>
+            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Cliente:</strong> ${otSeleccionada.cliente}</p>
+            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Tel:</strong> ${otSeleccionada.telefono || '-'}</p>
+            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Equipo:</strong> ${otSeleccionada.equipo}</p>
+            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Falla:</strong> ${otSeleccionada.falla}</p>
+            <p style="margin: 2px 0; font-size: 11px; text-align: left;"><strong>Fecha:</strong> ${fechaActual}</p>
         </div>
     `;
 
     area.style.display = 'block';
-    window.print();
-    area.style.display = 'none';
+    setTimeout(() => {
+        window.print();
+        area.style.display = 'none';
+    }, 300);
 }
 
 function analizarFalla(equipo, falla) {
@@ -314,17 +335,23 @@ function imprimirEtiqueta() {
     if (!repSeleccionadoId) return alert("Seleccioná un componente.");
     
     const area = document.getElementById('area-impresion');
+    const qrTexto = encodeURIComponent(`COMP:${window.repNombreActual}|GAVETA:${window.repUbActual}`);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${qrTexto}`;
+
     area.innerHTML = `
-        <div style="font-family: Arial, sans-serif; width: 200px; border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center;">
+        <div style="font-family: Arial, sans-serif; width: 180px; border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center;">
             <strong>COMPONENTES TALLER</strong><br>
             <span style="font-size: 14px; font-weight: bold;">${window.repNombreActual}</span><br>
-            <span>Ubicación: ${window.repUbActual}</span>
+            <span>Ubicación: ${window.repUbActual}</span><br>
+            <img src="${qrUrl}" alt="QR Componente" style="width: 50px; height: 50px; margin-top: 4px;">
         </div>
     `;
 
     area.style.display = 'block';
-    window.print();
-    area.style.display = 'none';
+    setTimeout(() => {
+        window.print();
+        area.style.display = 'none';
+    }, 300);
 }
 
 function filtrarComp() {
@@ -590,8 +617,10 @@ function imprimirReporteCaja() {
     `;
 
     area.style.display = 'block';
-    window.print();
-    area.style.display = 'none';
+    setTimeout(() => {
+        window.print();
+        area.style.display = 'none';
+    }, 300);
 }
 
 // 6. FIRMWARES
