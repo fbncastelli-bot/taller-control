@@ -1,13 +1,14 @@
 import os
 import re
-from flask import Flask, render_template, jsonify, request
+from datetime import datetime, timedelta
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 import google.generativeai as genai
 from pypdf import PdfReader
-from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "clave_secreta_taller_2026")
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -26,17 +27,26 @@ def init_db():
         return
     cur = conn.cursor()
     cur.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            usuario VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            nombre_taller VARCHAR(100) DEFAULT 'Mi Taller'
+        );
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
+            usuario_id INT DEFAULT 1,
             cliente VARCHAR(100),
             telefono VARCHAR(50),
             equipo VARCHAR(100),
             falla TEXT,
+            solucion TEXT,
             presupuesto NUMERIC(10,2),
             estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS repuestos (
             id SERIAL PRIMARY KEY,
+            usuario_id INT DEFAULT 1,
             categoria VARCHAR(100),
             nombre VARCHAR(100),
             ubicacion VARCHAR(100),
@@ -45,12 +55,14 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ventas (
             id SERIAL PRIMARY KEY,
+            usuario_id INT DEFAULT 1,
             producto VARCHAR(100),
             precio NUMERIC(10,2),
             estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS caja (
             id SERIAL PRIMARY KEY,
+            usuario_id INT DEFAULT 1,
             fecha VARCHAR(50),
             tipo VARCHAR(20),
             concepto TEXT,
@@ -87,7 +99,6 @@ def consultar_gemini_limpio(prompt):
         "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
-
     try:
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
@@ -121,140 +132,300 @@ def consultar_gemini_limpio(prompt):
 
     return None, ultimo_error
 
+# RUTAS DE AUTENTICACIÓN Y NAVEGACIÓN
 @app.route('/')
 def index():
-    return render_template('index.html')
+    if 'usuario_id' not in session:
+        return redirect(url_for('login_view'))
+    return render_template('index.html', usuario=session.get('usuario'), taller=session.get('nombre_taller'))
 
-# ENDPOINTS ÓRDENES
+@app.route('/login', methods=['GET', 'POST'])
+def login_view():
+    if request.method == 'POST':
+        user = request.form.get('usuario', '').strip()
+        pwd = request.form.get('password', '').strip()
+        
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s) AND password = %s", (user, pwd))
+            u = cur.fetchone()
+            cur.close()
+            conn.close()
+            
+            if u:
+                session['usuario_id'] = u['id']
+                session['usuario'] = u['usuario']
+                session['nombre_taller'] = u['nombre_taller']
+                return redirect(url_for('index'))
+                
+        return render_template('login.html', error="Usuario o contraseña incorrectos")
+    return render_template('login.html')
+
+@app.route('/registro', methods=['POST'])
+def registro_view():
+    user = request.form.get('usuario', '').strip()
+    pwd = request.form.get('password', '').strip()
+    taller = request.form.get('nombre_taller', '').strip() or 'Mi Taller'
+
+    if not user or not pwd:
+        return render_template('login.html', error="Completar usuario y contraseña")
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute(
+                "INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING *;",
+                (user, pwd, taller)
+            )
+            nuevo_u = cur.fetchone()
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            session['usuario_id'] = nuevo_u['id']
+            session['usuario'] = nuevo_u['usuario']
+            session['nombre_taller'] = nuevo_u['nombre_taller']
+            return redirect(url_for('index'))
+        except Exception:
+            return render_template('login.html', error="El nombre de usuario ya existe")
+
+    return render_template('login.html', error="Error al conectar con la base de datos")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_view'))
+
+# ENDPOINTS ÓRDENES (FILTRADO POR USUARIO)
 @app.route('/api/ordenes', methods=['GET'])
 def get_ordenes():
+    if 'usuario_id' not in session:
+        return jsonify([])
     conn = get_db_connection()
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM ordenes ORDER BY id ASC;")
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id ASC;", (session['usuario_id'],))
     filas = cur.fetchall()
     cur.close()
     conn.close()
+    for f in filas:
+        f['presupuesto'] = float(f['presupuesto'] or 0)
     return jsonify(filas)
 
 @app.route('/api/ordenes', methods=['POST'])
 def add_orden():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     data = request.json or {}
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        "INSERT INTO ordenes (cliente, telefono, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
-        (data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
+        "INSERT INTO ordenes (usuario_id, cliente, telefono, equipo, falla, solucion, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;",
+        (session['usuario_id'], data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), data.get("solucion", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
     )
     nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
+    if nuevo:
+        nuevo['presupuesto'] = float(nuevo['presupuesto'] or 0)
     return jsonify(nuevo), 201
 
 @app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
 def delete_orden(ot_id):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM ordenes WHERE id = %s;", (ot_id,))
+        cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s;", (ot_id, session['usuario_id']))
         conn.commit()
         cur.close()
         conn.close()
     return jsonify({"status": "deleted"})
 
-# ENDPOINTS STOCK / REPUESTOS
+# ENDPOINTS REPUESTOS (FILTRADO POR USUARIO)
 @app.route('/api/repuestos', methods=['GET'])
 def get_repuestos():
+    if 'usuario_id' not in session:
+        return jsonify([])
     conn = get_db_connection()
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM repuestos ORDER BY id ASC;")
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id ASC;", (session['usuario_id'],))
     filas = cur.fetchall()
     cur.close()
     conn.close()
+    for f in filas:
+        f['precio'] = float(f['precio'] or 0)
     return jsonify(filas)
 
 @app.route('/api/repuestos', methods=['POST'])
 def add_repuesto():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     data = request.json or {}
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        "INSERT INTO repuestos (categoria, nombre, ubicacion, cantidad, precio) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
-        (data.get("categoria", ""), data.get("nombre", ""), data.get("ubicacion", ""), int(data.get("cantidad", 1)), float(data.get("precio", 0)))
+        "INSERT INTO repuestos (usuario_id, categoria, nombre, ubicacion, cantidad, precio) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
+        (session['usuario_id'], data.get("categoria", ""), data.get("nombre", ""), data.get("ubicacion", ""), int(data.get("cantidad", 1)), float(data.get("precio", 0)))
     )
     nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
+    if nuevo:
+        nuevo['precio'] = float(nuevo['precio'] or 0)
     return jsonify(nuevo), 201
 
 @app.route('/api/repuestos/<int:rep_id>', methods=['PUT'])
 def update_repuesto(rep_id):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     data = request.json or {}
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     if 'cantidad' in data:
-        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s RETURNING *;", (int(data['cantidad']), rep_id))
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (int(data['cantidad']), rep_id, session['usuario_id']))
     elif 'ubicacion' in data:
-        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s RETURNING *;", (data['ubicacion'], rep_id))
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (data['ubicacion'], rep_id, session['usuario_id']))
     res = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
+    if res:
+        res['precio'] = float(res['precio'] or 0)
     return jsonify(res)
 
-# ENDPOINTS VENTAS Y USADOS
+# ENDPOINTS VENTAS (FILTRADO POR USUARIO)
 @app.route('/api/ventas', methods=['GET'])
 def get_ventas():
+    if 'usuario_id' not in session:
+        return jsonify([])
     conn = get_db_connection()
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM ventas ORDER BY id ASC;")
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id ASC;", (session['usuario_id'],))
     filas = cur.fetchall()
     cur.close()
     conn.close()
+    for f in filas:
+        f['precio'] = float(f['precio'] or 0)
     return jsonify(filas)
 
 @app.route('/api/ventas', methods=['POST'])
 def add_venta():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     data = request.json or {}
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        "INSERT INTO ventas (producto, precio, estado) VALUES (%s, %s, %s) RETURNING *;",
-        (data.get("producto", ""), float(data.get("precio", 0)), data.get("estado", "En Venta"))
+        "INSERT INTO ventas (usuario_id, producto, precio, estado) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (session['usuario_id'], data.get("producto", ""), float(data.get("precio", 0)), data.get("estado", "En Venta"))
     )
     nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
+    if nuevo:
+        nuevo['precio'] = float(nuevo['precio'] or 0)
     return jsonify(nuevo), 201
 
 @app.route('/api/ventas/<int:v_id>', methods=['DELETE'])
 def delete_venta(v_id):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM ventas WHERE id = %s;", (v_id,))
+        cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s;", (v_id, session['usuario_id']))
         conn.commit()
         cur.close()
         conn.close()
     return jsonify({"status": "deleted"})
 
-# ENDPOINTS BANCO DE PLACAS
+# ENDPOINTS CAJA (FILTRADO POR USUARIO)
+@app.route('/api/caja', methods=['GET'])
+def get_caja():
+    if 'usuario_id' not in session:
+        return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id ASC;", (session['usuario_id'],))
+    movimientos = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    for m in movimientos:
+        m['monto'] = float(m['monto'] or 0)
+
+    total_ingresos = sum(m['monto'] for m in movimientos if m['tipo'] == 'Ingreso')
+    total_egresos = sum(m['monto'] for m in movimientos if m['tipo'] == 'Egreso')
+    balance = total_ingresos - total_egresos
+
+    return jsonify({
+        "movimientos": movimientos,
+        "ingresos": total_ingresos,
+        "egresos": total_egresos,
+        "balance": balance
+    })
+
+@app.route('/api/caja', methods=['POST'])
+def add_movimiento():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    
+    hora_arg = datetime.utcnow() - timedelta(hours=3)
+    fecha_str = hora_arg.strftime("%Y-%m-%d %H:%M")
+
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO caja (usuario_id, fecha, tipo, concepto, monto) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
+        (session['usuario_id'], fecha_str, data.get("tipo", "Ingreso"), data.get("concepto", ""), float(data.get("monto", 0)))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if nuevo:
+        nuevo['monto'] = float(nuevo['monto'] or 0)
+    return jsonify(nuevo), 201
+
+@app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
+def delete_movimiento(mov_id):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s;", (mov_id, session['usuario_id']))
+        conn.commit()
+        cur.close()
+        conn.close()
+    return jsonify({"status": "deleted"})
+
+# ENDPOINTS RECURSOS COMPARTIDOS (PLACAS, FIRMWARES, IA)
 @app.route('/api/placas', methods=['GET'])
 def get_placas():
     conn = get_db_connection()
@@ -267,69 +438,12 @@ def get_placas():
     conn.close()
     return jsonify(filas)
 
-# ENDPOINTS FIRMWARES
 @app.route('/api/firmwares', methods=['GET'])
 def get_firmwares():
     return jsonify([
         {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
     ])
 
-# ENDPOINTS CAJA Y FINANZAS
-@app.route('/api/caja', methods=['GET'])
-def get_caja():
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM caja ORDER BY id ASC;")
-    movimientos = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    total_ingresos = sum(float(m['monto']) for m in movimientos if m['tipo'] == 'Ingreso')
-    total_egresos = sum(float(m['monto']) for m in movimientos if m['tipo'] == 'Egreso')
-    balance = total_ingresos - total_egresos
-
-    return jsonify({
-        "movimientos": movimientos,
-        "ingresos": total_ingresos,
-        "egresos": total_egresos,
-        "balance": balance
-    })
-
-@app.route('/api/caja', methods=['POST'])
-def add_movimiento():
-    data = request.json or {}
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({'error': 'Sin conexion BBDD'}), 500
-    
-    hora_arg = datetime.utcnow() - timedelta(hours=3)
-    fecha_str = hora_arg.strftime("%Y-%m-%d %H:%M")
-
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute(
-        "INSERT INTO caja (fecha, tipo, concepto, monto) VALUES (%s, %s, %s, %s) RETURNING *;",
-        (fecha_str, data.get("tipo", "Ingreso"), data.get("concepto", ""), float(data.get("monto", 0)))
-    )
-    nuevo = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify(nuevo), 201
-
-@app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
-def delete_movimiento(mov_id):
-    conn = get_db_connection()
-    if conn:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM caja WHERE id = %s;", (mov_id,))
-        conn.commit()
-        cur.close()
-        conn.close()
-    return jsonify({"status": "deleted"})
-
-# CONSULTAS IA Y TEST POINTS
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     try:
