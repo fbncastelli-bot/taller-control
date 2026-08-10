@@ -156,7 +156,6 @@ function imprimirComprobanteCliente() {
     const area = document.getElementById('area-impresion');
     const fechaActual = new Date().toLocaleDateString('es-AR');
     
-    // Contenido codificado para el QR
     const qrTexto = encodeURIComponent(`OT:${otSeleccionada.id}|Cliente:${otSeleccionada.cliente}|Equipo:${otSeleccionada.equipo}|Falla:${otSeleccionada.falla}`);
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qrTexto}`;
 
@@ -196,31 +195,31 @@ function imprimirComprobanteCliente() {
     }, 300);
 }
 
-// IMPRESIÓN TICKET PARA TAPA DE TV CON QR
+// IMPRESIÓN TICKET PARA TAPA DE TV CON QR, MODELO Y CLIENTE
 function imprimirTicketTapaTV() {
     if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
 
     const area = document.getElementById('area-impresion');
     const fechaActual = new Date().toLocaleDateString('es-AR');
     
-    const qrTexto = encodeURIComponent(`OT:${otSeleccionada.id}|Cliente:${otSeleccionada.cliente}|Equipo:${otSeleccionada.equipo}|Falla:${otSeleccionada.falla}`);
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrTexto}`;
+    const qrTexto = encodeURIComponent(
+        `OT:${otSeleccionada.id}|Cliente:${otSeleccionada.cliente}|Tel:${otSeleccionada.telefono || 'N/A'}|Equipo:${otSeleccionada.equipo}|Falla:${otSeleccionada.falla}|Presupuesto:${otSeleccionada.presupuesto}`
+    );
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${qrTexto}`;
 
     area.innerHTML = `
-        <div style="font-family: Arial, sans-serif; width: 260px; border: 2px solid #000; padding: 10px; text-align: center;">
-            <h3 style="margin: 0; font-size: 16px;">TALLER ELECTRÓNICO</h3>
-            <h2 style="margin: 4px 0; font-size: 20px; font-weight: bold;">ORDEN #${otSeleccionada.id}</h2>
+        <div style="font-family: Arial, sans-serif; width: 240px; border: 2px solid #000; padding: 10px; text-align: center;">
+            <h4 style="margin: 0; font-size: 14px; text-transform: uppercase;">CONTROL TALLER</h4>
+            <h2 style="margin: 4px 0; font-size: 22px; font-weight: bold;">ORDEN #${otSeleccionada.id}</h2>
             
             <div style="margin: 8px 0;">
-                <img src="${qrUrl}" alt="QR Tapa TV" style="width: 120px; height: 120px;">
+                <img src="${qrUrl}" alt="QR Tapa TV" style="width: 130px; height: 130px;">
             </div>
 
-            <hr style="margin: 4px 0;">
-            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Cliente:</strong> ${otSeleccionada.cliente}</p>
-            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Tel:</strong> ${otSeleccionada.telefono || '-'}</p>
-            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Equipo:</strong> ${otSeleccionada.equipo}</p>
-            <p style="margin: 2px 0; font-size: 12px; text-align: left;"><strong>Falla:</strong> ${otSeleccionada.falla}</p>
-            <p style="margin: 2px 0; font-size: 11px; text-align: left;"><strong>Fecha:</strong> ${fechaActual}</p>
+            <hr style="margin: 6px 0; border-top: 1px solid #000;">
+            <p style="margin: 3px 0; font-size: 13px; text-align: left;"><strong>Cliente:</strong> ${otSeleccionada.cliente}</p>
+            <p style="margin: 3px 0; font-size: 13px; text-align: left;"><strong>Modelo:</strong> ${otSeleccionada.equipo}</p>
+            <p style="margin: 3px 0; font-size: 11px; text-align: left; color: #444;"><strong>Fecha:</strong> ${fechaActual}</p>
         </div>
     `;
 
