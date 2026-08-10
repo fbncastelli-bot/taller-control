@@ -43,6 +43,7 @@ def init_db():
             telefono VARCHAR(50),
             equipo VARCHAR(100),
             falla TEXT,
+            solucion TEXT,
             presupuesto NUMERIC(10,2),
             estado VARCHAR(50)
         );
@@ -81,6 +82,7 @@ def init_db():
     ''')
     cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100);")
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS telefono VARCHAR(50);")
+    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS solucion TEXT;")
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS user_id INT;")
     cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS user_id INT;")
     cur.execute("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS user_id INT;")
@@ -228,7 +230,7 @@ def index():
         return redirect('/login')
     return render_template('index.html', usuario=session.get('usuario'), taller=session.get('taller'))
 
-# ENDPOINTS ÓRDENES (FILTRADO POR USUARIO)
+# ENDPOINTS ÓRDENES
 @app.route('/api/ordenes', methods=['GET'])
 def get_ordenes():
     if 'user_id' not in session: return jsonify([]), 401
@@ -250,8 +252,8 @@ def add_orden():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "INSERT INTO ordenes (user_id, cliente, telefono, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;",
-            (session['user_id'], data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0) or 0), data.get("estado", "Ingresado"))
+            "INSERT INTO ordenes (user_id, cliente, telefono, equipo, falla, solucion, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;",
+            (session['user_id'], data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), data.get("solucion", ""), float(data.get("presupuesto", 0) or 0), data.get("estado", "Ingresado"))
         )
         nuevo = cur.fetchone()
         conn.commit()
@@ -273,6 +275,47 @@ def delete_orden(ot_id):
         cur.close()
         conn.close()
     return jsonify({"status": "deleted"})
+
+# BUSCADOR DE FALLAS RECURRENTES (BBDD LOCAL + IA)
+@app.route('/api/fallas-recurrentes', methods=['POST'])
+def fallas_recurrentes():
+    if 'user_id' not in session: return jsonify({'error': 'No autorizado'}), 401
+    data = request.json or {}
+    chasis = data.get('chasis', '').strip().upper()
+
+    if not chasis:
+        return jsonify({'error': 'Ingresá el modelo o chasis del equipo.'}), 400
+
+    conn = get_db_connection()
+    historial_local = []
+    if conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "SELECT id, equipo, falla, solucion, estado FROM ordenes WHERE (user_id = %s OR user_id IS NULL) AND UPPER(equipo) LIKE %s AND solucion IS NOT NULL AND solucion != '';",
+            (session['user_id'], f"%{chasis}%")
+        )
+        historial_local = cur.fetchall()
+        cur.close()
+        conn.close()
+
+    res_texto = ""
+    if historial_local:
+        res_texto += "=== ANTECEDENTES REGISTRADOS EN TU TALLER ===\n"
+        for h in historial_local:
+            res_texto += f"• OT #{h['id']} ({h['equipo']}): Falla: {h['falla']} -> Solución: {h['solucion']}\n"
+        res_texto += "\n"
+
+    if GEMINI_KEY:
+        prompt = f"""Proporcioná las fallas recurrentes típicas, componentes propensos a falla y subfuentes críticas del chasis / modelo de TV LED: {chasis}.
+Devolvé una tabla Markdown en español técnico con:
+| Etapa / Circuito | Síntoma / Falla | Componente Crítico / Posición | Solución / Reemplazo Recomendado |"""
+        texto_ia, err_ia = consultar_gemini_limpio(prompt)
+        if texto_ia:
+            res_texto += "=== SUGERENCIAS DE FALLAS TÍPICAS (IA) ===\n" + texto_ia
+        elif err_ia and not historial_local:
+            res_texto += f"Error IA: {err_ia}"
+
+    return jsonify({'resultado': res_texto if res_texto else "Sin datos registrados ni respuesta de IA."})
 
 # ENDPOINTS STOCK / REPUESTOS
 @app.route('/api/repuestos', methods=['GET'])
