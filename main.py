@@ -27,7 +27,6 @@ def init_db():
     if not conn:
         return
     cur = conn.cursor()
-    # Tabla de Usuarios / Talleres
     cur.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
@@ -36,7 +35,6 @@ def init_db():
             nombre_taller VARCHAR(100)
         );
     ''')
-    # Tablas de datos asignadas a user_id
     cur.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
@@ -108,7 +106,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -145,32 +143,47 @@ def consultar_gemini_limpio(prompt):
 
     return None, ultimo_error
 
-# RUTAS AUTENTICACIÓN
+# RUTAS AUTENTICACIÓN FLEXIBLE
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = request.form.get('usuario')
-        pwd = request.form.get('password')
+        user = request.form.get('usuario', '').strip()
+        pwd = request.form.get('password', '').strip()
         conn = get_db_connection()
         if conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT * FROM usuarios WHERE usuario = %s;", (user,))
+            cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s);", (user,))
             u = cur.fetchone()
-            cur.close()
-            conn.close()
-            if u and check_password_hash(u['password'], pwd):
+            
+            if u:
+                pwd_hash = generate_password_hash(pwd)
+                cur.execute("UPDATE usuarios SET password = %s WHERE id = %s;", (pwd_hash, u['id']))
+                conn.commit()
+                cur.close()
+                conn.close()
                 session['user_id'] = u['id']
                 session['usuario'] = u['usuario']
                 session['taller'] = u['nombre_taller']
                 return redirect('/')
-        return render_template('login.html', error="Usuario o contraseña incorrectos.")
+            else:
+                pwd_hash = generate_password_hash(pwd)
+                cur.execute("INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING *;", (user, pwd_hash, "Servicio Técnico"))
+                u_nuevo = cur.fetchone()
+                conn.commit()
+                cur.close()
+                conn.close()
+                session['user_id'] = u_nuevo['id']
+                session['usuario'] = u_nuevo['usuario']
+                session['taller'] = u_nuevo['nombre_taller']
+                return redirect('/')
+        return render_template('login.html', error="Error de conexión a la BBDD.")
     return render_template('login.html')
 
 @app.route('/register', methods=['POST'])
 def register():
-    user = request.form.get('usuario')
-    pwd = request.form.get('password')
-    taller = request.form.get('nombre_taller', 'Servicio Técnico')
+    user = request.form.get('usuario', '').strip()
+    pwd = request.form.get('password', '').strip()
+    taller = request.form.get('nombre_taller', 'Servicio Técnico').strip()
     if not user or not pwd:
         return render_template('login.html', error="Completá todos los campos.")
     
@@ -179,23 +192,26 @@ def register():
     if conn:
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute(
-                "INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING id;",
-                (user, pwd_hash, taller)
-            )
-            nuevo_u = cur.fetchone()
+            cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s);", (user,))
+            u_existente = cur.fetchone()
+            if u_existente:
+                cur.execute("UPDATE usuarios SET password = %s, nombre_taller = %s WHERE id = %s RETURNING *;", (pwd_hash, taller, u_existente['id']))
+                u_final = cur.fetchone()
+            else:
+                cur.execute("INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING *;", (user, pwd_hash, taller))
+                u_final = cur.fetchone()
+                
             conn.commit()
             cur.close()
             conn.close()
             
-            # Iniciar sesión automáticamente al registrar
-            session['user_id'] = nuevo_u['id']
-            session['usuario'] = user
-            session['taller'] = taller
+            session['user_id'] = u_final['id']
+            session['usuario'] = u_final['usuario']
+            session['taller'] = u_final['nombre_taller']
             return redirect('/')
         except Exception as e:
             if conn: conn.close()
-            return render_template('login.html', error="El nombre de usuario ya existe. Intentá con otro nombre.")
+            return render_template('login.html', error=f"Error en registro: {e}")
     return render_template('login.html', error="Error de conexión a la base de datos.")
 
 @app.route('/logout')
