@@ -175,7 +175,7 @@ function analizarFalla(equipo, falla) {
     });
 }
 
-// 2. BANCO DE PLACAS, TEST POINTS Y FALLAS RECURRENTES
+// 2. BANCO DE PLACAS, TEST POINTS Y BÚSQUEDA MULTIPLATAFORMA
 function buscarFallasRecurrentes() {
     const chasis = document.getElementById('input-chasis-fallas').value;
     if (!chasis) return alert("Ingresá el chasis o modelo para consultar.");
@@ -195,6 +195,21 @@ function buscarFallasRecurrentes() {
     .catch(err => {
         box.innerText = `Error de consulta: ${err}`;
     });
+}
+
+function buscarEnPlataforma(plataforma) {
+    const chasis = document.getElementById('input-chasis-fallas').value || document.getElementById('input-chasis-tp').value;
+    if (!chasis) return alert("Ingresá primero un chasis o modelo en la casilla superior.");
+
+    let url = "";
+    if (plataforma === 'youtube') {
+        url = `https://www.youtube.com/results?search_query=${encodeURIComponent(chasis + " reparacion falla tv")}`;
+    } else if (plataforma === 'telegram') {
+        url = `https://t.me/s/tv_repair_dump?q=${encodeURIComponent(chasis)}`;
+    } else if (plataforma === 'google') {
+        url = `https://www.google.com/search?q=${encodeURIComponent(chasis + " falla resuelta diagrama firmware")}`;
+    }
+    window.open(url, '_blank');
 }
 
 function buscarTestPoints() {
