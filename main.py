@@ -94,6 +94,18 @@ def inicializar_bd():
             );
         """)
         conn.commit()
+
+        # REASIGNACIÓN AUTOMÁTICA DE DATOS HISTÓRICOS AL USUARIO FABIAN
+        cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
+        user_fabian = cur.fetchone()
+        if user_fabian:
+            fid = user_fabian['id']
+            cur.execute("UPDATE ordenes SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+            cur.execute("UPDATE repuestos SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+            cur.execute("UPDATE caja SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+            cur.execute("UPDATE ventas SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+            conn.commit()
+
         cur.close()
         conn.close()
     except Exception as e:
