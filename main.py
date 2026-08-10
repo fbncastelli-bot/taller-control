@@ -1,631 +1,429 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAB-CONTROL PRO</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Arial, sans-serif; }
-        .card { background-color: #1e1e1e; border: 1px solid #333; color: #ffffff; }
-        .form-control, .form-select { background-color: #2b2b2b !important; color: #ffffff !important; border: 1px solid #444; }
-        .form-control::placeholder { color: #888888 !important; }
-        .form-control:focus, .form-select:focus { background-color: #333333 !important; color: #ffffff !important; border-color: #0d6efd; box-shadow: none; }
-        .form-label { color: #cccccc; font-weight: 500; margin-bottom: 4px; }
-        .nav-tabs { border-bottom: 1px solid #333; }
-        .nav-tabs .nav-link { color: #aaaaaa; background-color: #181818; border: 1px solid #333; margin-right: 2px; }
-        .nav-tabs .nav-link.active { background-color: #0d6efd; color: #ffffff; border-color: #0d6efd; font-weight: bold; }
-        .table-dark { background-color: #1e1e1e; color: #ffffff; border-color: #333; }
-        .table-dark th { background-color: #2b2b2b; color: #0d6efd; }
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
+import google.generativeai as genai
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "lab_control_secret_2026")
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    return conn
+
+def inicializar_bd():
+    if not DATABASE_URL:
+        return
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
         
-        @media print {
-            body * { visibility: hidden; }
-            #area-impresion, #area-impresion * { visibility: visible; }
-            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; }
-        }
-    </style>
-</head>
-<body class="p-3">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="text-primary fw-bold m-0">LAB-CONTROL PRO <small class="text-muted fs-6">| {{ taller }} ({{ usuario }})</small></h2>
-            <a href="/logout" class="btn btn-outline-danger btn-sm">🚪 Cerrar Sesión</a>
-        </div>
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                usuario VARCHAR(50) UNIQUE NOT NULL,
+                password_hash VARCHAR(255),
+                password VARCHAR(255),
+                nombre_taller VARCHAR(100) NOT NULL DEFAULT 'Mi Taller',
+                telefono_taller VARCHAR(30),
+                rol VARCHAR(20) DEFAULT 'admin'
+            );
+        """)
+        
+        try:
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password VARCHAR(255);")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100) DEFAULT 'Mi Taller';")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono_taller VARCHAR(30);")
+        except Exception:
+            pass
 
-        <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
-            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ordenes">📋 Órdenes y Tickets</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#repuestos">📦 Stock Componentes</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#firmwares">💾 Banco / Firmwares</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ventas">🏷️ Ventas</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#caja">💰 Caja / Finanzas</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ia">🤖 Asistente IA</button></li>
-        </ul>
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ordenes (
+                id SERIAL PRIMARY KEY,
+                usuario_id INT DEFAULT 1,
+                cliente VARCHAR(100) NOT NULL,
+                telefono VARCHAR(30),
+                equipo VARCHAR(100) NOT NULL,
+                falla TEXT,
+                solucion TEXT,
+                presupuesto NUMERIC(10, 2) DEFAULT 0,
+                estado VARCHAR(30) DEFAULT 'Ingresado',
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        <div class="tab-content">
-            <!-- TAB ÓRDENES -->
-            <div class="tab-pane fade show active" id="ordenes">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card p-3">
-                            <h5 class="text-primary mb-3">Nueva Órden de Trabajo</h5>
-                            <form id="form-orden">
-                                <div class="mb-2">
-                                    <label class="form-label">Cliente</label>
-                                    <input type="text" id="ord-cliente" class="form-control" placeholder="Nombre completo" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Teléfono (WhatsApp)</label>
-                                    <input type="text" id="ord-telefono" class="form-control" placeholder="Ej: 5491112345678">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Equipo / Modelo</label>
-                                    <input type="text" id="ord-equipo" class="form-control" placeholder="Ej: TV LG 43 UN7310" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Falla Reportada</label>
-                                    <textarea id="ord-falla" class="form-control" rows="2" placeholder="Síntoma detectado"></textarea>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Solución / Reparación</label>
-                                    <textarea id="ord-solucion" class="form-control" rows="2" placeholder="Trabajo realizado"></textarea>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Presupuesto ($)</label>
-                                    <input type="number" step="0.01" id="ord-presupuesto" class="form-control" placeholder="0.00">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Estado</label>
-                                    <select id="ord-estado" class="form-select">
-                                        <option value="Ingresado">Ingresado</option>
-                                        <option value="En Revisión">En Revisión</option>
-                                        <option value="Presupuestado">Presupuestado</option>
-                                        <option value="Reparado">Reparado</option>
-                                        <option value="Entregado">Entregado</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100 fw-bold">Guardar Órden</button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card p-3">
-                            <h5 class="mb-3">Órdenes Registradas</h5>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Cliente</th>
-                                            <th>Equipo</th>
-                                            <th>Presupuesto</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabla-ordenes"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            CREATE TABLE IF NOT EXISTS repuestos (
+                id SERIAL PRIMARY KEY,
+                usuario_id INT DEFAULT 1,
+                categoria VARCHAR(50),
+                nombre VARCHAR(100) NOT NULL,
+                ubicacion VARCHAR(50),
+                cantidad INT DEFAULT 0
+            );
 
-            <!-- TAB REPUESTOS -->
-            <div class="tab-pane fade" id="repuestos">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card p-3">
-                            <h5 class="text-success mb-3">Nuevo Componente</h5>
-                            <form id="form-repuesto">
-                                <div class="mb-2">
-                                    <label class="form-label">Componente / Repuesto</label>
-                                    <input type="text" id="rep-nombre" class="form-control" placeholder="Nombre" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Categoría</label>
-                                    <input type="text" id="rep-categoria" class="form-control" placeholder="Ej: MOSFET, IC, Diodo">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Ubicación</label>
-                                    <input type="text" id="rep-ubicacion" class="form-control" placeholder="Cajón / Estante">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Cantidad</label>
-                                    <input type="number" id="rep-cantidad" class="form-control" value="1" min="1" required>
-                                </div>
-                                <button type="submit" class="btn btn-success w-100 fw-bold">Guardar Componente</button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card p-3">
-                            <h5 class="mb-3">Inventario de Componentes</h5>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Componente</th>
-                                            <th>Categoría</th>
-                                            <th>Ubicación</th>
-                                            <th>Stock</th>
-                                            <th>Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabla-repuestos"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            CREATE TABLE IF NOT EXISTS ventas (
+                id SERIAL PRIMARY KEY,
+                usuario_id INT DEFAULT 1,
+                producto VARCHAR(100) NOT NULL,
+                precio NUMERIC(10, 2) DEFAULT 0,
+                estado VARCHAR(30) DEFAULT 'En Venta'
+            );
 
-            <!-- TAB FIRMWARES -->
-            <div class="tab-pane fade" id="firmwares">
-                <div class="card p-3">
-                    <h5 class="text-info mb-3">Banco de Placas & Firmwares</h5>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Chasis / Placa</th>
-                                    <th>Modelo TV</th>
-                                    <th>Memoria</th>
-                                    <th>Descarga Nube</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-firmwares"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            CREATE TABLE IF NOT EXISTS caja (
+                id SERIAL PRIMARY KEY,
+                usuario_id INT DEFAULT 1,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                tipo VARCHAR(20) NOT NULL,
+                concepto VARCHAR(150) NOT NULL,
+                monto NUMERIC(10, 2) DEFAULT 0
+            );
 
-            <!-- TAB VENTAS -->
-            <div class="tab-pane fade" id="ventas">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card p-3">
-                            <h5 class="text-warning mb-3">Publicar Producto</h5>
-                            <form id="form-venta">
-                                <div class="mb-2">
-                                    <label class="form-label">Producto / Placa</label>
-                                    <input type="text" id="vent-producto" class="form-control" placeholder="Descripción" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Precio ($)</label>
-                                    <input type="number" step="0.01" id="vent-precio" class="form-control" placeholder="0.00" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Estado</label>
-                                    <select id="vent-estado" class="form-select">
-                                        <option value="En Venta">En Venta</option>
-                                        <option value="Reservado">Reservado</option>
-                                        <option value="Vendido">Vendido</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">Publicar Venta</button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card p-3">
-                            <h5 class="mb-3">Equipos y Placas en Venta</h5>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th>Precio</th>
-                                            <th>Estado</th>
-                                            <th>Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabla-ventas"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            CREATE TABLE IF NOT EXISTS firmwares (
+                id SERIAL PRIMARY KEY,
+                chasis VARCHAR(100) NOT NULL,
+                modelo VARCHAR(100),
+                memoria VARCHAR(50),
+                url_nube TEXT NOT NULL
+            );
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Error inicializando BD:", e)
 
-            <!-- TAB CAJA -->
-            <div class="tab-pane fade" id="caja">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card p-3">
-                            <h5 class="text-primary mb-3">Nuevo Movimiento</h5>
-                            <form id="form-caja">
-                                <div class="mb-2">
-                                    <label class="form-label">Tipo</label>
-                                    <select id="caja-tipo" class="form-select">
-                                        <option value="Ingreso">Ingreso (+)</option>
-                                        <option value="Egreso">Egreso (-)</option>
-                                    </select>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label">Concepto</label>
-                                    <input type="text" id="caja-concepto" class="form-control" placeholder="Concepto" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Monto ($)</label>
-                                    <input type="number" step="0.01" id="caja-monto" class="form-control" placeholder="0.00" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar Movimiento</button>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="m-0">Resumen de Caja</h5>
-                                <div id="resumen-balance" class="fs-5 fw-bold text-info">Balance: $0.00</div>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Fecha</th>
-                                            <th>Tipo</th>
-                                            <th>Concepto</th>
-                                            <th>Monto</th>
-                                            <th>Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabla-caja"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+inicializar_bd()
 
-            <!-- TAB IA -->
-            <div class="tab-pane fade" id="ia">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="card p-3">
-                            <h5 class="text-primary mb-3">⚡ Análisis de Falla con IA</h5>
-                            <div class="mb-2">
-                                <label class="form-label">Equipo / Modelo</label>
-                                <input type="text" id="ia-equipo" class="form-control" placeholder="Ej: Smart TV LG 43UJ651V">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Síntoma / Falla</label>
-                                <textarea id="ia-falla" class="form-control" rows="3" placeholder="Descripción de la falla"></textarea>
-                            </div>
-                            <button class="btn btn-primary w-100 fw-bold" onclick="consultarIA()">Analizar Falla</button>
-                            <div id="res-ia" class="mt-3 p-3 bg-dark text-light border border-secondary rounded d-none" style="white-space: pre-line;"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card p-3">
-                            <h5 class="text-warning mb-3">🔍 Fallas Recurrentes por Chasis</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Chasis / Placa</label>
-                                <input type="text" id="ia-chasis" class="form-control" placeholder="Ej: EAX65693202">
-                            </div>
-                            <button class="btn btn-warning text-dark w-100 fw-bold" onclick="consultarChasis()">Buscar Fallas Recurrentes</button>
-                            <div id="res-chasis" class="mt-3 p-3 bg-dark text-light border border-secondary rounded d-none" style="white-space: pre-line;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+@app.route('/')
+def index():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login_view'))
+    return render_template('index.html', usuario=session.get('usuario'), taller=session.get('nombre_taller'))
 
-    <!-- MOSTRADOR DE TICKET / IMPRESIÓN QR -->
-    <div id="area-impresion" class="d-none p-4">
-        <div class="text-center mb-3">
-            <h3 class="m-0" id="t-nombre-taller">{{ taller }}</h3>
-            <p class="m-0">COMPROBANTE DE INGRESO - ÓRDEN DE TRABAJO</p>
-            <hr>
-        </div>
-        <p><strong>Órden N°:</strong> <span id="t-id"></span></p>
-        <p><strong>Cliente:</strong> <span id="t-cliente"></span></p>
-        <p><strong>Teléfono:</strong> <span id="t-telefono"></span></p>
-        <p><strong>Equipo:</strong> <span id="t-equipo"></span></p>
-        <p><strong>Falla:</strong> <span id="t-falla"></span></p>
-        <p><strong>Presupuesto Est.:</strong> $<span id="t-presupuesto"></span></p>
-        <div class="d-flex justify-content-center my-3">
-            <div id="qrcode"></div>
-        </div>
-        <p class="text-center small">Escanee el código QR para consultar el estado de su equipo.</p>
-    </div>
+@app.route('/login', methods=['GET', 'POST'])
+def login_view():
+    if request.method == 'POST':
+        data = request.form
+        user = data.get('usuario', '').strip()
+        pwd = data.get('password', '').strip()
+        
+        if not user or not pwd:
+            return render_template('login.html', error="Por favor ingrese usuario y contraseña")
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let ordenesData = [];
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s)", (user,))
+        u = cur.fetchone()
+        cur.close()
+        conn.close()
 
-        async function cargarOrdenes() {
-            try {
-                const res = await fetch('/api/ordenes');
-                if (!res.ok) return;
-                ordenesData = await res.json();
-                const tbody = document.getElementById('tabla-ordenes');
-                tbody.innerHTML = '';
-                ordenesData.forEach(o => {
-                    const tel = o.telefono || '';
-                    const telClean = tel.replace(/[^0-9]/g, '');
-                    const waBtn = telClean ? `<a href="https://wa.me/${telClean}?text=${encodeURIComponent('Hola ' + o.cliente + ', te contactamos de ' + '{{ taller }}' + ' por tu equipo ' + o.equipo)}" target="_blank" class="btn btn-sm btn-success me-1">💬 WA</a>` : '';
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>#${o.id}</td>
-                            <td>${o.cliente}<br><small class="text-muted">${tel}</small></td>
-                            <td>${o.equipo}</td>
-                            <td>$${parseFloat(o.presupuesto || 0).toFixed(2)}</td>
-                            <td><span class="badge bg-primary">${o.estado || 'Ingresado'}</span></td>
-                            <td>
-                                ${waBtn}
-                                <button class="btn btn-sm btn-warning me-1" onclick="imprimirTicket(${o.id})">🖨️ Ticket QR</button>
-                                <button class="btn btn-sm btn-danger" onclick="borrarOrden(${o.id})">🗑️</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        function imprimirTicket(id) {
-            const o = ordenesData.find(x => x.id === id);
-            if (!o) return;
-            document.getElementById('t-id').innerText = o.id;
-            document.getElementById('t-cliente').innerText = o.cliente;
-            document.getElementById('t-telefono').innerText = o.telefono || '-';
-            document.getElementById('t-equipo').innerText = o.equipo;
-            document.getElementById('t-falla').innerText = o.falla || '-';
-            document.getElementById('t-presupuesto').innerText = parseFloat(o.presupuesto || 0).toFixed(2);
+        if u:
+            pwd_hash = u.get('password_hash') or ''
+            pwd_plana = u.get('password') or ''
+            valido = False
             
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-                text: window.location.origin + '/login',
-                width: 128,
-                height: 128
-            });
+            if pwd_hash.startswith('pbkdf2:') or pwd_hash.startswith('scrypt:'):
+                try:
+                    valido = check_password_hash(pwd_hash, pwd)
+                except Exception:
+                    valido = False
+            
+            if not valido and pwd_plana:
+                valido = (pwd_plana.strip() == pwd)
 
-            const area = document.getElementById('area-impresion');
-            area.classList.remove('d-none');
-            window.print();
-            area.classList.add('d-none');
-        }
+            if not valido and pwd_hash:
+                valido = (pwd_hash.strip() == pwd)
 
-        document.getElementById('form-orden').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = {
-                cliente: document.getElementById('ord-cliente').value,
-                telefono: document.getElementById('ord-telefono').value,
-                equipo: document.getElementById('ord-equipo').value,
-                falla: document.getElementById('ord-falla').value,
-                solucion: document.getElementById('ord-solucion').value,
-                presupuesto: parseFloat(document.getElementById('ord-presupuesto').value) || 0,
-                estado: document.getElementById('ord-estado').value
-            };
-            const res = await fetch('/api/ordenes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                document.getElementById('form-orden').reset();
-                cargarOrdenes();
-            }
-        });
+            if valido:
+                session['usuario_id'] = u['id']
+                session['usuario'] = u['usuario']
+                session['nombre_taller'] = u.get('nombre_taller') or 'Mi Taller'
+                return redirect(url_for('index'))
 
-        async function borrarOrden(id) {
-            if (confirm('¿Eliminar orden?')) {
-                await fetch(`/api/ordenes/${id}`, { method: 'DELETE' });
-                cargarOrdenes();
-            }
-        }
+        return render_template('login.html', error="Usuario o contraseña incorrectos")
+            
+    return render_template('login.html')
 
-        async function cargarRepuestos() {
-            try {
-                const res = await fetch('/api/repuestos');
-                if (!res.ok) return;
-                const data = await res.json();
-                const tbody = document.getElementById('tabla-repuestos');
-                tbody.innerHTML = '';
-                data.forEach(r => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${r.nombre}</strong></td>
-                            <td>${r.categoria || ''}</td>
-                            <td>${r.ubicacion || ''}</td>
-                            <td><span class="badge bg-success fs-6">${r.cantidad}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-light me-1" onclick="modificarStock(${r.id}, ${r.cantidad - 1})">-</button>
-                                <button class="btn btn-sm btn-outline-light" onclick="modificarStock(${r.id}, ${r.cantidad + 1})">+</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } catch (e) { console.error(e); }
-        }
+@app.route('/registro', methods=['GET', 'POST'])
+@app.route('/registro_taller', methods=['GET', 'POST'])
+@app.route('/crear_taller', methods=['GET', 'POST'])
+@app.route('/crear-taller', methods=['GET', 'POST'])
+def registro_view():
+    if request.method == 'POST':
+        data = request.form
+        user = data.get('usuario', '').strip()
+        pwd = data.get('password', '').strip()
+        taller = data.get('nombre_taller', '').strip() or 'Mi Taller'
+        tel = data.get('telefono_taller', '').strip()
 
-        document.getElementById('form-repuesto').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = {
-                nombre: document.getElementById('rep-nombre').value,
-                categoria: document.getElementById('rep-categoria').value,
-                ubicacion: document.getElementById('rep-ubicacion').value,
-                cantidad: parseInt(document.getElementById('rep-cantidad').value) || 1
-            };
-            const res = await fetch('/api/repuestos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                document.getElementById('form-repuesto').reset();
-                cargarRepuestos();
-            }
-        });
+        if not user or not pwd:
+            return render_template('registro.html', error="El usuario y la contraseña son obligatorios")
 
-        async function modificarStock(id, cantidad) {
-            if (cantidad < 0) cantidad = 0;
-            await fetch(`/api/repuestos/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cantidad })
-            });
-            cargarRepuestos();
-        }
+        pwd_hash = generate_password_hash(pwd)
 
-        async function cargarFirmwares() {
-            try {
-                const res = await fetch('/api/firmwares');
-                if (!res.ok) return;
-                const data = await res.json();
-                const tbody = document.getElementById('tabla-firmwares');
-                tbody.innerHTML = '';
-                data.forEach(f => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${f.chasis}</td>
-                            <td>${f.modelo || ''}</td>
-                            <td>${f.memoria || ''}</td>
-                            <td><a href="${f.url_nube}" target="_blank" class="btn btn-sm btn-info text-dark">Descargar</a></td>
-                        </tr>
-                    `;
-                });
-            } catch (e) { console.error(e); }
-        }
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO usuarios (usuario, password_hash, password, nombre_taller, telefono_taller)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, usuario, nombre_taller
+            """, (user, pwd_hash, pwd, taller, tel))
+            nuevo_u = cur.fetchone()
+            conn.commit()
+            cur.close()
+            conn.close()
 
-        async function cargarVentas() {
-            try {
-                const res = await fetch('/api/ventas');
-                if (!res.ok) return;
-                const data = await res.json();
-                const tbody = document.getElementById('tabla-ventas');
-                tbody.innerHTML = '';
-                data.forEach(v => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${v.producto}</td>
-                            <td>$${parseFloat(v.precio || 0).toFixed(2)}</td>
-                            <td><span class="badge bg-warning text-dark">${v.estado}</span></td>
-                            <td><button class="btn btn-sm btn-danger" onclick="borrarVenta(${v.id})">🗑️</button></td>
-                        </tr>
-                    `;
-                });
-            } catch (e) { console.error(e); }
-        }
+            session['usuario_id'] = nuevo_u['id']
+            session['usuario'] = nuevo_u['usuario']
+            session['nombre_taller'] = nuevo_u['nombre_taller']
+            return redirect(url_for('index'))
 
-        document.getElementById('form-venta').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = {
-                producto: document.getElementById('vent-producto').value,
-                precio: parseFloat(document.getElementById('vent-precio').value) || 0,
-                estado: document.getElementById('vent-estado').value
-            };
-            const res = await fetch('/api/ventas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                document.getElementById('form-venta').reset();
-                cargarVentas();
-            }
-        });
+        except Exception as e:
+            return render_template('registro.html', error="El nombre de usuario ya existe o hubo un error al registrar.")
 
-        async function borrarVenta(id) {
-            if (confirm('¿Eliminar venta?')) {
-                await fetch(`/api/ventas/${id}`, { method: 'DELETE' });
-                cargarVentas();
-            }
-        }
+    return render_template('registro.html')
 
-        async function cargarCaja() {
-            try {
-                const res = await fetch('/api/caja');
-                if (!res.ok) return;
-                const data = await res.json();
-                const tbody = document.getElementById('tabla-caja');
-                tbody.innerHTML = '';
-                (data.movimientos || []).forEach(m => {
-                    const esIngreso = m.tipo === 'Ingreso';
-                    const fechaFmt = new Date(m.fecha).toLocaleDateString();
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${fechaFmt}</td>
-                            <td><span class="badge ${esIngreso ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td>
-                            <td>${m.concepto}</td>
-                            <td class="${esIngreso ? 'text-success' : 'text-danger'} fw-bold">$${parseFloat(m.monto || 0).toFixed(2)}</td>
-                            <td><button class="btn btn-sm btn-danger" onclick="borrarCaja(${m.id})">🗑️</button></td>
-                        </tr>
-                    `;
-                });
-                const bal = parseFloat(data.balance || 0);
-                document.getElementById('resumen-balance').innerHTML = `Balance: <span class="${bal >= 0 ? 'text-success' : 'text-danger'}">$${bal.toFixed(2)}</span>`;
-            } catch (e) { console.error(e); }
-        }
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_view'))
 
-        document.getElementById('form-caja').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = {
-                tipo: document.getElementById('caja-tipo').value,
-                concepto: document.getElementById('caja-concepto').value,
-                monto: parseFloat(document.getElementById('caja-monto').value) || 0
-            };
-            const res = await fetch('/api/caja', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                document.getElementById('form-caja').reset();
-                cargarCaja();
-            }
-        });
+@app.route('/api/ordenes', methods=['GET', 'POST'])
+def handle_ordenes():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-        async function borrarCaja(id) {
-            if (confirm('¿Eliminar movimiento?')) {
-                await fetch(`/api/caja/${id}`, { method: 'DELETE' });
-                cargarCaja();
-            }
-        }
+    if request.method == 'POST':
+        d = request.json or {}
+        cur.execute("""
+            INSERT INTO ordenes (usuario_id, cliente, telefono, equipo, falla, solucion, presupuesto, estado)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (uid, d.get('cliente', ''), d.get('telefono', ''), d.get('equipo', ''), d.get('falla', ''), d.get('solucion', ''), d.get('presupuesto', 0), d.get('estado', 'Ingresado')))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'ok'})
 
-        async function consultarIA() {
-            const eq = document.getElementById('ia-equipo').value;
-            const fa = document.getElementById('ia-falla').value;
-            const resDiv = document.getElementById('res-ia');
-            if (!eq || !fa) { alert('Completá equipo y falla.'); return; }
-            resDiv.classList.remove('d-none');
-            resDiv.innerText = 'Analizando...';
-            try {
-                const res = await fetch('/api/analizar-falla', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ equipo: eq, falla: fa })
-                });
-                const d = await res.json();
-                resDiv.innerText = d.diagnostico || 'Sin respuesta';
-            } catch (e) { resDiv.innerText = 'Error al consultar.'; }
-        }
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    ordenes = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(ordenes)
 
-        async function consultarChasis() {
-            const ch = document.getElementById('ia-chasis').value;
-            const resDiv = document.getElementById('res-chasis');
-            if (!ch) { alert('Ingresá el código de chasis.'); return; }
-            resDiv.classList.remove('d-none');
-            resDiv.innerText = 'Buscando...';
-            try {
-                const res = await fetch('/api/fallas-recurrentes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chasis: ch })
-                });
-                const d = await res.json();
-                resDiv.innerText = d.resultado || 'Sin datos';
-            } catch (e) { resDiv.innerText = 'Error al consultar.'; }
-        }
+@app.route('/api/ordenes/<int:oid>', methods=['DELETE'])
+def delete_orden(oid):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s", (oid, session['usuario_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'ok'})
 
-        cargarOrdenes();
-        cargarRepuestos();
-        cargarFirmwares();
-        cargarVentas();
-        cargarCaja();
-    </script>
-</body>
-</html>
+@app.route('/api/repuestos', methods=['GET', 'POST'])
+def handle_repuestos():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        d = request.json or {}
+        categoria = d.get('categoria', 'General')
+        nombre = d.get('nombre', '').strip()
+        ubicacion = d.get('ubicacion', '').strip()
+        try:
+            cantidad = int(d.get('cantidad', 1))
+        except (ValueError, TypeError):
+            cantidad = 1
+
+        if not nombre:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'El nombre del componente es obligatorio'}), 400
+
+        cur.execute("""
+            INSERT INTO repuestos (usuario_id, categoria, nombre, ubicacion, cantidad)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (uid, categoria, nombre, ubicacion, cantidad))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'ok'})
+
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    rep = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(rep)
+
+@app.route('/api/repuestos/<int:rid>', methods=['PUT'])
+def update_repuesto(rid):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    d = request.json or {}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    if 'cantidad' in d:
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s", (d['cantidad'], rid, session['usuario_id']))
+    if 'ubicacion' in d:
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s", (d['ubicacion'], rid, session['usuario_id']))
+        
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/caja', methods=['GET', 'POST'])
+def handle_caja():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        d = request.json or {}
+        cur.execute("""
+            INSERT INTO caja (usuario_id, tipo, concepto, monto)
+            VALUES (%s, %s, %s, %s)
+        """, (uid, d.get('tipo', 'Ingreso'), d.get('concepto', ''), d.get('monto', 0)))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'ok'})
+
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    movs = cur.fetchall()
+
+    ingresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Ingreso')
+    egresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Egreso')
+
+    cur.close()
+    conn.close()
+    return jsonify({
+        'movimientos': movs,
+        'ingresos': ingresos,
+        'egresos': egresos,
+        'balance': ingresos - egresos
+    })
+
+@app.route('/api/caja/<int:mid>', methods=['DELETE'])
+def delete_caja(mid):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s", (mid, session['usuario_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/ventas', methods=['GET', 'POST'])
+def handle_ventas():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        d = request.json or {}
+        cur.execute("""
+            INSERT INTO ventas (usuario_id, producto, precio, estado)
+            VALUES (%s, %s, %s, %s)
+        """, (uid, d.get('producto', ''), d.get('precio', 0), d.get('estado', 'En Venta')))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'ok'})
+
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    v = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(v)
+
+@app.route('/api/ventas/<int:vid>', methods=['DELETE'])
+def delete_venta(vid):
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s", (vid, session['usuario_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/firmwares')
+def handle_firmwares():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM firmwares ORDER BY id DESC")
+    f = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(f)
+
+@app.route('/api/analizar-falla', methods=['POST'])
+def analizar_falla():
+    d = request.json or {}
+    equipo = d.get('equipo', '')
+    falla = d.get('falla', '')
+
+    if not GEMINI_API_KEY:
+        return jsonify({'diagnostico': 'API Key de Gemini no configurada.'})
+
+    prompt = f"Como técnico electrónico especialista en Smart TV y audio, analizá el equipo '{equipo}' con la falla '{falla}'. Indica: 1. Etapa del circuito a revisar. 2. Componentes críticos a medir (MOSFET, PWM, diodos, capacitores). 3. Prueba rápida en mesa de trabajo."
+    
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        res = model.generate_content(prompt)
+        return jsonify({'diagnostico': res.text})
+    except Exception as e:
+        return jsonify({'diagnostico': f'Error al consultar IA: {e}'})
+
+@app.route('/api/fallas-recurrentes', methods=['POST'])
+def fallas_recurrentes():
+    d = request.json or {}
+    chasis = d.get('chasis', '')
+
+    if not GEMINI_API_KEY:
+        return jsonify({'resultado': 'API Key no disponible.'})
+
+    prompt = f"Para el chasis/placa de TV '{chasis}', enumera las 3 fallas más típicas reportadas en talleres y los componentes específicos que suelen fallar (ej: posiciones R, C, Q, IC)."
+
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        res = model.generate_content(prompt)
+        return jsonify({'resultado': res.text})
+    except Exception as e:
+        return jsonify({'resultado': f'Error al consultar IA: {e}'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
