@@ -39,7 +39,9 @@ def inicializar_bd():
         
         try:
             cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password VARCHAR(255);")
             cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100) DEFAULT 'Mi Taller';")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono_taller VARCHAR(30);")
         except Exception:
             pass
 
@@ -109,24 +111,28 @@ def index():
 def login_view():
     if request.method == 'POST':
         data = request.form
-        user = data.get('usuario')
-        pwd = data.get('password')
+        user = data.get('usuario', '').strip()
+        pwd = data.get('password', '').strip()
         
+        if not user or not pwd:
+            return render_template('login.html', error="Por favor ingrese usuario y contraseña")
+
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM usuarios WHERE usuario = %s", (user,))
+        cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s)", (user,))
         u = cur.fetchone()
         cur.close()
         conn.close()
 
         if u:
-            pwd_guardada = u.get('password_hash') or u.get('password') or ''
+            pwd_hash = u.get('password_hash')
+            pwd_plana = u.get('password')
             valido = False
             
-            if pwd_guardada.startswith('pbkdf2:') or pwd_guardada.startswith('scrypt:'):
-                valido = check_password_hash(pwd_guardada, pwd)
-            else:
-                valido = (pwd_guardada == pwd)
+            if pwd_hash and (pwd_hash.startswith('pbkdf2:') or pwd_hash.startswith('scrypt:')):
+                valido = check_password_hash(pwd_hash, pwd)
+            elif pwd_plana:
+                valido = (pwd_plana == pwd)
 
             if valido:
                 session['usuario_id'] = u['id']
@@ -145,13 +151,13 @@ def login_view():
 def registro_view():
     if request.method == 'POST':
         data = request.form
-        user = data.get('usuario')
-        pwd = data.get('password')
-        taller = data.get('nombre_taller', 'Mi Taller')
-        tel = data.get('telefono_taller', '')
+        user = data.get('usuario', '').strip()
+        pwd = data.get('password', '').strip()
+        taller = data.get('nombre_taller', '').strip() or 'Mi Taller'
+        tel = data.get('telefono_taller', '').strip()
 
         if not user or not pwd:
-            return "Faltan datos requeridos (usuario y contraseña)", 400
+            return render_template('registro.html', error="El usuario y la contraseña son obligatorios")
 
         pwd_hash = generate_password_hash(pwd)
 
@@ -161,18 +167,23 @@ def registro_view():
             cur.execute("""
                 INSERT INTO usuarios (usuario, password_hash, password, nombre_taller, telefono_taller)
                 VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, usuario, nombre_taller
             """, (user, pwd_hash, pwd, taller, tel))
+            nuevo_u = cur.fetchone()
             conn.commit()
             cur.close()
             conn.close()
-            return redirect(url_for('login_view'))
-        except Exception as e:
-            return render_template('registro.html', error="El nombre de usuario ya existe o hubo un error.")
 
-    try:
-        return render_template('registro.html')
-    except Exception:
-        return render_template('login.html', error="Completá los datos de registro")
+            # Iniciar sesión automáticamente tras registrarse
+            session['usuario_id'] = nuevo_u['id']
+            session['usuario'] = nuevo_u['usuario']
+            session['nombre_taller'] = nuevo_u['nombre_taller']
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            return render_template('registro.html', error="El nombre de usuario ya existe o hubo un error al registrar.")
+
+    return render_template('registro.html')
 
 @app.route('/logout')
 def logout():
@@ -200,7 +211,7 @@ def handle_ordenes():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     ordenes = cur.fetchall()
     cur.close()
     conn.close()
@@ -213,7 +224,7 @@ def delete_orden(oid):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM ordenes WHERE id = %s", (oid,))
+    cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s", (oid, session['usuario_id']))
     conn.commit()
     cur.close()
     conn.close()
@@ -240,7 +251,7 @@ def handle_repuestos():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     rep = cur.fetchall()
     cur.close()
     conn.close()
@@ -256,9 +267,9 @@ def update_repuesto(rid):
     cur = conn.cursor()
     
     if 'cantidad' in d:
-        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s", (d['cantidad'], rid))
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s", (d['cantidad'], rid, session['usuario_id']))
     if 'ubicacion' in d:
-        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s", (d['ubicacion'], rid))
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s", (d['ubicacion'], rid, session['usuario_id']))
         
     conn.commit()
     cur.close()
@@ -286,7 +297,7 @@ def handle_caja():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM caja WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     movs = cur.fetchall()
 
     ingresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Ingreso')
@@ -308,7 +319,7 @@ def delete_caja(mid):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM caja WHERE id = %s", (mid,))
+    cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s", (mid, session['usuario_id']))
     conn.commit()
     cur.close()
     conn.close()
@@ -335,7 +346,7 @@ def handle_ventas():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     v = cur.fetchall()
     cur.close()
     conn.close()
@@ -348,7 +359,7 @@ def delete_venta(vid):
 
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM ventas WHERE id = %s", (vid,))
+    cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s", (vid, session['usuario_id']))
     conn.commit()
     cur.close()
     conn.close()
