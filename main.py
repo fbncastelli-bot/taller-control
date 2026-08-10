@@ -15,8 +15,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 def get_db_connection():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 def inicializar_bd():
     if not DATABASE_URL:
@@ -207,6 +206,7 @@ def logout():
     session.clear()
     return redirect(url_for('login_view'))
 
+# API ÓRDENES
 @app.route('/api/ordenes', methods=['GET', 'POST'])
 def handle_ordenes():
     if 'usuario_id' not in session:
@@ -231,6 +231,11 @@ def handle_ordenes():
     ordenes = cur.fetchall()
     cur.close()
     conn.close()
+
+    for o in ordenes:
+        o['presupuesto'] = float(o['presupuesto'] or 0)
+        o['fecha_creacion'] = str(o['fecha_creacion']) if o.get('fecha_creacion') else ''
+
     return jsonify(ordenes)
 
 @app.route('/api/ordenes/<int:oid>', methods=['DELETE'])
@@ -246,6 +251,7 @@ def delete_orden(oid):
     conn.close()
     return jsonify({'status': 'ok'})
 
+# API REPUESTOS
 @app.route('/api/repuestos', methods=['GET', 'POST'])
 def handle_repuestos():
     if 'usuario_id' not in session:
@@ -304,6 +310,7 @@ def update_repuesto(rid):
     conn.close()
     return jsonify({'status': 'ok'})
 
+# API CAJA
 @app.route('/api/caja', methods=['GET', 'POST'])
 def handle_caja():
     if 'usuario_id' not in session:
@@ -326,6 +333,10 @@ def handle_caja():
 
     cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     movs = cur.fetchall()
+
+    for m in movs:
+        m['monto'] = float(m['monto'] or 0)
+        m['fecha'] = str(m['fecha']) if m.get('fecha') else ''
 
     ingresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Ingreso')
     egresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Egreso')
@@ -352,6 +363,7 @@ def delete_caja(mid):
     conn.close()
     return jsonify({'status': 'ok'})
 
+# API VENTAS
 @app.route('/api/ventas', methods=['GET', 'POST'])
 def handle_ventas():
     if 'usuario_id' not in session:
@@ -376,6 +388,10 @@ def handle_ventas():
     v = cur.fetchall()
     cur.close()
     conn.close()
+
+    for row in v:
+        row['precio'] = float(row['precio'] or 0)
+
     return jsonify(v)
 
 @app.route('/api/ventas/<int:vid>', methods=['DELETE'])
@@ -391,6 +407,7 @@ def delete_venta(vid):
     conn.close()
     return jsonify({'status': 'ok'})
 
+# API FIRMWARES
 @app.route('/api/firmwares')
 def handle_firmwares():
     conn = get_db_connection()
@@ -401,6 +418,7 @@ def handle_firmwares():
     conn.close()
     return jsonify(f)
 
+# API IA DIAGNÓSTICO
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
     d = request.json or {}
