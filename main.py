@@ -24,19 +24,31 @@ def inicializar_bd():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # Crear tabla de usuarios con campos flexibles si no existe
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id SERIAL PRIMARY KEY,
                 usuario VARCHAR(50) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                nombre_taller VARCHAR(100) NOT NULL,
+                password_hash VARCHAR(255),
+                password VARCHAR(255),
+                nombre_taller VARCHAR(100) NOT NULL DEFAULT 'Mi Taller',
                 telefono_taller VARCHAR(30),
                 rol VARCHAR(20) DEFAULT 'admin'
             );
+        """)
+        
+        # Intentar agregar la columna password_hash si faltaba en la base vieja
+        try:
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+            cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100) DEFAULT 'Mi Taller';")
+        except Exception:
+            pass
 
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS ordenes (
                 id SERIAL PRIMARY KEY,
-                usuario_id INT NOT NULL,
+                usuario_id INT DEFAULT 1,
                 cliente VARCHAR(100) NOT NULL,
                 telefono VARCHAR(30),
                 equipo VARCHAR(100) NOT NULL,
@@ -49,7 +61,7 @@ def inicializar_bd():
 
             CREATE TABLE IF NOT EXISTS repuestos (
                 id SERIAL PRIMARY KEY,
-                usuario_id INT NOT NULL,
+                usuario_id INT DEFAULT 1,
                 categoria VARCHAR(50),
                 nombre VARCHAR(100) NOT NULL,
                 ubicacion VARCHAR(50),
@@ -58,7 +70,7 @@ def inicializar_bd():
 
             CREATE TABLE IF NOT EXISTS ventas (
                 id SERIAL PRIMARY KEY,
-                usuario_id INT NOT NULL,
+                usuario_id INT DEFAULT 1,
                 producto VARCHAR(100) NOT NULL,
                 precio NUMERIC(10, 2) DEFAULT 0,
                 estado VARCHAR(30) DEFAULT 'En Venta'
@@ -66,7 +78,7 @@ def inicializar_bd():
 
             CREATE TABLE IF NOT EXISTS caja (
                 id SERIAL PRIMARY KEY,
-                usuario_id INT NOT NULL,
+                usuario_id INT DEFAULT 1,
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 tipo VARCHAR(20) NOT NULL,
                 concepto VARCHAR(150) NOT NULL,
@@ -87,7 +99,6 @@ def inicializar_bd():
     except Exception as e:
         print("Error inicializando BD:", e)
 
-# Crear tablas al iniciar
 inicializar_bd()
 
 @app.route('/')
@@ -110,13 +121,23 @@ def login_view():
         cur.close()
         conn.close()
 
-        if u and check_password_hash(u['password_hash'], pwd):
-            session['usuario_id'] = u['id']
-            session['usuario'] = u['usuario']
-            session['nombre_taller'] = u['nombre_taller']
-            return redirect(url_for('index'))
-        else:
-            return render_template('login.html', error="Usuario o contraseña incorrectos")
+        if u:
+            # Verificar si coincide con hash nuevo o con clave plana vieja
+            pwd_guardada = u.get('password_hash') or u.get('password') or ''
+            valido = False
+            
+            if pwd_guardada.startswith('pbkdf2:') or pwd_guardada.startswith('scrypt:'):
+                valido = check_password_hash(pwd_guardada, pwd)
+            else:
+                valido = (pwd_guardada == pwd)
+
+            if valido:
+                session['usuario_id'] = u['id']
+                session['usuario'] = u['usuario']
+                session['nombre_taller'] = u.get('nombre_taller') or 'Mi Taller'
+                return redirect(url_for('index'))
+
+        return render_template('login.html', error="Usuario o contraseña incorrectos")
             
     return render_template('login.html')
 
@@ -126,8 +147,8 @@ def registro_view():
         data = request.form
         user = data.get('usuario')
         pwd = data.get('password')
-        taller = data.get('nombre_taller')
-        tel = data.get('telefono_taller')
+        taller = data.get('nombre_taller', 'Mi Taller')
+        tel = data.get('telefono_taller', '')
 
         pwd_hash = generate_password_hash(pwd)
 
@@ -135,9 +156,9 @@ def registro_view():
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO usuarios (usuario, password_hash, nombre_taller, telefono_taller)
-                VALUES (%s, %s, %s, %s)
-            """, (user, pwd_hash, taller, tel))
+                INSERT INTO usuarios (usuario, password_hash, password, nombre_taller, telefono_taller)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user, pwd_hash, pwd, taller, tel))
             conn.commit()
             cur.close()
             conn.close()
@@ -173,7 +194,7 @@ def handle_ordenes():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
     ordenes = cur.fetchall()
     cur.close()
     conn.close()
@@ -186,7 +207,7 @@ def delete_orden(oid):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s", (oid, session['usuario_id']))
+    cur.execute("DELETE FROM ordenes WHERE id = %s", (oid,))
     conn.commit()
     cur.close()
     conn.close()
@@ -213,7 +234,7 @@ def handle_repuestos():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
     rep = cur.fetchall()
     cur.close()
     conn.close()
@@ -229,9 +250,9 @@ def update_repuesto(rid):
     cur = conn.cursor()
     
     if 'cantidad' in d:
-        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s", (d['cantidad'], rid, session['usuario_id']))
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s", (d['cantidad'], rid))
     if 'ubicacion' in d:
-        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s", (d['ubicacion'], rid, session['usuario_id']))
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s", (d['ubicacion'], rid))
         
     conn.commit()
     cur.close()
@@ -259,7 +280,7 @@ def handle_caja():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
     movs = cur.fetchall()
 
     ingresos = sum(float(m['monto']) for m in movs if m['tipo'] == 'Ingreso')
@@ -281,7 +302,7 @@ def delete_caja(mid):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s", (mid, session['usuario_id']))
+    cur.execute("DELETE FROM caja WHERE id = %s", (mid,))
     conn.commit()
     cur.close()
     conn.close()
@@ -308,7 +329,7 @@ def handle_ventas():
         conn.close()
         return jsonify({'status': 'ok'})
 
-    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s OR usuario_id = 1 ORDER BY id DESC", (uid,))
     v = cur.fetchall()
     cur.close()
     conn.close()
@@ -321,13 +342,13 @@ def delete_venta(vid):
 
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s", (vid, session['usuario_id']))
+    cur.execute("DELETE FROM ventas WHERE id = %s", (vid,))
     conn.commit()
     cur.close()
     conn.close()
     return jsonify({'status': 'ok'})
 
-# API FIRMWARES (COMPARTIDO GLOBAL)
+# API FIRMWARES
 @app.route('/api/firmwares')
 def handle_firmwares():
     conn = get_db_connection()
