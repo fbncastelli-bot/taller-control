@@ -25,7 +25,6 @@ def init_db():
     if not conn:
         return
     cur = conn.cursor()
-    # Crear tablas si no existen
     cur.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
@@ -65,10 +64,7 @@ def init_db():
             test_points TEXT
         );
     ''')
-    
-    # Asegurar que la columna telefono exista en tablas creadas anteriormente
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS telefono VARCHAR(50);")
-    
     conn.commit()
     cur.close()
     conn.close()
@@ -79,11 +75,13 @@ except Exception as e:
     print("Error iniciando BBDD PostgreSQL:", e)
 
 DRIVERS_LED = {
-    "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
-    "MAP3202": "Aumentar el valor de la resistencia conectada en la línea R_ISET (pin 6).",
-    "BIT3267": "Retirar una resistencia de la red conectada entre ISET (pin 4) y masa.",
-    "AP3041": "Modificar el divisor en el pin ISET incrementando el valor de R_SET.",
-    "OZ9998": "Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama."
+    "OB3350": "Pin 5 (ISET): Retirar una de las resistencias en paralelo conectadas a masa para aumentar la resistencia total de R_ISET y reducir la corriente del backlight un 25-30%.",
+    "MAP3202": "Pin 6 (R_ISET): Aumentar el valor de la resistencia conectada de este pin a masa (ej: de 10k a 15k-18k).",
+    "BIT3267": "Pin 4 (ISET): Retirar una de las resistencias en paralelo a masa para elevar la impedancia y bajar la corriente de los LED.",
+    "AP3041": "Pin ISET: Modificar el divisor resistivo incrementando el valor de R_SET.",
+    "OZ9998": "Pin ISET: Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama.",
+    "BD9488F": "Pin 10 (ISET): Aumentar el valor de la resistencia a masa para bajar la corriente total de salida.",
+    "MP3394": "Pin 6 (ISET): Aumentar la resistencia R_ISET para limitar la corriente por canal."
 }
 
 def consultar_gemini_limpio(prompt):
@@ -347,6 +345,19 @@ def delete_movimiento(mov_id):
         conn.close()
     return jsonify({"status": "deleted"})
 
+# REFORMA BACKLIGHT
+@app.route('/api/calcular-backlight', methods=['POST'])
+def calcular_backlight():
+    data = request.json or {}
+    driver = data.get('driver', '').upper().strip()
+    
+    if driver in DRIVERS_LED:
+        instruccion = DRIVERS_LED[driver]
+    else:
+        instruccion = f"Driver '{driver}' no registrado de fábrica. Procedimiento general: Localizar el pin ISET / IREF / ISENSE del integrado, medir la resistencia total conectada a masa y aumentarla entre un 20% y 35% para lograr una reducción de corriente proporcional."
+        
+    return jsonify({'driver': driver, 'procedimiento': instruccion})
+
 # CONSULTAS IA Y TEST POINTS
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
@@ -471,13 +482,6 @@ Respondé de forma directa y técnica en español, indicando componentes o reemp
         return jsonify({'error': f'Error al procesar: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/calcular-backlight', methods=['POST'])
-def calcular_backlight():
-    data = request.json or {}
-    driver = data.get('driver', '').upper().strip()
-    instruccion = DRIVERS_LED.get(driver, "Driver no registrado. Modificar la resistencia en el pin ISET/IREF para reducir corriente un 25-30%.")
-    return jsonify({'driver': driver, 'procedimiento': instruccion})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
