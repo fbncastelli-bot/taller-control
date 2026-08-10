@@ -91,7 +91,6 @@
                 </div>
             </div>
 
-            <!-- Modal / Visualizador de Ficha e Informe -->
             <div id="modal-ficha" class="card-custom mt-3" style="display: none; border: 1px solid #0284c7;">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 class="text-info m-0">📋 Ficha de Trabajo e Informe Técnico</h5>
@@ -109,13 +108,21 @@
             </div>
         </div>
 
-        <!-- 2. BANCO DE PLACAS & FALLAS RECURRENTES -->
+        <!-- 2. BANCO DE PLACAS, FALLAS RECURRENTES Y BÚSQUEDA MULTIPLATAFORMA -->
         <div id="sec-placas" style="display: none;">
             <div class="card-custom border-warning">
                 <h6 class="text-warning">⚠️ Buscador de Fallas Recurrentes (Histórico Taller + IA)</h6>
-                <div class="input-group mt-2">
+                <div class="input-group mt-2 mb-2">
                     <input type="text" id="input-chasis-fallas" class="form-control form-control-sm" placeholder="Ingresá Modelo o Código de Chasis (Ej: RSAG7.820.4680 o UN49K5500)">
                     <button onclick="buscarFallasRecurrentes()" class="btn btn-warning btn-sm fw-bold">Buscar Fallas Típicas</button>
+                </div>
+                
+                <!-- BÚSQUEDA MULTIPLATAFORMA DIRECTA -->
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top border-secondary">
+                    <span class="small text-secondary align-self-center">🌐 Buscar Soluciones en Web / Redes:</span>
+                    <button onclick="buscarEnPlataforma('youtube')" class="btn btn-outline-danger btn-sm">▶️ YouTube (Videos)</button>
+                    <button onclick="buscarEnPlataforma('telegram')" class="btn btn-outline-info btn-sm">✈️ Telegram (Canales/Grupos)</button>
+                    <button onclick="buscarEnPlataforma('google')" class="btn btn-outline-primary btn-sm">🔍 Google (Foros/Casos)</button>
                 </div>
             </div>
 
