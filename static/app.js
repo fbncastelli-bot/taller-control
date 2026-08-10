@@ -152,9 +152,26 @@ function enviarWhatsAppModal() {
     enviarWhatsApp();
 }
 
-function imprimirComprobante() {
-    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
+function generarComprobanteImpresion() {
+    if (!otSeleccionada) return alert("Seleccioná una orden de la lista primero.");
+
+    document.getElementById('imp-ot-num').innerText = `OT #${otSeleccionada.id}`;
+    document.getElementById('imp-fecha').innerText = `Fecha: ${new Date().toLocaleDateString('es-AR')}`;
+    document.getElementById('imp-cliente').innerText = otSeleccionada.cliente;
+    document.getElementById('imp-telefono').innerText = otSeleccionada.telefono || 'No registrado';
+    document.getElementById('imp-equipo').innerText = otSeleccionada.equipo;
+    document.getElementById('imp-falla').innerText = otSeleccionada.falla;
+    document.getElementById('imp-estado').innerText = otSeleccionada.estado;
+    document.getElementById('imp-presupuesto').innerText = Number(otSeleccionada.presupuesto).toLocaleString('es-AR', {minimumFractionDigits: 2});
+
+    let numTel = (otSeleccionada.telefono || '').replace(/\D/g, '');
+    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://wa.me/${numTel}?text=Hola,%20consulto%20por%20la%20OT%20%23${otSeleccionada.id}`;
+    document.getElementById('imp-qr').src = qrUrl;
+
+    const areaImp = document.getElementById('area-impresion');
+    areaImp.style.display = 'block';
     window.print();
+    areaImp.style.display = 'none';
 }
 
 function analizarFalla(equipo, falla) {
@@ -471,13 +488,43 @@ function filtrarCaja() {
     });
 }
 
-// 6. FIRMWARES
+// 6. FIRMWARES Y SOLICITUDES POR WHATSAPP
 function cargarFirmwares() {
     fetch('/api/firmwares').then(r => r.json()).then(data => {
-        let html = '';
-        data.forEach(f => {
-            html += `<tr><td>${f.chasis}</td><td>${f.modelo}</td><td>${f.memoria}</td><td><a href="${f.url_nube}" target="_blank" class="btn btn-outline-info btn-sm">Descargar</a></td></tr>`;
-        });
-        document.getElementById('tabla-firmwares').innerHTML = html;
+        window.listaFirmwaresGlobal = data;
+        renderizarTablaFirmwares(data);
     });
+}
+
+function renderizarTablaFirmwares(data) {
+    let html = '';
+    data.forEach(f => {
+        html += `<tr>
+            <td><strong>${f.chasis}</strong></td>
+            <td>${f.modelo}</td>
+            <td>${f.memoria}</td>
+            <td><a href="${f.url_nube}" target="_blank" class="btn btn-outline-info btn-sm">Descargar Archivo</a></td>
+        </tr>`;
+    });
+    document.getElementById('tabla-firmwares').innerHTML = html || '<tr><td colspan="4" class="text-center text-secondary">No se encontraron archivos con esa búsqueda. Usa el botón superior para pedirlo por WhatsApp.</td></tr>';
+}
+
+function filtrarFirmwares() {
+    const q = document.getElementById('fw-buscar').value.toLowerCase();
+    if (!window.listaFirmwaresGlobal) return;
+    const filtrados = window.listaFirmwaresGlobal.filter(f => 
+        f.chasis.toLowerCase().includes(q) || f.modelo.toLowerCase().includes(q) || f.memoria.toLowerCase().includes(q)
+    );
+    renderizarTablaFirmwares(filtrados);
+}
+
+function pedirFirmwareWhatsApp() {
+    const buscado = document.getElementById('fw-buscar').value.trim();
+    const textoChasis = buscado ? `*${buscado}*` : 'un equipo/chasis';
+    
+    // Podés reemplazar este número por el tuyo de soporte directo
+    const numSoporte = "5491112345678"; 
+    const msj = `Hola, necesito solicitar el firmware / dump para el chasis o modelo: ${textoChasis}. Quedo a la espera. ¡Gracias!`;
+    
+    window.open(`https://wa.me/${numSoporte}?text=${encodeURIComponent(msj)}`, '_blank');
 }
