@@ -1,14 +1,20 @@
-let otSeleccionada = null;
-let repSeleccionadoId = null;
-let ventaSeleccionadaId = null;
-let movSeleccionadoId = null;
+let ordenes = [];
+let repuestos = [];
+let ventas = [];
+let cajaMovimientos = [];
+let firmwares = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+let otSeleccionadaId = null;
+let repSeleccionadoId = null;
+let vSeleccionadaId = null;
+let cajaSeleccionadaId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
     cargarOrdenes();
     cargarRepuestos();
     cargarVentas();
-    cargarFirmwares();
     cargarCaja();
+    cargarFirmwares();
 });
 
 function mostrarSeccion(sec) {
@@ -17,113 +23,128 @@ function mostrarSeccion(sec) {
         const el = document.getElementById(`sec-${s}`);
         if (el) el.style.display = (s === sec) ? 'block' : 'none';
     });
-
-    const links = document.querySelectorAll('.nav-link');
-    links.forEach(link => link.classList.remove('active'));
-    if (window.event && window.event.currentTarget) {
-        window.event.currentTarget.classList.add('active');
-    }
-}
-
-function escapeQuotes(str) {
-    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
-// 1. ÓRDENES DE TRABAJO
-function cargarOrdenes() {
-    fetch('/api/ordenes').then(r => r.json()).then(data => {
-        let html = '';
-        data.forEach(o => {
-            const jsonStr = escapeQuotes(JSON.stringify(o));
-            html += `<tr onclick="seleccionarOTObj(${jsonStr}, this)" style="cursor: pointer;">
-                <td>${o.id}</td>
-                <td>${o.cliente}</td>
-                <td>${o.telefono || '-'}</td>
-                <td>${o.equipo}</td>
-                <td>${o.falla}</td>
-                <td>${o.solucion || '-'}</td>
-                <td><span class="badge bg-info">${o.estado}</span></td>
-                <td>$${Number(o.presupuesto).toLocaleString('es-AR')}</td>
-            </tr>`;
-        });
-        document.getElementById('tabla-ordenes').innerHTML = html;
-    }).catch(err => console.error("Error cargando órdenes:", err));
-}
-
-function seleccionarOTObj(obj, fila) {
-    otSeleccionada = obj;
-    document.querySelectorAll('#tabla-ordenes tr').forEach(r => r.classList.remove('table-active'));
-    fila.classList.add('table-active');
-    analizarFalla(obj.equipo, obj.falla);
-}
-
-function guardarOrden() {
-    const cliente = document.getElementById('ot-cliente').value;
-    const telefono = document.getElementById('ot-telefono').value;
-    const equipo = document.getElementById('ot-equipo').value;
-    const falla = document.getElementById('ot-falla').value;
-    const solucion = document.getElementById('ot-solucion').value;
-    const presupuesto = document.getElementById('ot-presupuesto').value;
-    const estado = document.getElementById('ot-estado').value;
-
-    if (!cliente || !equipo) {
-        alert("Ingresá al menos el nombre del cliente y el equipo.");
-        return;
-    }
-
-    fetch('/api/ordenes', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({cliente, telefono, equipo, falla, solucion, presupuesto, estado})
-    }).then(() => {
-        document.getElementById('ot-cliente').value = '';
-        document.getElementById('ot-telefono').value = '';
-        document.getElementById('ot-equipo').value = '';
-        document.getElementById('ot-falla').value = '';
-        document.getElementById('ot-solucion').value = '';
-        document.getElementById('ot-presupuesto').value = '';
-        cargarOrdenes();
+    
+    document.querySelectorAll('.nav-tabs-custom .nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(sec)) {
+            link.classList.add('active');
+        }
     });
 }
 
-function eliminarOrdenSeleccionada() {
-    if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
-    if (confirm(`¿Eliminar la orden N° ${otSeleccionada.id}?`)) {
-        fetch(`/api/ordenes/${otSeleccionada.id}`, { method: 'DELETE' }).then(() => {
-            otSeleccionada = null;
-            cerrarFicha();
-            cargarOrdenes();
-        });
+// --- ÓRDENES ---
+async function cargarOrdenes() {
+    try {
+        const res = await fetch('/api/ordenes');
+        ordenes = await res.json();
+        renderTablaOT(ordenes);
+    } catch (e) { console.error('Error cargando ordenes:', e); }
+}
+
+function renderTablaOT(lista) {
+    const tbody = document.getElementById('tabla-ordenes');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    lista.forEach(o => {
+        const tr = document.createElement('tr');
+        if (otSeleccionadaId === o.id) tr.classList.add('table-primary');
+        tr.onclick = () => seleccionarOT(o.id);
+        tr.innerHTML = `
+            <td>#${o.id}</td>
+            <td>${o.cliente || ''}</td>
+            <td>${o.telefono || ''}</td>
+            <td>${o.equipo || ''}</td>
+            <td>${o.falla || ''}</td>
+            <td>${o.solucion || ''}</td>
+            <td><span class="badge bg-info">${o.estado || 'Ingresado'}</span></td>
+            <td>$${parseFloat(o.presupuesto || 0).toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function seleccionarOT(id) {
+    otSeleccionadaId = id;
+    renderTablaOT(ordenes);
+    const o = ordenes.find(x => x.id === id);
+    if (o) {
+        document.getElementById('box-diagnostico').innerHTML = `
+            <strong>Análisis Técnico OT #${o.id} (${o.equipo}):</strong><br>
+            Falla: ${o.falla || 'Sin detalle'}<br>
+            <em>Consultando circuito en IA...</em>
+        `;
+        consultarIAOT(o.equipo, o.falla);
     }
+}
+
+async function consultarIAOT(equipo, falla) {
+    try {
+        const res = await fetch('/api/analizar-falla', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ equipo, falla })
+        });
+        const data = await res.json();
+        if (data.diagnostico) {
+            document.getElementById('box-diagnostico').innerText = data.diagnostico;
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function guardarOrden() {
+    const data = {
+        cliente: document.getElementById('ot-cliente').value,
+        telefono: document.getElementById('ot-telefono').value,
+        equipo: document.getElementById('ot-equipo').value,
+        falla: document.getElementById('ot-falla').value,
+        solucion: document.getElementById('ot-solucion').value,
+        presupuesto: parseFloat(document.getElementById('ot-presupuesto').value) || 0,
+        estado: document.getElementById('ot-estado').value
+    };
+
+    await fetch('/api/ordenes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    document.getElementById('ot-cliente').value = '';
+    document.getElementById('ot-telefono').value = '';
+    document.getElementById('ot-equipo').value = '';
+    document.getElementById('ot-falla').value = '';
+    document.getElementById('ot-solucion').value = '';
+    document.getElementById('ot-presupuesto').value = '';
+    cargarOrdenes();
 }
 
 function filtrarTablaOT() {
-    const q = document.getElementById('buscar-ot').value.toLowerCase();
-    document.querySelectorAll('#tabla-ordenes tr').forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
-    });
+    const txt = document.getElementById('buscar-ot').value.toLowerCase();
+    const filtradas = ordenes.filter(o => 
+        (o.cliente && o.cliente.toLowerCase().includes(txt)) ||
+        (o.telefono && o.telefono.toLowerCase().includes(txt)) ||
+        (o.equipo && o.equipo.toLowerCase().includes(txt)) ||
+        (o.id && o.id.toString().includes(txt))
+    );
+    renderTablaOT(filtradas);
 }
 
 function verFichaOT() {
-    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
-    const modal = document.getElementById('modal-ficha');
-    const cont = document.getElementById('contenido-ficha');
+    if (!otSeleccionadaId) return alert('Seleccioná una orden de la lista.');
+    const o = ordenes.find(x => x.id === otSeleccionadaId);
+    if (!o) return;
 
-    cont.innerHTML = `
-        <div class="row g-2">
-            <div class="col-md-6"><strong>N° ORDEN:</strong> #${otSeleccionada.id}</div>
-            <div class="col-md-6"><strong>CLIENTE:</strong> ${otSeleccionada.cliente}</div>
-            <div class="col-md-6"><strong>TELÉFONO:</strong> ${otSeleccionada.telefono || 'No registrado'}</div>
-            <div class="col-md-6"><strong>EQUIPO:</strong> ${otSeleccionada.equipo}</div>
-            <div class="col-md-6"><strong>FALLA REPORTADA:</strong> ${otSeleccionada.falla}</div>
-            <div class="col-md-6"><strong>SOLUCIÓN:</strong> ${otSeleccionada.solucion || 'Pendiente'}</div>
-            <div class="col-md-6"><strong>ESTADO DEL TRABAJO:</strong> ${otSeleccionada.estado}</div>
-            <div class="col-md-12 text-warning fs-6"><strong>PRESUPUESTO:</strong> $${Number(otSeleccionada.presupuesto).toLocaleString('es-AR')}</div>
-        </div>
+    const html = `
+        <p><strong>N° Orden:</strong> #${o.id}</p>
+        <p><strong>Cliente:</strong> ${o.cliente || ''}</p>
+        <p><strong>Teléfono:</strong> ${o.telefono || ''}</p>
+        <p><strong>Equipo:</strong> ${o.equipo || ''}</p>
+        <p><strong>Falla Reportada:</strong> ${o.falla || ''}</p>
+        <p><strong>Solución Aplicada:</strong> ${o.solucion || ''}</p>
+        <p><strong>Estado:</strong> ${o.estado || ''}</p>
+        <p><strong>Presupuesto:</strong> $${parseFloat(o.presupuesto || 0).toFixed(2)}</p>
     `;
-
-    modal.style.display = 'block';
-    modal.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('contenido-ficha').innerHTML = html;
+    document.getElementById('modal-ficha').style.display = 'block';
 }
 
 function cerrarFicha() {
@@ -131,21 +152,13 @@ function cerrarFicha() {
 }
 
 function enviarWhatsApp() {
-    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
-    if (!otSeleccionada.telefono) return alert("Esta orden no tiene cargado un número de teléfono.");
-
-    let num = otSeleccionada.telefono.replace(/\D/g, '');
-    if (!num.startsWith('549') && num.length <= 11) {
-        num = '549' + num;
-    }
-
-    const mensaje = `Hola ${otSeleccionada.cliente}, te escribimos de *SERVICIO TÉCNICO*. 
-Le informamos que su equipo *${otSeleccionada.equipo}* ingresado con falla *"${otSeleccionada.falla}"* se encuentra en estado: *${otSeleccionada.estado}*.
-Presupuesto: *$${Number(otSeleccionada.presupuesto).toLocaleString('es-AR')}*.
-Cualquier consulta quedamos a disposición.`;
-
-    const url = `https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+    if (!otSeleccionadaId) return alert('Seleccioná una orden.');
+    const o = ordenes.find(x => x.id === otSeleccionadaId);
+    if (!o || !o.telefono) return alert('La orden no tiene teléfono registrado.');
+    
+    const num = o.telefono.replace(/[^0-9]/g, '');
+    const msg = `Hola ${o.cliente}, te contactamos del Taller por tu equipo ${o.equipo}. Estado: ${o.estado}. Presupuesto: $${o.presupuesto}`;
+    window.open(`https://wa.me/549${num}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function enviarWhatsAppModal() {
@@ -153,378 +166,395 @@ function enviarWhatsAppModal() {
 }
 
 function generarComprobanteImpresion() {
-    if (!otSeleccionada) return alert("Seleccioná una orden de la lista primero.");
+    if (!otSeleccionadaId) return alert('Seleccioná una orden.');
+    const o = ordenes.find(x => x.id === otSeleccionadaId);
+    if (!o) return;
 
-    document.getElementById('imp-ot-num').innerText = `OT #${otSeleccionada.id}`;
+    document.getElementById('imp-ot-num').innerText = `OT #${o.id}`;
+    document.getElementById('imp-cliente').innerText = o.cliente || '---';
+    document.getElementById('imp-telefono').innerText = o.telefono || '---';
+    document.getElementById('imp-equipo').innerText = o.equipo || '---';
+    document.getElementById('imp-falla').innerText = o.falla || '---';
+    document.getElementById('imp-estado').innerText = o.estado || '---';
+    document.getElementById('imp-presupuesto').innerText = parseFloat(o.presupuesto || 0).toFixed(2);
     document.getElementById('imp-fecha').innerText = `Fecha: ${new Date().toLocaleDateString('es-AR')}`;
-    document.getElementById('imp-cliente').innerText = otSeleccionada.cliente;
-    document.getElementById('imp-telefono').innerText = otSeleccionada.telefono || 'No registrado';
-    document.getElementById('imp-equipo').innerText = otSeleccionada.equipo;
-    document.getElementById('imp-falla').innerText = otSeleccionada.falla;
-    document.getElementById('imp-estado').innerText = otSeleccionada.estado;
-    document.getElementById('imp-presupuesto').innerText = Number(otSeleccionada.presupuesto).toLocaleString('es-AR', {minimumFractionDigits: 2});
 
-    let numTel = (otSeleccionada.telefono || '').replace(/\D/g, '');
-    let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://wa.me/${numTel}?text=Hola,%20consulto%20por%20la%20OT%20%23${otSeleccionada.id}`;
-    document.getElementById('imp-qr').src = qrUrl;
-
-    const areaImp = document.getElementById('area-impresion');
-    areaImp.style.display = 'block';
+    const area = document.getElementById('area-impresion');
+    area.style.display = 'block';
     window.print();
-    areaImp.style.display = 'none';
+    area.style.display = 'none';
 }
 
-function analizarFalla(equipo, falla) {
-    const box = document.getElementById('box-diagnostico');
-    box.innerHTML = `⏳ Analizando circuito y falla para ${equipo}...`;
-
-    fetch('/api/analizar-falla', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({equipo, falla})
-    })
-    .then(r => r.json())
-    .then(data => {
-        box.innerHTML = `<pre>${data.diagnostico || data.error || 'Sin respuesta'}</pre>`;
-    })
-    .catch(err => {
-        box.innerHTML = `<pre class="text-danger">Error de conexión: ${err}</pre>`;
-    });
-}
-
-// 2. BANCO DE PLACAS, TEST POINTS Y BÚSQUEDA MULTIPLATAFORMA
-function buscarFallasRecurrentes() {
-    const chasis = document.getElementById('input-chasis-fallas').value;
-    if (!chasis) return alert("Ingresá el chasis o modelo para consultar.");
-
-    const box = document.getElementById('box-test-points');
-    box.innerText = "⏳ Buscando reparaciones anteriores en tu taller y consultando fallas típicas con IA...";
-
-    fetch('/api/fallas-recurrentes', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ chasis })
-    })
-    .then(r => r.json())
-    .then(data => {
-        box.innerText = data.resultado || data.error || 'Sin datos.';
-    })
-    .catch(err => {
-        box.innerText = `Error de consulta: ${err}`;
-    });
-}
-
-function buscarEnPlataforma(plataforma) {
-    const chasis = document.getElementById('input-chasis-fallas').value || document.getElementById('input-chasis-tp').value;
-    if (!chasis) return alert("Ingresá primero un chasis o modelo en la casilla superior.");
-
-    let url = "";
-    if (plataforma === 'youtube') {
-        url = `https://www.youtube.com/results?search_query=${encodeURIComponent(chasis + " reparacion falla tv")}`;
-    } else if (plataforma === 'telegram') {
-        url = `https://www.google.com/search?q=${encodeURIComponent('site:t.me OR site:telegram.me "' + chasis + '" (dump OR firmware OR bin OR falla)')}`;
-    } else if (plataforma === 'google') {
-        url = `https://www.google.com/search?q=${encodeURIComponent(chasis + " falla resuelta diagrama firmware")}`;
+async function eliminarOrdenSeleccionada() {
+    if (!otSeleccionadaId) return alert('Seleccioná una orden para eliminar.');
+    if (confirm(`¿Eliminar la orden #${otSeleccionadaId}?`)) {
+        await fetch(`/api/ordenes/${otSeleccionadaId}`, { method: 'DELETE' });
+        otSeleccionadaId = null;
+        cargarOrdenes();
     }
+}
+
+// --- BANCO DE PLACAS Y IA ---
+async function buscarFallasRecurrentes() {
+    const chasis = document.getElementById('input-chasis-fallas').value;
+    if (!chasis) return alert('Ingresá un chasis o modelo.');
+    document.getElementById('box-test-points').innerText = 'Buscando fallas recurrentes...';
+    try {
+        const res = await fetch('/api/obtener-test-points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chasis })
+        });
+        const data = await res.json();
+        document.getElementById('box-test-points').innerText = data.test_points || data.error || 'Sin datos';
+    } catch (e) { console.error(e); }
+}
+
+function buscarEnPlataforma(plat) {
+    const chasis = document.getElementById('input-chasis-fallas').value;
+    if (!chasis) return alert('Ingresá un chasis.');
+    let url = '';
+    if (plat === 'youtube') url = `https://www.youtube.com/results?search_query=${encodeURIComponent('falla ' + chasis)}`;
+    if (plat === 'telegram') url = `https://t.me/s/electronica?q=${encodeURIComponent(chasis)}`;
+    if (plat === 'google') url = `https://www.google.com/search?q=${encodeURIComponent('falla ' + chasis + ' reparacion tv')}`;
     window.open(url, '_blank');
 }
 
-function buscarTestPoints() {
+async function buscarTestPoints() {
     const chasis = document.getElementById('input-chasis-tp').value;
-    if(!chasis) return;
-    document.getElementById('box-test-points').innerText = "⏳ Consultando puntos de prueba...";
-    fetch('/api/obtener-test-points', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({chasis})
-    }).then(r => r.json()).then(data => {
-        document.getElementById('box-test-points').innerText = data.test_points || data.error;
-    });
+    if (!chasis) return alert('Ingresá un chasis.');
+    document.getElementById('box-test-points').innerText = 'Consultando Test Points...';
+    try {
+        const res = await fetch('/api/obtener-test-points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chasis })
+        });
+        const data = await res.json();
+        document.getElementById('box-test-points').innerText = data.test_points || data.error || 'Sin datos';
+    } catch (e) { console.error(e); }
 }
 
-function procesarEsquematicoPDF() {
+async function procesarEsquematicoPDF() {
     const chasis = document.getElementById('pdf-chasis-nombre').value;
     const fileInput = document.getElementById('pdf-archivo');
-    if (!chasis || fileInput.files.length === 0) return alert("Ingresá el código del chasis y seleccioná un archivo PDF.");
+    if (!chasis || !fileInput.files[0]) return alert('Ingresá el chasis y adjuntá el archivo PDF.');
 
     const formData = new FormData();
     formData.append('chasis', chasis);
     formData.append('archivo', fileInput.files[0]);
 
-    document.getElementById('box-test-points').innerText = "⏳ Subiendo archivo PDF y procesando plano con IA...";
-
-    fetch('/api/analizar-esquematico-pdf', { method: 'POST', body: formData })
-    .then(r => r.json()).then(data => {
-        document.getElementById('box-test-points').innerText = data.resultado || data.error;
-    });
+    document.getElementById('box-test-points').innerText = 'Analizando PDF con IA...';
+    try {
+        const res = await fetch('/api/analizar-esquematico-pdf', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        document.getElementById('box-test-points').innerText = data.resultado || data.error || 'Sin resultado';
+    } catch (e) { console.error(e); }
 }
 
-function preguntarSobreEsquema() {
+async function preguntarSobreEsquema() {
     const chasis = document.getElementById('pdf-chasis-nombre').value || document.getElementById('input-chasis-tp').value;
     const pregunta = document.getElementById('input-pregunta-esquema').value;
-    const contextoActual = document.getElementById('box-test-points').innerText;
-    if (!pregunta) return alert("Escribí una pregunta técnica.");
+    const contexto = document.getElementById('box-test-points').innerText;
 
-    document.getElementById('box-respuesta-esquema').innerText = "⏳ Analizando circuito para responder...";
+    if (!pregunta) return alert('Ingresá tu pregunta.');
 
-    fetch('/api/preguntar-esquematico', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ chasis, pregunta, contexto: contextoActual })
-    }).then(r => r.json()).then(data => {
-        document.getElementById('box-respuesta-esquema').innerText = data.respuesta || data.error;
-    });
-}
-
-// 3. STOCK COMPONENTES
-function cargarRepuestos() {
-    fetch('/api/repuestos').then(r => r.json()).then(data => {
-        let html = '';
-        data.forEach(r => {
-            html += `<tr onclick="seleccionarRepuesto(${r.id}, ${r.cantidad}, '${escapeQuotes(r.ubicacion)}', '${escapeQuotes(r.nombre)}', this)" style="cursor: pointer;">
-                <td>${r.id}</td>
-                <td>${r.categoria}</td>
-                <td>${r.nombre}</td>
-                <td>${r.ubicacion}</td>
-                <td><strong>${r.cantidad}</strong></td>
-            </tr>`;
+    document.getElementById('box-respuesta-esquema').innerText = 'Consultando...';
+    try {
+        const res = await fetch('/api/preguntar-esquematico', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chasis, pregunta, contexto })
         });
-        document.getElementById('tabla-repuestos').innerHTML = html;
+        const data = await res.json();
+        document.getElementById('box-respuesta-esquema').innerText = data.respuesta || data.error || 'Sin respuesta';
+    } catch (e) { console.error(e); }
+}
+
+// --- REPUESTOS ---
+async function cargarRepuestos() {
+    try {
+        const res = await fetch('/api/repuestos');
+        repuestos = await res.json();
+        renderTablaRepuestos(repuestos);
+    } catch (e) { console.error(e); }
+}
+
+function renderTablaRepuestos(lista) {
+    const tbody = document.getElementById('tabla-repuestos');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    lista.forEach(r => {
+        const tr = document.createElement('tr');
+        if (repSeleccionadoId === r.id) tr.classList.add('table-success');
+        tr.onclick = () => { repSeleccionadoId = r.id; renderTablaRepuestos(repuestos); };
+        tr.innerHTML = `
+            <td>#${r.id}</td>
+            <td>${r.categoria || ''}</td>
+            <td><strong>${r.nombre || ''}</strong></td>
+            <td>${r.ubicacion || ''}</td>
+            <td><span class="badge bg-success fs-6">${r.cantidad || 0}</span></td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-function seleccionarRepuesto(id, cant, ub, nombre, fila) {
-    repSeleccionadoId = id;
-    window.repCantActual = cant;
-    window.repUbActual = ub;
-    window.repNombreActual = nombre;
-    document.querySelectorAll('#tabla-repuestos tr').forEach(r => r.classList.remove('table-active'));
-    fila.classList.add('table-active');
-}
+async function guardarRepuesto() {
+    const data = {
+        categoria: document.getElementById('rep-cat').value,
+        nombre: document.getElementById('rep-nombre').value,
+        ubicacion: document.getElementById('rep-ubicacion').value,
+        cantidad: parseInt(document.getElementById('rep-cant').value) || 1,
+        precio: 0
+    };
 
-function guardarRepuesto() {
-    const categoria = document.getElementById('rep-cat').value;
-    const nombre = document.getElementById('rep-nombre').value;
-    const ubicacion = document.getElementById('rep-ubicacion').value;
-    const cantidad = document.getElementById('rep-cant').value;
-
-    fetch('/api/repuestos', {
+    await fetch('/api/repuestos', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({categoria, nombre, ubicacion, cantidad})
-    }).then(() => {
-        document.getElementById('rep-nombre').value = '';
-        document.getElementById('rep-ubicacion').value = '';
-        cargarRepuestos();
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
+
+    document.getElementById('rep-nombre').value = '';
+    document.getElementById('rep-ubicacion').value = '';
+    document.getElementById('rep-cant').value = '1';
+    cargarRepuestos();
 }
 
-function modificarStock(delta) {
-    if (!repSeleccionadoId) return alert("Seleccioná un componente.");
-    const nuevaCant = Math.max(0, window.repCantActual + delta);
-    fetch(`/api/repuestos/${repSeleccionadoId}`, {
+function filtrarComp() {
+    const txt = document.getElementById('buscar-comp').value.toLowerCase();
+    const filtrados = repuestos.filter(r => 
+        (r.nombre && r.nombre.toLowerCase().includes(txt)) ||
+        (r.categoria && r.categoria.toLowerCase().includes(txt)) ||
+        (r.ubicacion && r.ubicacion.toLowerCase().includes(txt))
+    );
+    renderTablaRepuestos(filtrados);
+}
+
+async function modificarStock(delta) {
+    if (!repSeleccionadoId) return alert('Seleccioná un componente.');
+    const r = repuestos.find(x => x.id === repSeleccionadoId);
+    if (!r) return;
+    const nuevaCant = Math.max(0, (r.cantidad || 0) + delta);
+    await fetch(`/api/repuestos/${repSeleccionadoId}`, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({cantidad: nuevaCant})
-    }).then(() => cargarRepuestos());
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cantidad: nuevaCant })
+    });
+    cargarRepuestos();
 }
 
-function cambiarCantidadModal() {
-    if (!repSeleccionadoId) return alert("Seleccioná un componente.");
-    const c = prompt("Nueva cantidad:", window.repCantActual);
-    if (c !== null) {
-        fetch(`/api/repuestos/${repSeleccionadoId}`, {
+async function cambiarCantidadModal() {
+    if (!repSeleccionadoId) return alert('Seleccioná un componente.');
+    const c = prompt('Ingresá la nueva cantidad total:');
+    if (c !== null && !isNaN(parseInt(c))) {
+        await fetch(`/api/repuestos/${repSeleccionadoId}`, {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({cantidad: parseInt(c)})
-        }).then(() => cargarRepuestos());
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cantidad: parseInt(c) })
+        });
+        cargarRepuestos();
     }
 }
 
-function cambiarUbicacionModal() {
-    if (!repSeleccionadoId) return alert("Seleccioná un componente.");
-    const u = prompt("Nueva ubicación/gaveta:", window.repUbActual);
+async function cambiarUbicacionModal() {
+    if (!repSeleccionadoId) return alert('Seleccioná un componente.');
+    const u = prompt('Ingresá la nueva gaveta/ubicación:');
     if (u) {
-        fetch(`/api/repuestos/${repSeleccionadoId}`, {
+        await fetch(`/api/repuestos/${repSeleccionadoId}`, {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ubicacion: u})
-        }).then(() => cargarRepuestos());
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ubicacion: u })
+        });
+        cargarRepuestos();
     }
 }
 
 function buscarDatasheet() {
-    if (!window.repNombreActual) return alert("Seleccioná un componente.");
-    window.open(`https://www.google.com/search?q=${window.repNombreActual}+datasheet+pdf`, '_blank');
+    if (!repSeleccionadoId) return alert('Seleccioná un componente.');
+    const r = repuestos.find(x => x.id === repSeleccionadoId);
+    if (r) {
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(r.nombre + ' datasheet pdf')}`, '_blank');
+    }
 }
 
 function imprimirEtiqueta() {
-    if (!repSeleccionadoId) return alert("Seleccioná un componente.");
-    alert(`Imprimiendo etiqueta para gaveta: ${window.repNombreActual} (Ubicación: ${window.repUbActual})`);
+    if (!repSeleccionadoId) return alert('Seleccioná un componente.');
+    const r = repuestos.find(x => x.id === repSeleccionadoId);
+    if (r) {
+        alert(`Imprimiendo etiqueta para: ${r.nombre} - Ubicación: ${r.ubicacion}`);
+    }
 }
 
-function filtrarComp() {
-    const q = document.getElementById('buscar-comp').value.toLowerCase();
-    document.querySelectorAll('#tabla-repuestos tr').forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
+// --- VENTAS ---
+async function cargarVentas() {
+    try {
+        const res = await fetch('/api/ventas');
+        ventas = await res.json();
+        renderTablaVentas(ventas);
+    } catch (e) { console.error(e); }
+}
+
+function renderTablaVentas(lista) {
+    const tbody = document.getElementById('tabla-ventas');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    lista.forEach(v => {
+        const tr = document.createElement('tr');
+        if (vSeleccionadaId === v.id) tr.classList.add('table-warning');
+        tr.onclick = () => { vSeleccionadaId = v.id; renderTablaVentas(ventas); };
+        tr.innerHTML = `
+            <td>#${v.id}</td>
+            <td>${v.producto || ''}</td>
+            <td>$${parseFloat(v.precio || 0).toFixed(2)}</td>
+            <td><span class="badge bg-warning text-dark">${v.estado || 'En Venta'}</span></td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-// 4. VENTAS Y USADOS
-function cargarVentas() {
-    fetch('/api/ventas').then(r => r.json()).then(data => {
-        let html = '';
-        data.forEach(v => {
-            html += `<tr onclick="seleccionarVenta(${v.id}, this)" style="cursor: pointer;">
-                <td>${v.id}</td>
-                <td>${v.producto}</td>
-                <td>$${Number(v.precio).toLocaleString('es-AR')}</td>
-                <td><span class="badge bg-success">${v.estado}</span></td>
-            </tr>`;
-        });
-        document.getElementById('tabla-ventas').innerHTML = html;
-    });
-}
+async function guardarVenta() {
+    const data = {
+        producto: document.getElementById('v-producto').value,
+        precio: parseFloat(document.getElementById('v-precio').value) || 0,
+        estado: document.getElementById('v-estado').value
+    };
 
-function seleccionarVenta(id, fila) {
-    ventaSeleccionadaId = id;
-    document.querySelectorAll('#tabla-ventas tr').forEach(r => r.classList.remove('table-active'));
-    fila.classList.add('table-active');
-}
-
-function guardarVenta() {
-    const producto = document.getElementById('v-producto').value;
-    const precio = document.getElementById('v-precio').value;
-    const estado = document.getElementById('v-estado').value;
-
-    fetch('/api/ventas', {
+    await fetch('/api/ventas', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({producto, precio, estado})
-    }).then(() => {
-        document.getElementById('v-producto').value = '';
-        document.getElementById('v-precio').value = '';
-        cargarVentas();
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
-}
 
-function eliminarVentaSeleccionada() {
-    if (!ventaSeleccionadaId) return alert("Seleccioná un registro.");
-    fetch(`/api/ventas/${ventaSeleccionadaId}`, { method: 'DELETE' }).then(() => {
-        ventaSeleccionadaId = null;
-        cargarVentas();
-    });
+    document.getElementById('v-producto').value = '';
+    document.getElementById('v-precio').value = '';
+    cargarVentas();
 }
 
 function consultarML() {
-    const prod = document.getElementById('v-producto').value;
-    if (!prod) return alert("Ingresá el nombre del producto o chasis.");
-    window.open(`https://listado.mercadolibre.com.ar/${prod}`, '_blank');
+    const p = document.getElementById('v-producto').value;
+    if (!p) return alert('Ingresá el nombre del producto.');
+    window.open(`https://listado.mercadolibre.com.ar/${encodeURIComponent(p)}`, '_blank');
 }
 
-// 5. CAJA Y FINANZAS
-function cargarCaja() {
-    fetch('/api/caja').then(r => r.json()).then(data => {
-        document.getElementById('caja-ingresos').innerText = `$${data.ingresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-        document.getElementById('caja-egresos').innerText = `$${data.egresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-        document.getElementById('caja-balance').innerText = `$${data.balance.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+async function eliminarVentaSeleccionada() {
+    if (!vSeleccionadaId) return alert('Seleccioná un registro.');
+    if (confirm('¿Eliminar esta publicación?')) {
+        await fetch(`/api/ventas/${vSeleccionadaId}`, { method: 'DELETE' });
+        vSeleccionadaId = null;
+        cargarVentas();
+    }
+}
 
-        let html = '';
-        data.movimientos.forEach(m => {
-            const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
-            html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)" style="cursor: pointer;">
-                <td>${m.id}</td>
-                <td>${m.fecha}</td>
-                <td>${m.tipo}</td>
-                <td>${m.concepto}</td>
-                <td class="${colorClass}">$${Number(m.monto).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-            </tr>`;
-        });
-        document.getElementById('tabla-caja').innerHTML = html;
+// --- CAJA ---
+async function cargarCaja() {
+    try {
+        const res = await fetch('/api/caja');
+        const data = await res.json();
+        cajaMovimientos = data.movimientos || [];
+        
+        document.getElementById('caja-ingresos').innerText = `$${parseFloat(data.ingresos || 0).toFixed(2)}`;
+        document.getElementById('caja-egresos').innerText = `$${parseFloat(data.egresos || 0).toFixed(2)}`;
+        document.getElementById('caja-balance').innerText = `$${parseFloat(data.balance || 0).toFixed(2)}`;
+
+        renderTablaCaja(cajaMovimientos);
+    } catch (e) { console.error(e); }
+}
+
+function renderTablaCaja(lista) {
+    const tbody = document.getElementById('tabla-caja');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    lista.forEach(m => {
+        const tr = document.createElement('tr');
+        if (cajaSeleccionadaId === m.id) tr.classList.add('table-info');
+        tr.onclick = () => { cajaSeleccionadaId = m.id; renderTablaCaja(cajaMovimientos); };
+        tr.innerHTML = `
+            <td>#${m.id}</td>
+            <td>${m.fecha || ''}</td>
+            <td><span class="badge ${m.tipo === 'Ingreso' ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td>
+            <td>${m.concepto || ''}</td>
+            <td>$${parseFloat(m.monto || 0).toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-function seleccionarMovimientoCaja(id, fila) {
-    movSeleccionadoId = id;
-    document.querySelectorAll('#tabla-caja tr').forEach(r => r.classList.remove('table-active'));
-    fila.classList.add('table-active');
-}
+async function guardarMovimientoCaja() {
+    const data = {
+        tipo: document.getElementById('caja-tipo').value,
+        concepto: document.getElementById('caja-concepto').value,
+        monto: parseFloat(document.getElementById('caja-monto').value) || 0
+    };
 
-function guardarMovimientoCaja() {
-    const tipo = document.getElementById('caja-tipo').value;
-    const concepto = document.getElementById('caja-concepto').value;
-    const monto = document.getElementById('caja-monto').value;
-
-    if (!concepto || !monto) {
-        alert("Completá el concepto y el monto.");
-        return;
-    }
-
-    fetch('/api/caja', {
+    await fetch('/api/caja', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({tipo, concepto, monto})
-    }).then(() => {
-        document.getElementById('caja-concepto').value = '';
-        document.getElementById('caja-monto').value = '';
-        cargarCaja();
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     });
-}
 
-function eliminarMovimientoSeleccionado() {
-    if (!movSeleccionadoId) return alert("Seleccioná un movimiento de la lista.");
-    if (confirm(`¿Eliminar el movimiento N° ${movSeleccionadoId}?`)) {
-        fetch(`/api/caja/${movSeleccionadoId}`, { method: 'DELETE' }).then(() => {
-            movSeleccionadoId = null;
-            cargarCaja();
-        });
-    }
+    document.getElementById('caja-concepto').value = '';
+    document.getElementById('caja-monto').value = '';
+    cargarCaja();
 }
 
 function filtrarCaja() {
-    const q = document.getElementById('buscar-caja').value.toLowerCase();
-    document.querySelectorAll('#tabla-caja tr').forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
-    });
+    const txt = document.getElementById('buscar-caja').value.toLowerCase();
+    const filtrados = cajaMovimientos.filter(m => 
+        (m.concepto && m.concepto.toLowerCase().includes(txt)) ||
+        (m.tipo && m.tipo.toLowerCase().includes(txt)) ||
+        (m.fecha && m.fecha.toLowerCase().includes(txt))
+    );
+    renderTablaCaja(filtrados);
 }
 
-// 6. FIRMWARES Y SOLICITUDES POR WHATSAPP
-function cargarFirmwares() {
-    fetch('/api/firmwares').then(r => r.json()).then(data => {
-        window.listaFirmwaresGlobal = data;
-        renderizarTablaFirmwares(data);
-    });
+async function eliminarMovimientoSeleccionado() {
+    if (!cajaSeleccionadaId) return alert('Seleccioná un movimiento.');
+    if (confirm('¿Eliminar este movimiento de caja?')) {
+        await fetch(`/api/caja/${cajaSeleccionadaId}`, { method: 'DELETE' });
+        cajaSeleccionadaId = null;
+        cargarCaja();
+    }
 }
 
-function renderizarTablaFirmwares(data) {
-    let html = '';
-    data.forEach(f => {
-        html += `<tr>
-            <td><strong>${f.chasis}</strong></td>
-            <td>${f.modelo}</td>
-            <td>${f.memoria}</td>
-            <td><a href="${f.url_nube}" target="_blank" class="btn btn-outline-info btn-sm">Descargar Archivo</a></td>
-        </tr>`;
+// --- FIRMWARES ---
+async function cargarFirmwares() {
+    try {
+        const res = await fetch('/api/firmwares');
+        firmwares = await res.json();
+        renderTablaFirmwares(firmwares);
+    } catch (e) { console.error(e); }
+}
+
+function renderTablaFirmwares(lista) {
+    const tbody = document.getElementById('tabla-firmwares');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    lista.forEach(f => {
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${f.chasis}</strong></td>
+                <td>${f.modelo || ''}</td>
+                <td>${f.memoria || ''}</td>
+                <td><a href="${f.url_nube}" target="_blank" class="btn btn-sm btn-info text-white">Descargar</a></td>
+            </tr>
+        `;
     });
-    document.getElementById('tabla-firmwares').innerHTML = html || '<tr><td colspan="4" class="text-center text-secondary">No se encontraron archivos con esa búsqueda. Usa el botón superior para pedirlo por WhatsApp.</td></tr>';
 }
 
 function filtrarFirmwares() {
-    const q = document.getElementById('fw-buscar').value.toLowerCase();
-    if (!window.listaFirmwaresGlobal) return;
-    const filtrados = window.listaFirmwaresGlobal.filter(f => 
-        f.chasis.toLowerCase().includes(q) || f.modelo.toLowerCase().includes(q) || f.memoria.toLowerCase().includes(q)
+    const txt = document.getElementById('fw-buscar').value.toLowerCase();
+    const filtrados = firmwares.filter(f => 
+        (f.chasis && f.chasis.toLowerCase().includes(txt)) ||
+        (f.modelo && f.modelo.toLowerCase().includes(txt))
     );
-    renderizarTablaFirmwares(filtrados);
+    renderTablaFirmwares(filtrados);
 }
 
 function pedirFirmwareWhatsApp() {
-    const buscado = document.getElementById('fw-buscar').value.trim();
-    const textoChasis = buscado ? `*${buscado}*` : 'un equipo/chasis';
-    
-    // Número oficial de soporte técnico
-    const numSoporte = "5491164992829"; 
-    const msj = `Hola, necesito solicitar el firmware / dump para el chasis o modelo: ${textoChasis}. Quedo a la espera. ¡Gracias!`;
-    
-    window.open(`https://wa.me/${numSoporte}?text=${encodeURIComponent(msj)}`, '_blank');
+    const txt = document.getElementById('fw-buscar').value;
+    if (!txt) return alert('Ingresá el chasis o modelo.');
+    window.open(`https://wa.me/5491112345678?text=${encodeURIComponent('Hola, necesito el firmware para el chasis/modelo: ' + txt)}`, '_blank');
 }
