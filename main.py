@@ -25,7 +25,7 @@ def init_db():
     conn = get_db_connection()
     if not conn:
         return
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
@@ -77,6 +77,18 @@ def init_db():
         );
     ''')
     conn.commit()
+
+    # VINCULAR HISTORIAL AL USUARIO FABIAN
+    cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
+    user_fabian = cur.fetchone()
+    if user_fabian:
+        fid = user_fabian['id']
+        cur.execute("UPDATE ordenes SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+        cur.execute("UPDATE repuestos SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+        cur.execute("UPDATE caja SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+        cur.execute("UPDATE ventas SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+        conn.commit()
+
     cur.close()
     conn.close()
 
