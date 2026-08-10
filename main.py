@@ -129,20 +129,17 @@ def login_view():
             pwd_plana = u.get('password') or ''
             valido = False
             
-            # 1. Validación por Hash Werkzeug
             if pwd_hash.startswith('pbkdf2:') or pwd_hash.startswith('scrypt:'):
                 try:
                     valido = check_password_hash(pwd_hash, pwd)
                 except Exception:
                     valido = False
             
-            # 2. Validación por texto plano en columna 'password'
             if not valido and pwd_plana:
-                valido = (pwd_plana == pwd)
+                valido = (pwd_plana.strip() == pwd)
 
-            # 3. Validación por texto plano en columna 'password_hash'
             if not valido and pwd_hash:
-                valido = (pwd_hash == pwd)
+                valido = (pwd_hash.strip() == pwd)
 
             if valido:
                 session['usuario_id'] = u['id']
@@ -193,6 +190,41 @@ def registro_view():
             return render_template('registro.html', error="El nombre de usuario ya existe o hubo un error al registrar.")
 
     return render_template('registro.html')
+
+@app.route('/reset-clave', methods=['GET', 'POST'])
+def reset_clave():
+    if request.method == 'POST':
+        user = request.form.get('usuario', '').strip()
+        new_pwd = request.form.get('password', '').strip()
+        if user and new_pwd:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            pwd_hash = generate_password_hash(new_pwd)
+            cur.execute("""
+                UPDATE usuarios 
+                SET password_hash = %s, password = %s 
+                WHERE LOWER(usuario) = LOWER(%s)
+            """, (pwd_hash, new_pwd, user))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return redirect(url_for('login_view'))
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head><title>Restablecer Clave</title></head>
+    <body style="background-color:#121212; color:#fff; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+        <form method="POST" style="background:#1e1e1e; padding:30px; border-radius:8px; border:1px solid #333; width:300px;">
+            <h3 style="color:#0d6efd; text-align:center;">Restablecer Clave</h3>
+            <label style="display:block; margin-top:10px;">Usuario:</label>
+            <input type="text" name="usuario" required style="width:100%; padding:8px; margin-top:5px; background:#2b2b2b; color:#fff; border:1px solid #444; box-sizing:border-box;">
+            <label style="display:block; margin-top:10px;">Nueva Contraseña:</label>
+            <input type="password" name="password" required style="width:100%; padding:8px; margin-top:5px; background:#2b2b2b; color:#fff; border:1px solid #444; box-sizing:border-box;">
+            <button type="submit" style="width:100%; padding:10px; margin-top:20px; background:#0d6efd; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Actualizar e Ingresar</button>
+        </form>
+    </body>
+    </html>
+    '''
 
 @app.route('/logout')
 def logout():
