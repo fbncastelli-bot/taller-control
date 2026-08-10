@@ -18,9 +18,19 @@
         .btn-verde-registro:hover { background-color: #16a34a; color: white; }
         pre { background-color: #0b1120; color: #38bdf8; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
         table tr { cursor: pointer; }
+
+        /* Estilos de Impresión */
+        @media print {
+            body * { visibility: hidden; }
+            #area-impresion, #area-impresion * { visibility: visible; }
+            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; padding: 20px; }
+        }
     </style>
 </head>
 <body>
+    <!-- Area Imprimible para Tickets y Comprobantes -->
+    <div id="area-impresion" style="display: none;"></div>
+
     <!-- Encabezado Taller -->
     <div class="header-top d-flex justify-content-between align-items-center">
         <div>
@@ -83,7 +93,8 @@
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <button onclick="verFichaOT()" class="btn btn-primary btn-sm">📄 Ver Ficha / Informe</button>
                     <button onclick="enviarWhatsApp()" class="btn btn-success btn-sm">💬 Enviar WhatsApp al Cliente</button>
-                    <button onclick="imprimirComprobante()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante</button>
+                    <button onclick="imprimirComprobanteCliente()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante Cliente</button>
+                    <button onclick="imprimirTicketTapaTV()" class="btn btn-warning btn-sm">🏷️ Ticket para Tapa TV</button>
                     <button onclick="eliminarOrdenSeleccionada()" class="btn btn-danger btn-sm ms-auto">❌ Eliminar Orden Seleccionada</button>
                 </div>
             </div>
@@ -192,8 +203,21 @@
             </div>
         </div>
 
-        <!-- 4. BANCO DE PLACAS & TEST POINTS -->
+        <!-- 4. BANCO DE PLACAS, TEST POINTS & CALCULADORA REFORMA LED -->
         <div id="sec-placas" style="display: none;">
+            <div class="card-custom border-warning">
+                <h6 class="text-warning">⚡ Calculadora de Reforma Corriente LED (Backlight)</h6>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                        <input type="text" id="input-driver-led" class="form-control form-control-sm" placeholder="Ej: OB3350, MAP3202, BIT3267, BD9488F">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="consultarReformaLED()" class="btn btn-warning btn-sm w-100 fw-bold">Consultar Reforma Pin ISET</button>
+                    </div>
+                </div>
+                <pre id="box-resultado-reforma" class="mt-2 text-warning mb-0">Ingresá el código del IC Driver de la fuente LED para ver el pin ISET y procedimiento de reforma.</pre>
+            </div>
+
             <div class="card-custom">
                 <h6>🔎 Buscador de Test Points por Chasis</h6>
                 <div class="input-group mt-2">
@@ -223,7 +247,7 @@
             </div>
         </div>
 
-        <!-- 5. CAJA Y FINANZAS -->
+        <!-- 5. CAJA Y FINANZAS CON FILTROS -->
         <div id="sec-caja" style="display: none;">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div>
@@ -260,14 +284,20 @@
 
             <div class="card-custom">
                 <div class="row g-2 mb-2">
-                    <div class="col-md-6">
-                        <input type="text" id="buscar-caja" onkeyup="filtrarCaja()" class="form-control form-control-sm" placeholder="🔎 Buscar en Caja: Concepto, Tipo, Fecha...">
+                    <div class="col-md-4">
+                        <input type="text" id="buscar-caja" onkeyup="filtrarCajaTexto()" class="form-control form-control-sm" placeholder="🔎 Buscar en Caja: Concepto, Tipo, Fecha...">
                     </div>
-                    <div class="col-md-3">
-                        <button onclick="filtrarCaja()" class="btn btn-cyan btn-sm w-100">Filtrar</button>
+                    <div class="col-md-2">
+                        <button onclick="filtrarCajaHoy()" class="btn btn-info btn-sm w-100">📅 Caja de Hoy</button>
                     </div>
-                    <div class="col-md-3">
-                        <button onclick="cargarCaja()" class="btn btn-secondary btn-sm w-100">Ver Todos</button>
+                    <div class="col-md-2">
+                        <button onclick="filtrarCajaMes()" class="btn btn-primary btn-sm w-100">📆 Caja del Mes</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="cargarCaja()" class="btn btn-secondary btn-sm w-100">Ver Todo</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="imprimirReporteCaja()" class="btn btn-success btn-sm w-100">🖨️ Imprimir Caja</button>
                     </div>
                 </div>
 
