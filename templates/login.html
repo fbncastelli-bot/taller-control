@@ -3,80 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso al Sistema - Gestión de Taller</title>
+    <title>Iniciar Sesión - LAB-CONTROL PRO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0d1527; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card-login { background-color: #111c35; border: 1px solid #1e293b; border-radius: 12px; padding: 30px; width: 100%; max-width: 420px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .form-label { color: #38bdf8 !important; font-weight: 700 !important; font-size: 0.85rem; letter-spacing: 0.5px; margin-bottom: 5px; }
-        .form-control { background-color: #0b1120; border: 1px solid #334155; color: #ffffff !important; border-radius: 6px; padding: 10px 12px; }
-        .form-control:focus { background-color: #0b1120; border-color: #0284c7; color: #ffffff; box-shadow: none; }
-        .form-control::placeholder { color: #64748b; }
-        .btn-cyan { background-color: #0284c7; color: white; font-weight: bold; border: none; padding: 10px; width: 100%; border-radius: 6px; }
-        .btn-cyan:hover { background-color: #0369a1; }
-        .btn-green { background-color: #22c55e; color: white; font-weight: bold; border: none; padding: 10px; width: 100%; border-radius: 6px; }
-        .btn-green:hover { background-color: #16a34a; }
-        .toggle-link { color: #38bdf8; text-decoration: none; font-size: 0.85rem; display: block; text-align: center; margin-top: 15px; cursor: pointer; }
-        .toggle-link:hover { text-decoration: underline; color: #7dd3fc; }
+        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
+        .card { background-color: #1e1e1e; border: 1px solid #333; }
+        .form-control { background-color: #2b2b2b; color: #fff; border: 1px solid #444; }
+        .form-control:focus { background-color: #333; color: #fff; border-color: #0d6efd; }
     </style>
 </head>
-<body>
-    <div class="card-login">
-        <div class="text-center mb-4">
-            <h4 class="text-info fw-bold m-0">⚡ LAB-CONTROL PRO</h4>
-            <small class="text-secondary">Gestión Integral de Taller Electrónico</small>
-        </div>
-
+<body class="d-flex align-items-center justify-content-center vh-100">
+    <div class="card p-4 shadow-lg" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center text-primary mb-3">LAB-CONTROL PRO</h3>
+        <h5 class="text-center mb-4">Iniciar Sesión</h5>
+        
         {% if error %}
-            <div class="alert alert-danger py-2 small text-center" role="alert">{{ error }}</div>
+        <div class="alert alert-danger py-2" role="alert">
+            {{ error }}
+        </div>
         {% endif %}
 
-        <!-- FORMULARIO INICIO DE SESIÓN -->
-        <div id="box-login">
-            <form action="/login" method="POST">
-                <div class="mb-3 text-start">
-                    <label class="form-label">USUARIO</label>
-                    <input type="text" name="usuario" class="form-control" placeholder="Ej: fabian" required autocomplete="username">
-                </div>
-                <div class="mb-3 text-start">
-                    <label class="form-label">CONTRASEÑA</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
-                </div>
-                <button type="submit" class="btn btn-cyan mt-2">Iniciar Sesión</button>
-            </form>
-            <a class="toggle-link" onclick="mostrarRegistro()">¿Nuevo taller? Regístrate acá</a>
-        </div>
-
-        <!-- FORMULARIO REGISTRO NUEVO TALLER -->
-        <div id="box-register" style="display: none;">
-            <form action="/register" method="POST">
-                <div class="mb-3 text-start">
-                    <label class="form-label">NOMBRE DEL TALLER</label>
-                    <input type="text" name="nombre_taller" class="form-control" placeholder="Ej: Servicio Técnico" required>
-                </div>
-                <div class="mb-3 text-start">
-                    <label class="form-label">USUARIO</label>
-                    <input type="text" name="usuario" class="form-control" placeholder="Ej: fabian" required autocomplete="username">
-                </div>
-                <div class="mb-3 text-start">
-                    <label class="form-label">CONTRASEÑA</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required autocomplete="new-password">
-                </div>
-                <button type="submit" class="btn btn-green mt-2">Crear Taller e Iniciar Sesión</button>
-            </form>
-            <a class="toggle-link" onclick="mostrarLogin()">Volver al ingreso</a>
+        <form action="/login" method="POST">
+            <div class="mb-3">
+                <label class="form-label">Usuario</label>
+                <input type="text" name="usuario" class="form-control" placeholder="Ingrese su usuario" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Contraseña</label>
+                <input type="password" name="password" class="form-control" placeholder="****" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 fw-bold mb-3">Ingresar</button>
+        </form>
+        
+        <div class="text-center pt-2 border-top border-secondary">
+            <p class="mb-2 text-muted">¿No tenés un taller registrado?</p>
+            <a href="/registro" class="btn btn-outline-success w-100 font-weight-bold">Crear Nuevo Taller</a>
         </div>
     </div>
-
-    <script>
-        function mostrarRegistro() {
-            document.getElementById('box-login').style.display = 'none';
-            document.getElementById('box-register').style.display = 'block';
-        }
-        function mostrarLogin() {
-            document.getElementById('box-register').style.display = 'none';
-            document.getElementById('box-login').style.display = 'block';
-        }
-    </script>
 </body>
 </html>
