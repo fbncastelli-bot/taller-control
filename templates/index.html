@@ -552,7 +552,7 @@
                             <td><span class="badge ${esIngreso ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td>
                             <td>${m.concepto}</td>
                             <td class="${esIngreso ? 'text-success' : 'text-danger'} fw-bold">$${parseFloat(m.monto || 0).toFixed(2)}</td>
-                            <td><button class="btn btn-sm btn-danger" onclick="borrarCaja(${m.id})">🗑️</button></td>
+                            <td><button class="btn btn-sm btn-danger" onclick="borrarCaja(${m.id})">🗑️</button></li>
                         </tr>
                     `;
                 });
