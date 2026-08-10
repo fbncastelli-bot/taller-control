@@ -6,57 +6,100 @@
     <title>LAB-CONTROL PRO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
-        .card { background-color: #1e1e1e; border: 1px solid #333; color: #fff; }
-        .form-control, .form-select { background-color: #2b2b2b !important; color: #fff !important; border: 1px solid #444; }
-        .table-dark { background-color: #1e1e1e; color: #fff; }
-        .nav-tabs .nav-link { color: #aaa; }
-        .nav-tabs .nav-link.active { background-color: #0d6efd; color: #fff; border: none; }
+        body { background-color: #121212; color: #f1f1f1; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #fff; }
+        .form-control, .form-select { background-color: #2b2b2b !important; color: #ffffff !important; border: 1px solid #444; }
+        .form-control::placeholder { color: #888888 !important; }
+        .form-control:focus, .form-select:focus { background-color: #333333 !important; color: #ffffff !important; border-color: #0d6efd; box-shadow: none; }
+        .form-label { color: #d0d0d0; font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+        .nav-tabs { border-bottom: 1px solid #333; }
+        .nav-tabs .nav-link { color: #aaa; background-color: #1a1a1a; border: 1px solid #333; margin-right: 4px; border-radius: 6px 6px 0 0; }
+        .nav-tabs .nav-link:hover { color: #fff; background-color: #252525; }
+        .nav-tabs .nav-link.active { background-color: #0d6efd; color: #fff; border-color: #0d6efd; font-weight: bold; }
+        .table-dark { background-color: #1e1e1e; color: #e0e0e0; border-color: #333; }
+        .table-dark th { background-color: #252525; color: #0d6efd; }
+        .btn-whatsapp { background-color: #25d366; color: #fff; border: none; }
+        .btn-whatsapp:hover { background-color: #1ebd56; color: #fff; }
     </style>
 </head>
 <body class="p-3">
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>LAB-CONTROL PRO <small class="text-muted fs-6">| {{ taller }} ({{ usuario }})</small></h2>
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
+            <h2 class="m-0 text-primary fw-bold">LAB-CONTROL PRO <small class="text-muted fs-6">| {{ taller }} ({{ usuario }})</small></h2>
             <a href="/logout" class="btn btn-outline-danger btn-sm">🚪 Cerrar Sesión</a>
         </div>
 
+        <!-- PESTAÑAS / SOLAPAS -->
         <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ordenes">📋 Órdenes</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#repuestos">📦 Stock Componentes</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#firmwares">💾 Banco / Firmwares</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ventas">🏷️ Ventas</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#caja">💰 Caja / Finanzas</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#ia">🤖 Asistente IA</button></li>
         </ul>
 
         <div class="tab-content">
-            <!-- TAB ORDENES -->
+            <!-- TAB 1: ÓRDENES -->
             <div class="tab-pane fade show active" id="ordenes">
                 <div class="row">
-                    <div class="col-md-4">
-                        <div class="card p-3 mb-3">
-                            <h5>Nueva Órden de Trabajo</h5>
+                    <div class="col-md-4 mb-3">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-primary mb-3">Nueva Órden de Trabajo</h5>
                             <form id="form-orden">
-                                <input type="text" id="ord-cliente" class="form-control mb-2" placeholder="Cliente" required>
-                                <input type="text" id="ord-telefono" class="form-control mb-2" placeholder="Teléfono (ej: 54911...)">
-                                <input type="text" id="ord-equipo" class="form-control mb-2" placeholder="Equipo / Modelo" required>
-                                <textarea id="ord-falla" class="form-control mb-2" placeholder="Falla reportada"></textarea>
-                                <input type="number" id="ord-presupuesto" class="form-control mb-2" placeholder="Presupuesto ($)">
-                                <button type="submit" class="btn btn-primary w-100">Guardar Órden</button>
+                                <div class="mb-2">
+                                    <label class="form-label">Cliente</label>
+                                    <input type="text" id="ord-cliente" class="form-control" placeholder="Nombre completo" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Teléfono (con código de área)</label>
+                                    <input type="text" id="ord-telefono" class="form-control" placeholder="Ej: 5491112345678">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Equipo / Modelo</label>
+                                    <input type="text" id="ord-equipo" class="form-control" placeholder="Ej: TV Samsung 43 UN43J5200" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Falla Reportada</label>
+                                    <textarea id="ord-falla" class="form-control" rows="2" placeholder="Sin imagen, titila led..."></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Solución / Diagnóstico</label>
+                                    <textarea id="ord-solucion" class="form-control" rows="2" placeholder="Cambio tira LED / reparó fuente..."></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Presupuesto ($)</label>
+                                    <input type="number" step="0.01" id="ord-presupuesto" class="form-control" placeholder="0.00">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Estado</label>
+                                    <select id="ord-estado" class="form-select">
+                                        <option value="Ingresado">Ingresado</option>
+                                        <option value="En Revisión">En Revisión</option>
+                                        <option value="Presupuestado">Presupuestado</option>
+                                        <option value="Reparado">Reparado</option>
+                                        <option value="Entregado">Entregado</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 fw-bold">Guardar Órden</button>
                             </form>
                         </div>
                     </div>
                     <div class="col-md-8">
-                        <div class="card p-3">
-                            <h5>Órdenes Registradas</h5>
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="mb-3">Órdenes Registradas</h5>
                             <div class="table-responsive">
-                                <table class="table table-dark table-hover mt-2">
+                                <table class="table table-dark table-hover align-middle">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th>N°</th>
                                             <th>Cliente</th>
                                             <th>Equipo</th>
                                             <th>Falla</th>
+                                            <th>Presupuesto</th>
                                             <th>Estado</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tabla-ordenes"></tbody>
@@ -67,32 +110,44 @@
                 </div>
             </div>
 
-            <!-- TAB REPUESTOS -->
+            <!-- TAB 2: STOCK REPUESTOS -->
             <div class="tab-pane fade" id="repuestos">
                 <div class="row">
-                    <div class="col-md-4">
-                        <div class="card p-3 mb-3">
-                            <h5>Nuevo Componente</h5>
+                    <div class="col-md-4 mb-3">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-success mb-3">Nuevo Componente</h5>
                             <form id="form-repuesto">
-                                <input type="text" id="rep-nombre" class="form-control mb-2" placeholder="Nombre (ej: Capacitor 10uF)" required>
-                                <input type="text" id="rep-categoria" class="form-control mb-2" placeholder="Categoría (ej: Capacitores)">
-                                <input type="text" id="rep-ubicacion" class="form-control mb-2" placeholder="Ubicación (ej: Cajón A1)">
-                                <input type="number" id="rep-cantidad" class="form-control mb-2" placeholder="Cantidad" value="1" min="1">
-                                <button type="submit" class="btn btn-success w-100">Guardar Componente</button>
+                                <div class="mb-2">
+                                    <label class="form-label">Nombre del Componente</label>
+                                    <input type="text" id="rep-nombre" class="form-control" placeholder="Ej: MOSFET 13NM60N, CI MAP8800" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Categoría</label>
+                                    <input type="text" id="rep-categoria" class="form-control" placeholder="Ej: Semiconductores, Capacitores">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Ubicación en Taller</label>
+                                    <input type="text" id="rep-ubicacion" class="form-control" placeholder="Ej: Cajón A2, Estante 3">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Cantidad</label>
+                                    <input type="number" id="rep-cantidad" class="form-control" value="1" min="1" required>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 fw-bold">Guardar Componente</button>
                             </form>
                         </div>
                     </div>
                     <div class="col-md-8">
-                        <div class="card p-3">
-                            <h5>Inventario de Componentes</h5>
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="mb-3">Inventario de Componentes</h5>
                             <div class="table-responsive">
-                                <table class="table table-dark table-hover mt-2">
+                                <table class="table table-dark table-hover align-middle">
                                     <thead>
                                         <tr>
                                             <th>Componente</th>
                                             <th>Categoría</th>
                                             <th>Ubicación</th>
-                                            <th>Cantidad</th>
+                                            <th>Stock</th>
                                             <th>Acción</th>
                                         </tr>
                                     </thead>
@@ -104,23 +159,153 @@
                 </div>
             </div>
 
-            <!-- TAB CAJA -->
-            <div class="tab-pane fade" id="caja">
-                <div class="card p-3">
-                    <h5>Movimientos de Caja</h5>
-                    <p id="balance-caja" class="fw-bold fs-5 text-info">Balance: $0.00</p>
+            <!-- TAB 3: FIRMWARES Y BANCO DE PLACAS -->
+            <div class="tab-pane fade" id="firmwares">
+                <div class="card p-3 shadow-sm">
+                    <h5 class="text-info mb-3">Banco de Placas & Firmwares</h5>
                     <div class="table-responsive">
-                        <table class="table table-dark mt-2">
+                        <table class="table table-dark table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
-                                    <th>Tipo</th>
-                                    <th>Concepto</th>
-                                    <th>Monto</th>
+                                    <th>Chasis / Placa</th>
+                                    <th>Modelo TV</th>
+                                    <th>Memoria</th>
+                                    <th>Descarga Nube</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabla-caja"></tbody>
+                            <tbody id="tabla-firmwares"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: VENTAS -->
+            <div class="tab-pane fade" id="ventas">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-warning mb-3">Publicar Producto / Equipo</h5>
+                            <form id="form-venta">
+                                <div class="mb-2">
+                                    <label class="form-label">Producto / Placa / Equipo</label>
+                                    <input type="text" id="vent-producto" class="form-control" placeholder="Ej: Main LG 32LJ550B" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Precio ($)</label>
+                                    <input type="number" step="0.01" id="vent-precio" class="form-control" placeholder="0.00" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Estado</label>
+                                    <select id="vent-estado" class="form-select">
+                                        <option value="En Venta">En Venta</option>
+                                        <option value="Reservado">Reservado</option>
+                                        <option value="Vendido">Vendido</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">Publicar Venta</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="mb-3">Equipos y Placas en Venta</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Precio</th>
+                                            <th>Estado</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-ventas"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: CAJA Y FINANZAS -->
+            <div class="tab-pane fade" id="caja">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-primary mb-3">Nuevo Movimiento</h5>
+                            <form id="form-caja">
+                                <div class="mb-2">
+                                    <label class="form-label">Tipo de Movimiento</label>
+                                    <select id="caja-tipo" class="form-select">
+                                        <option value="Ingreso">Ingreso (+)</option>
+                                        <option value="Egreso">Egreso (-)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Concepto</label>
+                                    <input type="text" id="caja-concepto" class="form-control" placeholder="Ej: Cobro reparación #12" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Monto ($)</label>
+                                    <input type="number" step="0.01" id="caja-monto" class="form-control" placeholder="0.00" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar Movimiento</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card p-3 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="m-0">Resumen de Caja</h5>
+                                <div id="resumen-balance" class="fs-5 fw-bold text-info">Balance: $0.00</div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Tipo</th>
+                                            <th>Concepto</th>
+                                            <th>Monto</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-caja"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: IA DIAGNÓSTICO -->
+            <div class="tab-pane fade" id="ia">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-primary mb-3">⚡ Análisis de Falla con IA</h5>
+                            <div class="mb-2">
+                                <label class="form-label">Equipo / Modelo</label>
+                                <input type="text" id="ia-equipo" class="form-control" placeholder="Ej: Smart TV LG 43UJ651V">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descripción síntoma</label>
+                                <textarea id="ia-falla" class="form-control" rows="3" placeholder="Ej: Pega destello de backlight y queda en stand-by"></textarea>
+                            </div>
+                            <button class="btn btn-primary w-100 fw-bold" onclick="consultarIA()">Analizar Falla</button>
+                            <div id="res-ia" class="mt-3 p-3 bg-dark text-light border border-secondary rounded d-none" style="white-space: pre-line;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card p-3 shadow-sm">
+                            <h5 class="text-warning mb-3">🔍 Fallas Recurrentes por Chasis</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Código Chasis / Placa</label>
+                                <input type="text" id="ia-chasis" class="form-control" placeholder="Ej: EAX65693202 / 715G6973">
+                            </div>
+                            <button class="btn btn-warning text-dark w-100 fw-bold" onclick="consultarChasis()">Buscar Fallas Recurrentes</button>
+                            <div id="res-chasis" class="mt-3 p-3 bg-dark text-light border border-secondary rounded d-none" style="white-space: pre-line;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -129,25 +314,33 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Cargar Órdenes
+        // ÓRDERES
         async function cargarOrdenes() {
-            const res = await fetch('/api/ordenes');
-            if (!res.ok) return;
-            const data = await res.json();
-            const tbody = document.getElementById('tabla-ordenes');
-            tbody.innerHTML = '';
-            data.forEach(o => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>#${o.id}</td>
-                        <td>${o.cliente}</td>
-                        <td>${o.equipo}</td>
-                        <td>${o.falla || ''}</td>
-                        <td><span class="badge bg-warning">${o.estado}</span></td>
-                        <td><button class="btn btn-sm btn-danger" onclick="borrarOrden(${o.id})">🗑️</button></td>
-                    </tr>
-                `;
-            });
+            try {
+                const res = await fetch('/api/ordenes');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-ordenes');
+                tbody.innerHTML = '';
+                data.forEach(o => {
+                    const telClean = (o.telefono || '').replace(/[^0-9]/g, '');
+                    const waBtn = telClean ? `<a href="https://wa.me/${telClean}?text=${encodeURIComponent('Hola ' + o.cliente + ', te contactamos por tu equipo ' + o.equipo)}" target="_blank" class="btn btn-sm btn-whatsapp me-1">💬 WA</a>` : '';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${o.id}</td>
+                            <td>${o.cliente}<br><small class="text-muted">${o.telefono || ''}</small></td>
+                            <td>${o.equipo}</td>
+                            <td>${o.falla || '-'}</td>
+                            <td>$${parseFloat(o.presupuesto || 0).toFixed(2)}</td>
+                            <td><span class="badge bg-info text-dark">${o.estado || 'Ingresado'}</span></td>
+                            <td>
+                                ${waBtn}
+                                <button class="btn btn-sm btn-danger" onclick="borrarOrden(${o.id})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
         }
 
         document.getElementById('form-orden').addEventListener('submit', async (e) => {
@@ -157,7 +350,9 @@
                 telefono: document.getElementById('ord-telefono').value,
                 equipo: document.getElementById('ord-equipo').value,
                 falla: document.getElementById('ord-falla').value,
-                presupuesto: document.getElementById('ord-presupuesto').value || 0
+                solucion: document.getElementById('ord-solucion').value,
+                presupuesto: parseFloat(document.getElementById('ord-presupuesto').value) || 0,
+                estado: document.getElementById('ord-estado').value
             };
             const res = await fetch('/api/ordenes', {
                 method: 'POST',
@@ -171,28 +366,35 @@
         });
 
         async function borrarOrden(id) {
-            await fetch(`/api/ordenes/${id}`, { method: 'DELETE' });
-            cargarOrdenes();
+            if (confirm('¿Eliminar esta orden?')) {
+                await fetch(`/api/ordenes/${id}`, { method: 'DELETE' });
+                cargarOrdenes();
+            }
         }
 
-        // Cargar Repuestos
+        // REPUESTOS
         async function cargarRepuestos() {
-            const res = await fetch('/api/repuestos');
-            if (!res.ok) return;
-            const data = await res.json();
-            const tbody = document.getElementById('tabla-repuestos');
-            tbody.innerHTML = '';
-            data.forEach(r => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${r.nombre}</td>
-                        <td>${r.categoria || '-'}</td>
-                        <td>${r.ubicacion || '-'}</td>
-                        <td>${r.cantidad}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="borrarRepuesto(${r.id})">🗑️</button></td>
-                    </tr>
-                `;
-            });
+            try {
+                const res = await fetch('/api/repuestos');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-repuestos');
+                tbody.innerHTML = '';
+                data.forEach(r => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${r.nombre}</strong></td>
+                            <td>${r.categoria || '-'}</td>
+                            <td>${r.ubicacion || '-'}</td>
+                            <td><span class="badge bg-success fs-6">${r.cantidad}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-light me-1" onclick="modificarStock(${r.id}, ${r.cantidad - 1})">-</button>
+                                <button class="btn btn-sm btn-outline-light" onclick="modificarStock(${r.id}, ${r.cantidad + 1})">+</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
         }
 
         document.getElementById('form-repuesto').addEventListener('submit', async (e) => {
@@ -201,7 +403,7 @@
                 nombre: document.getElementById('rep-nombre').value,
                 categoria: document.getElementById('rep-categoria').value,
                 ubicacion: document.getElementById('rep-ubicacion').value,
-                cantidad: document.getElementById('rep-cantidad').value || 1
+                cantidad: parseInt(document.getElementById('rep-cantidad').value) || 1
             };
             const res = await fetch('/api/repuestos', {
                 method: 'POST',
@@ -214,14 +416,180 @@
             }
         });
 
-        async function borrarRepuesto(id) {
-            await fetch(`/api/repuestos/${id}`, { method: 'DELETE' });
+        async function modificarStock(id, nuevaCantidad) {
+            if (nuevaCantidad < 0) nuevaCantidad = 0;
+            await fetch(`/api/repuestos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cantidad: nuevaCantidad })
+            });
             cargarRepuestos();
         }
 
-        // Inicializar
+        // FIRMWARES
+        async function cargarFirmwares() {
+            try {
+                const res = await fetch('/api/firmwares');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-firmwares');
+                tbody.innerHTML = '';
+                data.forEach(f => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${f.chasis}</td>
+                            <td>${f.modelo || '-'}</td>
+                            <td>${f.memoria || '-'}</td>
+                            <td><a href="${f.url_nube}" target="_blank" class="btn btn-sm btn-info text-dark">📥 Descargar</a></td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        // VENTAS
+        async function cargarVentas() {
+            try {
+                const res = await fetch('/api/ventas');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-ventas');
+                tbody.innerHTML = '';
+                data.forEach(v => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${v.producto}</td>
+                            <td>$${parseFloat(v.precio || 0).toFixed(2)}</td>
+                            <td><span class="badge bg-warning text-dark">${v.estado}</span></td>
+                            <td><button class="btn btn-sm btn-danger" onclick="borrarVenta(${v.id})">🗑️</button></td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        document.getElementById('form-venta').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                producto: document.getElementById('vent-producto').value,
+                precio: parseFloat(document.getElementById('vent-precio').value) || 0,
+                estado: document.getElementById('vent-estado').value
+            };
+            const res = await fetch('/api/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                document.getElementById('form-venta').reset();
+                cargarVentas();
+            }
+        });
+
+        async function borrarVenta(id) {
+            if (confirm('¿Eliminar producto?')) {
+                await fetch(`/api/ventas/${id}`, { method: 'DELETE' });
+                cargarVentas();
+            }
+        }
+
+        // CAJA
+        async function cargarCaja() {
+            try {
+                const res = await fetch('/api/caja');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('tabla-caja');
+                tbody.innerHTML = '';
+                
+                (data.movimientos || []).forEach(m => {
+                    const esIngreso = m.tipo === 'Ingreso';
+                    const colorMonto = esIngreso ? 'text-success' : 'text-danger';
+                    const signo = esIngreso ? '+' : '-';
+                    const fechaFmt = new Date(m.fecha).toLocaleDateString();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${fechaFmt}</td>
+                            <td><span class="badge ${esIngreso ? 'bg-success' : 'bg-danger'}">${m.tipo}</span></td>
+                            <td>${m.concepto}</td>
+                            <td class="${colorMonto} fw-bold">${signo}$${parseFloat(m.monto || 0).toFixed(2)}</td>
+                            <td><button class="btn btn-sm btn-danger" onclick="borrarCaja(${m.id})">🗑️</button></td>
+                        </tr>
+                    `;
+                });
+
+                const bal = parseFloat(data.balance || 0);
+                document.getElementById('resumen-balance').innerHTML = `Balance: <span class="${bal >= 0 ? 'text-success' : 'text-danger'}">$${bal.toFixed(2)}</span>`;
+            } catch(e) { console.error(e); }
+        }
+
+        document.getElementById('form-caja').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                tipo: document.getElementById('caja-tipo').value,
+                concepto: document.getElementById('caja-concepto').value,
+                monto: parseFloat(document.getElementById('caja-monto').value) || 0
+            };
+            const res = await fetch('/api/caja', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                document.getElementById('form-caja').reset();
+                cargarCaja();
+            }
+        });
+
+        async function borrarCaja(id) {
+            if (confirm('¿Eliminar movimiento de caja?')) {
+                await fetch(`/api/caja/${id}`, { method: 'DELETE' });
+                cargarCaja();
+            }
+        }
+
+        // IA DIAGNÓSTICO
+        async function consultarIA() {
+            const eq = document.getElementById('ia-equipo').value;
+            const fa = document.getElementById('ia-falla').value;
+            const resDiv = document.getElementById('res-ia');
+            if(!eq || !fa) { alert('Completá equipo y falla.'); return; }
+            resDiv.classList.remove('d-none');
+            resDiv.innerText = 'Analizando falla con IA...';
+            try {
+                const res = await fetch('/api/analizar-falla', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ equipo: eq, falla: fa })
+                });
+                const d = await res.json();
+                resDiv.innerText = d.diagnostico || 'Sin respuesta';
+            } catch(e) { resDiv.innerText = 'Error consultando la IA.'; }
+        }
+
+        async function consultarChasis() {
+            const ch = document.getElementById('ia-chasis').value;
+            const resDiv = document.getElementById('res-chasis');
+            if(!ch) { alert('Ingresá el código de chasis/placa.'); return; }
+            resDiv.classList.remove('d-none');
+            resDiv.innerText = 'Buscando fallas recurrentes...';
+            try {
+                const res = await fetch('/api/fallas-recurrentes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chasis: ch })
+                });
+                const d = await res.json();
+                resDiv.innerText = d.resultado || 'Sin datos';
+            } catch(e) { resDiv.innerText = 'Error en consulta.'; }
+        }
+
+        // Carga inicial
         cargarOrdenes();
         cargarRepuestos();
+        cargarFirmwares();
+        cargarVentas();
+        cargarCaja();
     </script>
 </body>
 </html>
