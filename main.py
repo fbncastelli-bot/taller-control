@@ -25,6 +25,7 @@ def init_db():
     if not conn:
         return
     cur = conn.cursor()
+    # Crear tablas si no existen
     cur.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
@@ -64,6 +65,10 @@ def init_db():
             test_points TEXT
         );
     ''')
+    
+    # Asegurar que la columna telefono exista en tablas creadas anteriormente
+    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS telefono VARCHAR(50);")
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -84,7 +89,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -144,16 +149,29 @@ def add_orden():
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute(
-        "INSERT INTO ordenes (cliente, telefono, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
-        (data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
-    )
-    nuevo = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify(nuevo), 201
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "INSERT INTO ordenes (cliente, telefono, equipo, falla, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
+            (
+                data.get("cliente", ""),
+                data.get("telefono", ""),
+                data.get("equipo", ""),
+                data.get("falla", ""),
+                float(data.get("presupuesto", 0) or 0),
+                data.get("estado", "Ingresado")
+            )
+        )
+        nuevo = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify(nuevo), 201
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
 def delete_orden(ot_id):
