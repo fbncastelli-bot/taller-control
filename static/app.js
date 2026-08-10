@@ -2,6 +2,7 @@ let otSeleccionada = null;
 let repSeleccionadoId = null;
 let ventaSeleccionadaId = null;
 let movSeleccionadoId = null;
+let dbCajaGlobal = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     cargarOrdenes();
@@ -148,9 +149,65 @@ function enviarWhatsAppModal() {
     enviarWhatsApp();
 }
 
-function imprimirComprobante() {
-    if (!otSeleccionada) return alert("Seleccioná una orden primero.");
+// IMPRESIÓN COMPROBANTE CLIENTE
+function imprimirComprobanteCliente() {
+    if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
+
+    const area = document.getElementById('area-impresion');
+    const fechaActual = new Date().toLocaleDateString('es-AR');
+
+    area.innerHTML = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 2px solid #000; padding: 20px;">
+            <h2 style="text-align: center; margin-bottom: 5px;">SERVICIO TÉCNICO ELECTRÓNICO</h2>
+            <p style="text-align: center; font-size: 14px; margin-top: 0;">Comprobante de Recepción de Equipo</p>
+            <hr>
+            <p><strong>N° Orden:</strong> #${otSeleccionada.id} &nbsp;&nbsp;&nbsp;&nbsp; <strong>Fecha:</strong> ${fechaActual}</p>
+            <p><strong>Cliente:</strong> ${otSeleccionada.cliente} &nbsp;&nbsp;&nbsp;&nbsp; <strong>Teléfono:</strong> ${otSeleccionada.telefono || '-'}</p>
+            <p><strong>Equipo / Modelo:</strong> ${otSeleccionada.equipo}</p>
+            <p><strong>Falla Reportada:</strong> ${otSeleccionada.falla}</p>
+            <p><strong>Estado Actual:</strong> ${otSeleccionada.estado}</p>
+            <p><strong>Presupuesto Est.:</strong> $${Number(otSeleccionada.presupuesto).toLocaleString('es-AR')}</p>
+            <hr>
+            <p style="font-size: 11px; text-align: justify;">
+                * Transcurridos los 90 días del aviso de reparación o presupuesto, los equipos no retirados serán considerados en abandono.
+                * Indispensable presentar este comprobante para el retiro del equipo.
+            </p>
+            <br><br>
+            <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+                <div style="border-top: 1px solid #000; width: 40%; text-align: center; font-size: 12px;">Firma del Cliente</div>
+                <div style="border-top: 1px solid #000; width: 40%; text-align: center; font-size: 12px;">Firma Servicio Técnico</div>
+            </div>
+        </div>
+    `;
+
+    area.style.display = 'block';
     window.print();
+    area.style.display = 'none';
+}
+
+// IMPRESIÓN TICKET TAPA TV
+function imprimirTicketTapaTV() {
+    if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
+
+    const area = document.getElementById('area-impresion');
+    const fechaActual = new Date().toLocaleDateString('es-AR');
+
+    area.innerHTML = `
+        <div style="font-family: Arial, sans-serif; width: 280px; border: 2px dashed #000; padding: 10px; font-size: 12px;">
+            <h3 style="margin: 0; text-align: center;">TALLER ELECTRÓNICO</h3>
+            <p style="text-align: center; margin: 2px 0; font-weight: bold;">ORDEN #${otSeleccionada.id}</p>
+            <hr style="margin: 4px 0;">
+            <p style="margin: 2px 0;"><strong>Cliente:</strong> ${otSeleccionada.cliente}</p>
+            <p style="margin: 2px 0;"><strong>Tel:</strong> ${otSeleccionada.telefono || '-'}</p>
+            <p style="margin: 2px 0;"><strong>Equipo:</strong> ${otSeleccionada.equipo}</p>
+            <p style="margin: 2px 0;"><strong>Falla:</strong> ${otSeleccionada.falla}</p>
+            <p style="margin: 2px 0;"><strong>Fecha:</strong> ${fechaActual}</p>
+        </div>
+    `;
+
+    area.style.display = 'block';
+    window.print();
+    area.style.display = 'none';
 }
 
 function analizarFalla(equipo, falla) {
@@ -255,7 +312,19 @@ function buscarDatasheet() {
 
 function imprimirEtiqueta() {
     if (!repSeleccionadoId) return alert("Seleccioná un componente.");
-    alert(`Imprimiendo etiqueta para gaveta: ${window.repNombreActual} (Ubicación: ${window.repUbActual})`);
+    
+    const area = document.getElementById('area-impresion');
+    area.innerHTML = `
+        <div style="font-family: Arial, sans-serif; width: 200px; border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center;">
+            <strong>COMPONENTES TALLER</strong><br>
+            <span style="font-size: 14px; font-weight: bold;">${window.repNombreActual}</span><br>
+            <span>Ubicación: ${window.repUbActual}</span>
+        </div>
+    `;
+
+    area.style.display = 'block';
+    window.print();
+    area.style.display = 'none';
 }
 
 function filtrarComp() {
@@ -317,7 +386,24 @@ function consultarML() {
     window.open(`https://listado.mercadolibre.com.ar/${prod}`, '_blank');
 }
 
-// 4. BANCO DE PLACAS Y ESQUEMÁTICOS
+// 4. BANCO DE PLACAS & REFORMA LED
+function consultarReformaLED() {
+    const driver = document.getElementById('input-driver-led').value;
+    if (!driver) return alert("Ingresá la serigrafía del integrado driver de backlight.");
+
+    document.getElementById('box-resultado-reforma').innerText = "⏳ Consultando pinout y procedimiento de reforma...";
+
+    fetch('/api/calcular-backlight', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ driver })
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('box-resultado-reforma').innerText = `=== IC DRIVER: ${data.driver} ===\n${data.procedimiento}`;
+    });
+}
+
 function buscarTestPoints() {
     const chasis = document.getElementById('input-chasis-tp').value;
     if(!chasis) return;
@@ -368,29 +454,33 @@ function preguntarSobreEsquema() {
 // 5. CAJA Y FINANZAS
 function cargarCaja() {
     fetch('/api/caja').then(r => r.json()).then(data => {
-        document.getElementById('caja-ingresos').innerText = `$${data.ingresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-        document.getElementById('caja-egresos').innerText = `$${data.egresos.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-        document.getElementById('caja-balance').innerText = `$${data.balance.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-
-        let html = '';
-        data.movimientos.forEach(m => {
-            const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
-            html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)" style="cursor: pointer;">
-                <td>${m.id}</td>
-                <td>${m.fecha}</td>
-                <td>${m.tipo}</td>
-                <td>${m.concepto}</td>
-                <td class="${colorClass}">$${Number(m.monto).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
-            </tr>`;
-        });
-        document.getElementById('tabla-caja').innerHTML = html;
+        dbCajaGlobal = data.movimientos || [];
+        renderizarTablaCaja(dbCajaGlobal);
     });
 }
 
-function seleccionarMovimientoCaja(id, fila) {
-    movSeleccionadoId = id;
-    document.querySelectorAll('#tabla-caja tr').forEach(r => r.classList.remove('table-active'));
-    fila.classList.add('table-active');
+function renderizarTablaCaja(lista) {
+    let ing = 0, egr = 0;
+    let html = '';
+
+    lista.forEach(m => {
+        const monto = Number(m.monto);
+        if (m.tipo === 'Ingreso') ing += monto; else egr += monto;
+
+        const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
+        html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)" style="cursor: pointer;">
+            <td>${m.id}</td>
+            <td>${m.fecha}</td>
+            <td>${m.tipo}</td>
+            <td>${m.concepto}</td>
+            <td class="${colorClass}">$${monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        </tr>`;
+    });
+
+    document.getElementById('caja-ingresos').innerText = `$${ing.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+    document.getElementById('caja-egresos').innerText = `$${egr.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+    document.getElementById('caja-balance').innerText = `$${(ing - egr).toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+    document.getElementById('tabla-caja').innerHTML = html;
 }
 
 function guardarMovimientoCaja() {
@@ -414,6 +504,12 @@ function guardarMovimientoCaja() {
     });
 }
 
+function seleccionarMovimientoCaja(id, fila) {
+    movSeleccionadoId = id;
+    document.querySelectorAll('#tabla-caja tr').forEach(r => r.classList.remove('table-active'));
+    fila.classList.add('table-active');
+}
+
 function eliminarMovimientoSeleccionado() {
     if (!movSeleccionadoId) return alert("Seleccioná un movimiento de la lista.");
     if (confirm(`¿Eliminar el movimiento N° ${movSeleccionadoId}?`)) {
@@ -424,11 +520,78 @@ function eliminarMovimientoSeleccionado() {
     }
 }
 
-function filtrarCaja() {
+function filtrarCajaTexto() {
     const q = document.getElementById('buscar-caja').value.toLowerCase();
-    document.querySelectorAll('#tabla-caja tr').forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(q) ? '' : 'none';
+    const filtrados = dbCajaGlobal.filter(m => 
+        m.concepto.toLowerCase().includes(q) || 
+        m.tipo.toLowerCase().includes(q) || 
+        m.fecha.toLowerCase().includes(q)
+    );
+    renderizarTablaCaja(filtrados);
+}
+
+function filtrarCajaHoy() {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const filtrados = dbCajaGlobal.filter(m => m.fecha.startsWith(hoyStr));
+    renderizarTablaCaja(filtrados);
+}
+
+function filtrarCajaMes() {
+    const mesStr = new Date().toISOString().slice(0, 7);
+    const filtrados = dbCajaGlobal.filter(m => m.fecha.startsWith(mesStr));
+    renderizarTablaCaja(filtrados);
+}
+
+function imprimirReporteCaja() {
+    const area = document.getElementById('area-impresion');
+    const fechaActual = new Date().toLocaleString('es-AR');
+    
+    let filasHtml = '';
+    let ing = 0, egr = 0;
+
+    dbCajaGlobal.forEach(m => {
+        const monto = Number(m.monto);
+        if (m.tipo === 'Ingreso') ing += monto; else egr += monto;
+        filasHtml += `
+            <tr>
+                <td style="border: 1px solid #000; padding: 4px;">${m.id}</td>
+                <td style="border: 1px solid #000; padding: 4px;">${m.fecha}</td>
+                <td style="border: 1px solid #000; padding: 4px;">${m.tipo}</td>
+                <td style="border: 1px solid #000; padding: 4px;">${m.concepto}</td>
+                <td style="border: 1px solid #000; padding: 4px; text-align: right;">$${monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `;
     });
+
+    area.innerHTML = `
+        <div style="font-family: Arial, sans-serif; padding: 10px;">
+            <h3 style="text-align: center; margin-bottom: 2px;">REPORTE DE CAJA Y FINANZAS - TALLER</h3>
+            <p style="text-align: center; font-size: 12px; margin-top: 0;">Fecha Emisión: ${fechaActual}</p>
+            <hr>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: #eee;">
+                        <th style="border: 1px solid #000; padding: 4px;">N°</th>
+                        <th style="border: 1px solid #000; padding: 4px;">Fecha y Hora</th>
+                        <th style="border: 1px solid #000; padding: 4px;">Tipo</th>
+                        <th style="border: 1px solid #000; padding: 4px;">Concepto / Detalle</th>
+                        <th style="border: 1px solid #000; padding: 4px;">Monto ($)</th>
+                    </tr>
+                </thead>
+                <tbody>${filasHtml}</tbody>
+            </table>
+            <br>
+            <div style="font-size: 13px; text-align: right;">
+                <p style="margin: 2px;">Total Ingresos: <strong>$${ing.toLocaleString('es-AR', {minimumFractionDigits: 2})}</strong></p>
+                <p style="margin: 2px;">Total Egresos: <strong>$${egr.toLocaleString('es-AR', {minimumFractionDigits: 2})}</strong></p>
+                <p style="margin: 2px; font-size: 15px;">Balance Neto: <strong>$${(ing - egr).toLocaleString('es-AR', {minimumFractionDigits: 2})}</strong></p>
+            </div>
+        </div>
+    `;
+
+    area.style.display = 'block';
+    window.print();
+    area.style.display = 'none';
 }
 
 // 6. FIRMWARES
