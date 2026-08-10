@@ -5,12 +5,26 @@ let movSeleccionadoId = null;
 let dbCajaGlobal = [];
 
 document.addEventListener("DOMContentLoaded", () => {
+    detectarModeloIA();
     cargarOrdenes();
     cargarRepuestos();
     cargarVentas();
     cargarFirmwares();
     cargarCaja();
 });
+
+function detectarModeloIA() {
+    fetch('/api/info-modelo')
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('kpi-ia-modelo');
+            if (el) el.innerText = data.modelo_activo || 'Gemini Active';
+        })
+        .catch(() => {
+            const el = document.getElementById('kpi-ia-modelo');
+            if (el) el.innerText = 'Gemini Active';
+        });
+}
 
 function mostrarSeccion(sec) {
     const secciones = ['ordenes', 'placas', 'repuestos', 'ventas', 'caja', 'firmwares'];
@@ -19,7 +33,7 @@ function mostrarSeccion(sec) {
         if (el) el.style.display = (s === sec) ? 'block' : 'none';
     });
 
-    const links = document.querySelectorAll('.nav-link');
+    const links = document.querySelectorAll('.nav-pills-custom .nav-link');
     links.forEach(link => link.classList.remove('active'));
     if (window.event && window.event.currentTarget) {
         window.event.currentTarget.classList.add('active');
@@ -36,8 +50,8 @@ function cargarOrdenes() {
         let html = '';
         data.forEach(o => {
             const jsonStr = escapeQuotes(JSON.stringify(o));
-            html += `<tr onclick="seleccionarOTObj(${jsonStr}, this)" style="cursor: pointer;">
-                <td>${o.id}</td>
+            html += `<tr onclick="seleccionarOTObj(${jsonStr}, this)">
+                <td>#${o.id}</td>
                 <td>${o.cliente}</td>
                 <td>${o.telefono || '-'}</td>
                 <td>${o.equipo}</td>
@@ -145,11 +159,6 @@ Cualquier consulta quedamos a disposición.`;
     window.open(url, '_blank');
 }
 
-function enviarWhatsAppModal() {
-    enviarWhatsApp();
-}
-
-// IMPRESIÓN COMPROBANTE CLIENTE CON QR
 function imprimirComprobanteCliente() {
     if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
 
@@ -195,7 +204,6 @@ function imprimirComprobanteCliente() {
     }, 300);
 }
 
-// IMPRESIÓN TICKET PARA TAPA DE TV CON QR, MODELO Y CLIENTE
 function imprimirTicketTapaTV() {
     if (!otSeleccionada) return alert("Seleccioná una orden de la lista.");
 
@@ -242,6 +250,10 @@ function analizarFalla(equipo, falla) {
     .then(r => r.json())
     .then(data => {
         box.innerHTML = `<pre>${data.diagnostico || data.error || 'Sin respuesta'}</pre>`;
+        if (data.modelo_usado) {
+            const el = document.getElementById('kpi-ia-modelo');
+            if (el) el.innerText = data.modelo_usado;
+        }
     })
     .catch(err => {
         box.innerHTML = `<pre class="text-danger">Error de conexión: ${err}</pre>`;
@@ -253,8 +265,8 @@ function cargarRepuestos() {
     fetch('/api/repuestos').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(r => {
-            html += `<tr onclick="seleccionarRepuesto(${r.id}, ${r.cantidad}, '${escapeQuotes(r.ubicacion)}', '${escapeQuotes(r.nombre)}', this)" style="cursor: pointer;">
-                <td>${r.id}</td>
+            html += `<tr onclick="seleccionarRepuesto(${r.id}, ${r.cantidad}, '${escapeQuotes(r.ubicacion)}', '${escapeQuotes(r.nombre)}', this)">
+                <td>#${r.id}</td>
                 <td>${r.categoria}</td>
                 <td>${r.nombre}</td>
                 <td>${r.ubicacion}</td>
@@ -365,8 +377,8 @@ function cargarVentas() {
     fetch('/api/ventas').then(r => r.json()).then(data => {
         let html = '';
         data.forEach(v => {
-            html += `<tr onclick="seleccionarVenta(${v.id}, this)" style="cursor: pointer;">
-                <td>${v.id}</td>
+            html += `<tr onclick="seleccionarVenta(${v.id}, this)">
+                <td>#${v.id}</td>
                 <td>${v.producto}</td>
                 <td>$${Number(v.precio).toLocaleString('es-AR')}</td>
                 <td><span class="badge bg-success">${v.estado}</span></td>
@@ -494,8 +506,8 @@ function renderizarTablaCaja(lista) {
         if (m.tipo === 'Ingreso') ing += monto; else egr += monto;
 
         const colorClass = m.tipo === 'Ingreso' ? 'text-success' : 'text-danger';
-        html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)" style="cursor: pointer;">
-            <td>${m.id}</td>
+        html += `<tr onclick="seleccionarMovimientoCaja(${m.id}, this)">
+            <td>#${m.id}</td>
             <td>${m.fecha}</td>
             <td>${m.tipo}</td>
             <td>${m.concepto}</td>
