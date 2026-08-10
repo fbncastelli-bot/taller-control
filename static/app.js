@@ -522,7 +522,8 @@ function pedirFirmwareWhatsApp() {
     const buscado = document.getElementById('fw-buscar').value.trim();
     const textoChasis = buscado ? `*${buscado}*` : 'un equipo/chasis';
     
-    const numSoporte = "5491112345678"; 
+    // Número oficial de soporte técnico
+    const numSoporte = "5491164992829"; 
     const msj = `Hola, necesito solicitar el firmware / dump para el chasis o modelo: ${textoChasis}. Quedo a la espera. ¡Gracias!`;
     
     window.open(`https://wa.me/${numSoporte}?text=${encodeURIComponent(msj)}`, '_blank');
