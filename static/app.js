@@ -250,10 +250,6 @@ function analizarFalla(equipo, falla) {
     .then(r => r.json())
     .then(data => {
         box.innerHTML = `<pre>${data.diagnostico || data.error || 'Sin respuesta'}</pre>`;
-        if (data.modelo_usado) {
-            const el = document.getElementById('kpi-ia-modelo');
-            if (el) el.innerText = data.modelo_usado;
-        }
     })
     .catch(err => {
         box.innerHTML = `<pre class="text-danger">Error de conexión: ${err}</pre>`;
