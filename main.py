@@ -79,6 +79,7 @@ def init_db():
             test_points TEXT
         );
     ''')
+    cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_taller VARCHAR(100);")
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS telefono VARCHAR(50);")
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS user_id INT;")
     cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS user_id INT;")
@@ -106,7 +107,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
 
@@ -143,7 +144,7 @@ def consultar_gemini_limpio(prompt):
 
     return None, ultimo_error
 
-# RUTAS AUTENTICACIÓN FLEXIBLE
+# RUTAS AUTENTICACIÓN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -156,15 +157,17 @@ def login():
             u = cur.fetchone()
             
             if u:
-                pwd_hash = generate_password_hash(pwd)
-                cur.execute("UPDATE usuarios SET password = %s WHERE id = %s;", (pwd_hash, u['id']))
-                conn.commit()
-                cur.close()
-                conn.close()
-                session['user_id'] = u['id']
-                session['usuario'] = u['usuario']
-                session['taller'] = u['nombre_taller']
-                return redirect('/')
+                if check_password_hash(u['password'], pwd):
+                    session['user_id'] = u['id']
+                    session['usuario'] = u['usuario']
+                    session['taller'] = u['nombre_taller'] or "Servicio Técnico"
+                    cur.close()
+                    conn.close()
+                    return redirect('/')
+                else:
+                    cur.close()
+                    conn.close()
+                    return render_template('login.html', error="Contraseña incorrecta.")
             else:
                 pwd_hash = generate_password_hash(pwd)
                 cur.execute("INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING *;", (user, pwd_hash, "Servicio Técnico"))
