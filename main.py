@@ -125,14 +125,24 @@ def login_view():
         conn.close()
 
         if u:
-            pwd_hash = u.get('password_hash')
-            pwd_plana = u.get('password')
+            pwd_hash = u.get('password_hash') or ''
+            pwd_plana = u.get('password') or ''
             valido = False
             
-            if pwd_hash and (pwd_hash.startswith('pbkdf2:') or pwd_hash.startswith('scrypt:')):
-                valido = check_password_hash(pwd_hash, pwd)
-            elif pwd_plana:
+            # 1. Validación por Hash Werkzeug
+            if pwd_hash.startswith('pbkdf2:') or pwd_hash.startswith('scrypt:'):
+                try:
+                    valido = check_password_hash(pwd_hash, pwd)
+                except Exception:
+                    valido = False
+            
+            # 2. Validación por texto plano en columna 'password'
+            if not valido and pwd_plana:
                 valido = (pwd_plana == pwd)
+
+            # 3. Validación por texto plano en columna 'password_hash'
+            if not valido and pwd_hash:
+                valido = (pwd_hash == pwd)
 
             if valido:
                 session['usuario_id'] = u['id']
@@ -174,7 +184,6 @@ def registro_view():
             cur.close()
             conn.close()
 
-            # Iniciar sesión automáticamente tras registrarse
             session['usuario_id'] = nuevo_u['id']
             session['usuario'] = nuevo_u['usuario']
             session['nombre_taller'] = nuevo_u['nombre_taller']
