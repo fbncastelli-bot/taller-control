@@ -120,7 +120,7 @@ def obtener_modelo_activo():
 def consultar_gemini_limpio(prompt):
     model, nombre_modelo = obtener_modelo_activo()
     if not model:
-        return None, "Error al inicializar el modelo de IA", "Sin modelo"
+        return None, "Error al inicializar el modelo de IA"
 
     try:
         res = model.generate_content(prompt)
@@ -129,11 +129,11 @@ def consultar_gemini_limpio(prompt):
             if '|' in texto:
                 pos_tabla = texto.find('|')
                 texto = texto[pos_tabla:]
-            return texto.strip(), None, nombre_modelo
+            return texto.strip(), None
     except Exception as e:
-        return None, str(e), nombre_modelo
+        return None, str(e)
 
-    return None, "Sin respuesta del modelo", nombre_modelo
+    return None, "Sin respuesta del modelo"
 
 @app.route('/')
 def index():
@@ -383,8 +383,8 @@ def analizar_falla():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
         prompt = f"Analizá la falla técnica del equipo {equipo} con síntoma {falla}. Brindá mediciones clave, descarte y componentes propensos a falla en español."
-        texto, err, modelo = consultar_gemini_limpio(prompt)
-        return jsonify({'diagnostico': texto, 'modelo_usado': modelo}) if texto else jsonify({'error': str(err)}), 500
+        texto, err = consultar_gemini_limpio(prompt)
+        return jsonify({'diagnostico': texto}) if texto else jsonify({'error': str(err)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -413,7 +413,7 @@ Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs 
 
 | Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |"""
 
-        texto, err, _ = consultar_gemini_limpio(prompt)
+        texto, err = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'test_points': texto})
         return jsonify({'error': f'Error de conexión: {err}'}), 500
@@ -453,7 +453,7 @@ Contenido del plano extraído:
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la serigrafía real del plano:
 | Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |"""
 
-        texto, err, _ = consultar_gemini_limpio(prompt)
+        texto, err = consultar_gemini_limpio(prompt)
         if texto:
             conn = get_db_connection()
             if conn:
@@ -492,7 +492,7 @@ Consulta técnica:
 
 Respondé de forma directa y técnica en español, indicando componentes o reemplazos directos."""
 
-        texto, err, _ = consultar_gemini_limpio(prompt)
+        texto, err = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'respuesta': texto})
         return jsonify({'error': f'Error al procesar: {err}'}), 500
