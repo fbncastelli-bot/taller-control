@@ -93,7 +93,6 @@ def obtener_modelo_activo():
         "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     
-    # Lista priorizada: se intenta usar primero la máxima capacidad del plan (2.0 Pro / Flash, 1.5 Pro)
     prioridad_modelos = [
         'gemini-2.0-pro-exp',
         'gemini-2.0-flash',
@@ -101,7 +100,6 @@ def obtener_modelo_activo():
         'gemini-1.5-flash'
     ]
     
-    # 1. Intentar descubrir modelos habilitados en la cuenta
     try:
         modelos_cuenta = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         for p in prioridad_modelos:
@@ -110,7 +108,6 @@ def obtener_modelo_activo():
     except Exception:
         pass
 
-    # 2. Reintento por orden de capacidad si list_models no responde
     for nombre in prioridad_modelos:
         try:
             m = genai.GenerativeModel(model_name=nombre, system_instruction=system_instruction)
