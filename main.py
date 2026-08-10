@@ -78,15 +78,15 @@ def init_db():
     ''')
     conn.commit()
 
-    # VINCULAR HISTORIAL AL USUARIO FABIAN
+    # MIGRAR REGISTROS HUÉRFANOS AL USUARIO FABIAN ACTUAL
     cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
     user_fabian = cur.fetchone()
     if user_fabian:
         fid = user_fabian['id']
-        cur.execute("UPDATE ordenes SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
-        cur.execute("UPDATE repuestos SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
-        cur.execute("UPDATE caja SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
-        cur.execute("UPDATE ventas SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1 OR usuario_id NOT IN (SELECT id FROM usuarios);", (fid,))
+        cur.execute("UPDATE ordenes SET usuario_id = %s;", (fid,))
+        cur.execute("UPDATE repuestos SET usuario_id = %s;", (fid,))
+        cur.execute("UPDATE caja SET usuario_id = %s;", (fid,))
+        cur.execute("UPDATE ventas SET usuario_id = %s;", (fid,))
         conn.commit()
 
     cur.close()
@@ -108,7 +108,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
     try:
