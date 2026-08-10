@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso | LAB-CONTROL PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background-color: #151c2c;
+            border: 1px solid #232d42;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .form-control {
+            background-color: #0f172a;
+            border: 1px solid #232d42;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+        .form-control:focus {
+            background-color: #0f172a;
+            border-color: #06b6d4;
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+        }
+        .btn-cyan {
+            background-color: #06b6d4;
+            color: #000;
+            font-weight: 700;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            width: 100%;
+        }
+        .btn-cyan:hover { background-color: #22d3ee; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-white mb-1">⚡ LAB-CONTROL <span class="text-info">PRO</span></h3>
+            <p class="text-muted small">Gestión Integral de Taller Electrónico</p>
+        </div>
+
+        <div id="form-login">
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-semibold">USUARIO</label>
+                <input type="text" id="log-user" class="form-control" placeholder="Ej: fabian">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-semibold">CONTRASEÑA</label>
+                <input type="password" id="log-pass" class="form-control" placeholder="••••••••">
+            </div>
+            <button onclick="ejecutarLogin()" class="btn btn-cyan mb-3">Iniciar Sesión</button>
+            <div class="text-center">
+                <a onclick="alternarForm(true)" style="color: #06b6d4; cursor: pointer;" class="small text-decoration-none">¿Nuevo taller? Registrate acá</a>
+            </div>
+        </div>
+
+        <div id="form-registro" style="display: none;">
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-semibold">NOMBRE DEL TALLER</label>
+                <input type="text" id="reg-taller" class="form-control" placeholder="Ej: Electrónica San Martín">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-semibold">USUARIO</label>
+                <input type="text" id="reg-user" class="form-control" placeholder="Ej: taller_esm">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-semibold">CONTRASEÑA</label>
+                <input type="password" id="reg-pass" class="form-control" placeholder="••••••••">
+            </div>
+            <button onclick="ejecutarRegistro()" class="btn btn-success w-100 mb-3 fw-bold">Crear Taller Independiente</button>
+            <div class="text-center">
+                <a onclick="alternarForm(false)" style="color: #06b6d4; cursor: pointer;" class="small text-decoration-none">Volver al ingreso</a>
+            </div>
+        </div>
+
+        <div id="msg-err" class="alert alert-danger mt-3 mb-0 small" style="display: none;"></div>
+    </div>
+
+    <script>
+        function alternarForm(esReg) {
+            document.getElementById('form-login').style.display = esReg ? 'none' : 'block';
+            document.getElementById('form-registro').style.display = esReg ? 'block' : 'none';
+            document.getElementById('msg-err').style.display = 'none';
+        }
+
+        function ejecutarLogin() {
+            const username = document.getElementById('log-user').value;
+            const password = document.getElementById('log-pass').value;
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'ok') window.location.reload();
+                else mostrarError(data.error);
+            });
+        }
+
+        function ejecutarRegistro() {
+            const taller = document.getElementById('reg-taller').value;
+            const username = document.getElementById('reg-user').value;
+            const password = document.getElementById('reg-pass').value;
+            fetch('/api/registro', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({taller, username, password})
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'ok') window.location.reload();
+                else mostrarError(data.error);
+            });
+        }
+
+        function mostrarError(txt) {
+            const el = document.getElementById('msg-err');
+            el.innerText = txt;
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
