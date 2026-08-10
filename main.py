@@ -84,49 +84,68 @@ DRIVERS_LED = {
     "MP3394": "Pin 6 (ISET): Aumentar la resistencia R_ISET para limitar la corriente por canal."
 }
 
-def consultar_gemini_limpio(prompt):
+def obtener_modelo_activo():
+    if not GEMINI_KEY:
+        return None, "Sin API Key"
+    
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
         "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
-    ultimo_error = None
+    
+    # Lista priorizada: se intenta usar primero la máxima capacidad del plan (2.0 Pro / Flash, 1.5 Pro)
+    prioridad_modelos = [
+        'gemini-2.0-pro-exp',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash'
+    ]
+    
+    # 1. Intentar descubrir modelos habilitados en la cuenta
+    try:
+        modelos_cuenta = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        for p in prioridad_modelos:
+            if p in modelos_cuenta:
+                return genai.GenerativeModel(model_name=p, system_instruction=system_instruction), p.replace('-', ' ').title()
+    except Exception:
+        pass
+
+    # 2. Reintento por orden de capacidad si list_models no responde
+    for nombre in prioridad_modelos:
+        try:
+            m = genai.GenerativeModel(model_name=nombre, system_instruction=system_instruction)
+            return m, nombre.replace('-', ' ').title()
+        except Exception:
+            continue
+
+    return None, "No disponible"
+
+def consultar_gemini_limpio(prompt):
+    model, nombre_modelo = obtener_modelo_activo()
+    if not model:
+        return None, "Error al inicializar el modelo de IA", "Sin modelo"
 
     try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                try:
-                    model = genai.GenerativeModel(model_name=m.name, system_instruction=system_instruction)
-                    res = model.generate_content(prompt)
-                    if res and res.text:
-                        texto = res.text
-                        if '|' in texto:
-                            pos_tabla = texto.find('|')
-                            texto = texto[pos_tabla:]
-                        return texto.strip(), None
-                except Exception as e:
-                    ultimo_error = str(e)
+        res = model.generate_content(prompt)
+        if res and res.text:
+            texto = res.text
+            if '|' in texto:
+                pos_tabla = texto.find('|')
+                texto = texto[pos_tabla:]
+            return texto.strip(), None, nombre_modelo
     except Exception as e:
-        ultimo_error = str(e)
+        return None, str(e), nombre_modelo
 
-    candidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
-    for nombre in candidatos:
-        try:
-            model = genai.GenerativeModel(model_name=nombre, system_instruction=system_instruction)
-            res = model.generate_content(prompt)
-            if res and res.text:
-                texto = res.text
-                if '|' in texto:
-                    pos_tabla = texto.find('|')
-                    texto = texto[pos_tabla:]
-                return texto.strip(), None
-        except Exception as e:
-            ultimo_error = str(e)
-
-    return None, ultimo_error
+    return None, "Sin respuesta del modelo", nombre_modelo
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/info-modelo', methods=['GET'])
+def info_modelo():
+    _, nombre = obtener_modelo_activo()
+    return jsonify({'modelo_activo': nombre})
 
 # ENDPOINTS ÓRDENES
 @app.route('/api/ordenes', methods=['GET'])
@@ -367,8 +386,8 @@ def analizar_falla():
         if not GEMINI_KEY:
             return jsonify({'error': 'Clave API no configurada'}), 500
         prompt = f"Analizá la falla técnica del equipo {equipo} con síntoma {falla}. Brindá mediciones clave, descarte y componentes propensos a falla en español."
-        texto, err = consultar_gemini_limpio(prompt)
-        return jsonify({'diagnostico': texto}) if texto else jsonify({'error': str(err)}), 500
+        texto, err, modelo = consultar_gemini_limpio(prompt)
+        return jsonify({'diagnostico': texto, 'modelo_usado': modelo}) if texto else jsonify({'error': str(err)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -397,7 +416,7 @@ Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs 
 
 | Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |"""
 
-        texto, err = consultar_gemini_limpio(prompt)
+        texto, err, _ = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'test_points': texto})
         return jsonify({'error': f'Error de conexión: {err}'}), 500
@@ -437,7 +456,7 @@ Contenido del plano extraído:
 Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la serigrafía real del plano:
 | Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |"""
 
-        texto, err = consultar_gemini_limpio(prompt)
+        texto, err, _ = consultar_gemini_limpio(prompt)
         if texto:
             conn = get_db_connection()
             if conn:
@@ -476,7 +495,7 @@ Consulta técnica:
 
 Respondé de forma directa y técnica en español, indicando componentes o reemplazos directos."""
 
-        texto, err = consultar_gemini_limpio(prompt)
+        texto, err, _ = consultar_gemini_limpio(prompt)
         if texto:
             return jsonify({'respuesta': texto})
         return jsonify({'error': f'Error al procesar: {err}'}), 500
