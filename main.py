@@ -108,8 +108,10 @@ DRIVERS_LED = {
 
 def consultar_gemini_limpio(prompt):
     system_instruction = (
-        "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Sos un técnico electrónico especialista en reparación de Smart TVs, fuentes y mainboards. "
+        "Responde de forma concisa, directa y estrictamente técnica en español. "
+        "Queda prohibido dar explicaciones teóricas generales o recomendaciones de seguridad básicas. "
+        "Enfocate únicamente en datos de campo: componentes con serigrafía exacta (ej: C820, R850, IC101), valores y la falla fija o típica de esa placa."
     )
     ultimo_error = None
 
@@ -276,7 +278,7 @@ def delete_orden(ot_id):
         conn.close()
     return jsonify({"status": "deleted"})
 
-# BUSCADOR DE FALLAS RECURRENTES (BBDD LOCAL + IA)
+# BUSCADOR DE FALLAS FIJAS / RECURRENTES
 @app.route('/api/fallas-recurrentes', methods=['POST'])
 def fallas_recurrentes():
     if 'user_id' not in session: return jsonify({'error': 'No autorizado'}), 401
@@ -300,20 +302,22 @@ def fallas_recurrentes():
 
     res_texto = ""
     if historial_local:
-        res_texto += "=== ANTECEDENTES REGISTRADOS EN TU TALLER ===\n"
+        res_texto += "=== REGISTROS PREVIOS EN TU TALLER ===\n"
         for h in historial_local:
             res_texto += f"• OT #{h['id']} ({h['equipo']}): Falla: {h['falla']} -> Solución: {h['solucion']}\n"
         res_texto += "\n"
 
     if GEMINI_KEY:
-        prompt = f"""Proporcioná las fallas recurrentes típicas, componentes propensos a falla y subfuentes críticas del chasis / modelo de TV LED: {chasis}.
-Devolvé una tabla Markdown en español técnico con:
-| Etapa / Circuito | Síntoma / Falla | Componente Crítico / Posición | Solución / Reemplazo Recomendado |"""
+        prompt = f"""Específicamente para el chasis / mainboard / fuente de TV LED: {chasis}.
+Indicá ÚNICAMENTE las "fallas fijas" o recurrentes típicas indicando componentes puntuales por serigrafía (ejemplo: C820 100uF desvalorizado, R850 2.2Ω abierta, IC101 en corto, firmware SPI corrupto).
+
+Devolvé ÚNICAMENTE una tabla Markdown corta y directa:
+| Componente / Serigrafía | Síntoma / Falla Fija | Solución / Reemplazo Concreto |"""
         texto_ia, err_ia = consultar_gemini_limpio(prompt)
         if texto_ia:
-            res_texto += "=== SUGERENCIAS DE FALLAS TÍPICAS (IA) ===\n" + texto_ia
+            res_texto += "=== FALLAS FIJAS Y COMPONENTES CRÍTICOS ===\n" + texto_ia
         elif err_ia and not historial_local:
-            res_texto += f"Error IA: {err_ia}"
+            res_texto += f"Error de consulta: {err_ia}"
 
     return jsonify({'resultado': res_texto if res_texto else "Sin datos registrados ni respuesta de IA."})
 
