@@ -23,12 +23,12 @@
         @media print {
             body * { visibility: hidden; }
             #area-impresion, #area-impresion * { visibility: visible; }
-            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; padding: 20px; }
+            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; padding: 10px; }
         }
     </style>
 </head>
 <body>
-    <!-- Area Imprimible para Tickets y Comprobantes -->
+    <!-- Area Imprimible para Tickets con QR y Comprobantes -->
     <div id="area-impresion" style="display: none;"></div>
 
     <!-- Encabezado Taller -->
@@ -93,8 +93,8 @@
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <button onclick="verFichaOT()" class="btn btn-primary btn-sm">📄 Ver Ficha / Informe</button>
                     <button onclick="enviarWhatsApp()" class="btn btn-success btn-sm">💬 Enviar WhatsApp al Cliente</button>
-                    <button onclick="imprimirComprobanteCliente()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante Cliente</button>
-                    <button onclick="imprimirTicketTapaTV()" class="btn btn-warning btn-sm">🏷️ Ticket para Tapa TV</button>
+                    <button onclick="imprimirComprobanteCliente()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante</button>
+                    <button onclick="imprimirTicketTapaTV()" class="btn btn-warning btn-sm">🏷️ Ticket con QR para Tapa TV</button>
                     <button onclick="eliminarOrdenSeleccionada()" class="btn btn-danger btn-sm ms-auto">❌ Eliminar Orden Seleccionada</button>
                 </div>
             </div>
@@ -247,7 +247,7 @@
             </div>
         </div>
 
-        <!-- 5. CAJA Y FINANZAS CON FILTROS -->
+        <!-- 5. CAJA Y FINANZAS -->
         <div id="sec-caja" style="display: none;">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div>
