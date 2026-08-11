@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarPlacas();
     cargarFirmwares();
 
-    // FORMULARIO ÓRDENES
     const formOrden = document.getElementById('form-orden');
     if (formOrden) {
         formOrden.addEventListener('submit', async (e) => {
@@ -30,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO REPUESTOS
     const formRepuesto = document.getElementById('form-repuesto');
     if (formRepuesto) {
         formRepuesto.addEventListener('submit', async (e) => {
@@ -52,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO VENTAS
     const formVenta = document.getElementById('form-venta');
     if (formVenta) {
         formVenta.addEventListener('submit', async (e) => {
@@ -71,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO CAJA
     const formCaja = document.getElementById('form-caja');
     if (formCaja) {
         formCaja.addEventListener('submit', async (e) => {
@@ -91,7 +87,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO TEST POINTS
+    const formFirmware = document.getElementById('form-firmware');
+    if (formFirmware) {
+        formFirmware.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chasis = document.getElementById('fw-chasis').value;
+            const modelo = document.getElementById('fw-modelo').value;
+            const memoria = document.getElementById('fw-memoria').value;
+            const url_nube = document.getElementById('fw-url').value;
+
+            await fetch('/api/firmwares', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chasis, modelo, memoria, url_nube })
+            });
+
+            formFirmware.reset();
+            cargarFirmwares();
+        });
+    }
+
     const formTestPoints = document.getElementById('form-test-points');
     if (formTestPoints) {
         formTestPoints.addEventListener('submit', async (e) => {
@@ -114,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO SUBIR PDF ESQUEMÁTICO
     const formPdf = document.getElementById('form-pdf-esquematico');
     if (formPdf) {
         formPdf.addEventListener('submit', async (e) => {
@@ -144,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // CALCULAR CORRIENTE LED
     const formBacklight = document.getElementById('form-backlight');
     if (formBacklight) {
         formBacklight.addEventListener('submit', async (e) => {
@@ -163,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// FUNCIONES DE CARGA Y TABLAS
 async function cargarOrdenes() {
     const res = await fetch('/api/ordenes');
     const ordenes = await res.json();
