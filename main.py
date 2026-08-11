@@ -5,22 +5,13 @@ import google.generativeai as genai
 from pypdf import PdfReader
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import cloudinary
-import cloudinary.uploader
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave_secreta_taller_2026")
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 DATABASE_URL = os.environ.get("DATABASE_URL")
-
-# Configuración de Cloudinary leyendo de las variables de entorno de Render
-cloudinary.config(
-    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.environ.get("CLOUDINARY_API_KEY"),
-    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
-    secure=True
-)
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
@@ -231,7 +222,7 @@ def logout():
     session.clear()
     return redirect(url_for('login_view'))
 
-# ==================== ENDPOINT DE SUBIDA A CLOUDINARY ====================
+# ==================== ENDPOINT DE SUBIDA A IMGBB ====================
 @app.route('/api/upload', methods=['POST'])
 def upload_image():
     if 'archivo' not in request.files and 'file' not in request.files:
@@ -242,23 +233,27 @@ def upload_image():
     if file.filename == '':
         return jsonify({'error': 'Nombre de archivo no válido'}), 400
 
-    try:
-        c_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
-        c_key = os.environ.get("CLOUDINARY_API_KEY")
-        c_secret = os.environ.get("CLOUDINARY_API_SECRET")
+    api_key = os.environ.get("IMGBB_API_KEY")
+    if not api_key:
+        return jsonify({'error': 'Clave API de ImgBB no configurada en Render'}), 500
 
-        resultado = cloudinary.uploader.upload(
-            file,
-            folder="taller_fotos",
-            cloud_name=c_name,
-            api_key=c_key,
-            api_secret=c_secret
-        )
-        return jsonify({
-            'status': 'success',
-            'url': resultado.get('secure_url'),
-            'public_id': resultado.get('public_id')
-        }), 200
+    try:
+        url_imgbb = f"https://api.imgbb.com/1/upload?key={api_key}"
+        files = {'image': (file.filename, file.stream, file.content_type)}
+        
+        response = requests.post(url_imgbb, files=files)
+        res_json = response.json()
+
+        if response.status_code == 200 and res_json.get('success'):
+            url_imagen = res_json['data']['url']
+            return jsonify({
+                'status': 'success',
+                'url': url_imagen
+            }), 200
+        else:
+            msg_error = res_json.get('error', {}).get('message', 'Error en la API de ImgBB')
+            return jsonify({'error': msg_error}), 500
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
