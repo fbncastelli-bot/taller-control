@@ -84,8 +84,10 @@ except Exception as e:
 def index():
     return send_from_directory('templates', 'index.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login_page():
+    if request.method == 'POST':
+        return redirect('/')
     return render_template('login.html', error=None)
 
 @app.route('/logout')
@@ -251,6 +253,16 @@ def handle_repuestos():
         conn.close()
         return jsonify(repuestos)
 
+@app.route('/api/repuestos/<int:id_repuesto>', methods=['DELETE'])
+def delete_repuesto(id_repuesto):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM repuestos WHERE id = %s;", (id_repuesto,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'status': 'deleted'})
+
 @app.route('/api/ventas', methods=['GET', 'POST'])
 def handle_ventas():
     conn = get_db_connection()
@@ -324,25 +336,49 @@ def delete_movimiento(id_movimiento):
     conn.close()
     return jsonify({'status': 'deleted'})
 
-@app.route('/api/placas', methods=['GET'])
-def get_placas():
+@app.route('/api/placas', methods=['GET', 'POST'])
+def handle_placas():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM placas ORDER BY id DESC;")
-    placas = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(placas)
+    if request.method == 'POST':
+        data = request.json
+        cur.execute(
+            "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s) RETURNING id;",
+            (data.get('tipo'), data.get('codigo'), data.get('modelo'), data.get('test_points'))
+        )
+        new_id = cur.fetchone()['id']
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'id': new_id, 'status': 'success'}), 201
+    else:
+        cur.execute("SELECT * FROM placas ORDER BY id DESC;")
+        placas = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(placas)
 
-@app.route('/api/firmwares', methods=['GET'])
-def get_firmwares():
+@app.route('/api/firmwares', methods=['GET', 'POST'])
+def handle_firmwares():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM firmwares ORDER BY id DESC;")
-    firmwares = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(firmwares)
+    if request.method == 'POST':
+        data = request.json
+        cur.execute(
+            "INSERT INTO firmwares (chasis, modelo, memoria, url_nube) VALUES (%s, %s, %s, %s) RETURNING id;",
+            (data.get('chasis'), data.get('modelo'), data.get('memoria'), data.get('url_nube'))
+        )
+        new_id = cur.fetchone()['id']
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'id': new_id, 'status': 'success'}), 201
+    else:
+        cur.execute("SELECT * FROM firmwares ORDER BY id DESC;")
+        firmwares = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(firmwares)
 
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
