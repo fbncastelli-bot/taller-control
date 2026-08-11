@@ -2,83 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAB-CONTROL PRO v4.2</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-light">
-
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold text-primary" href="#">LAB-CONTROL PRO <span class="badge bg-secondary fs-6">v4.2</span></a>
-            <div class="navbar-nav">
-                <a class="nav-link active" id="btn-nav-ordenes" href="javascript:void(0)" onclick="mostrarSeccion('ordenes')">Órdenes</a>
-                <a class="nav-link" id="btn-nav-repuestos" href="javascript:void(0)" onclick="mostrarSeccion('repuestos')">Banco Placas</a>
-                <a class="nav-link" id="btn-nav-firmwares" href="javascript:void(0)" onclick="mostrarSeccion('firmwares')">Firmwares</a>
-                <a class="nav-link" id="btn-nav-caja" href="javascript:void(0)" onclick="mostrarSeccion('caja')">Caja</a>
-            </div>
-        </div>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <a class="nav-link text-white" href="#" onclick="mostrarSeccion('ordenes')">Órdenes</a>
+        <a class="nav-link text-white" href="#" onclick="mostrarSeccion('repuestos')">Banco Placas</a>
+        <a class="nav-link text-white" href="#" onclick="mostrarSeccion('firmwares')">Firmwares</a>
+        <a class="nav-link text-white" href="#" onclick="mostrarSeccion('caja')">Caja</a>
     </nav>
-
-    <div class="container-fluid mt-3">
-        <!-- Órdenes -->
-        <div id="ordenes" class="seccion-contenido">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">Órdenes de Trabajo</div>
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead class="table-dark">
-                            <tr><th>OT #</th><th>Fecha</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr>
-                        </thead>
-                        <tbody id="tabla-ordenes"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Banco Placas -->
-        <div id="repuestos" class="seccion-contenido d-none">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">Banco de Placas</div>
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead><tr><th>Código</th><th>Descripción</th><th>Chasis</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-repuestos"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Firmwares -->
-        <div id="firmwares" class="seccion-contenido d-none">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">Base de Firmwares</div>
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead><tr><th>Modelo</th><th>Chasis</th><th>Tipo</th><th>Peso</th><th>Descargar</th></tr></thead>
-                        <tbody id="tabla-firmwares"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Caja -->
-        <div id="caja" class="seccion-contenido d-none">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">Caja Diario</div>
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Método</th></tr></thead>
-                        <tbody id="tabla-caja"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div id="ordenes" class="seccion-contenido"><table class="table"><thead><tr><th>OT #</th><th>Fecha</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody id="tabla-ordenes"></tbody></table></div>
+    <div id="repuestos" class="seccion-contenido d-none">...</div>
+    <div id="firmwares" class="seccion-contenido d-none">...</div>
+    <div id="caja" class="seccion-contenido d-none">...</div>
     <script src="/static/app.js"></script>
 </body>
 </html>
