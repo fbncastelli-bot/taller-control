@@ -177,41 +177,58 @@ function imprimirOT(id) {
         return;
     }
 
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=OT-${ot.id}`;
+    const urlConsulta = `https://taller-control-js3z.onrender.com/consulta.html?id=${ot.id}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(urlConsulta)}`;
+
+    const nombreTaller = "Laboratorio Técnico de Electrónica";
+    const telTaller = "11-XXXX-XXXX";
+    const dirTaller = "Claypole, Buenos Aires";
 
     const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
     ventanaImpresion.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Comprobante Orden de Trabajo #${ot.id}</title>
-
+            <title>Comprobante OT #${ot.id}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
+                .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                .header h2 { margin: 0; font-size: 22px; }
+                .header p { margin: 5px 0 0 0; font-size: 14px; color: #555; }
+                .titulo-ot { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+                .datos p { font-size: 15px; margin: 8px 0; }
+                .qr-container { margin-top: 25px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px; }
+                .qr-container img { width: 140px; height: 140px; }
+                .qr-container p { font-size: 12px; color: #666; margin-top: 5px; }
+                .footer { margin-top: 30px; font-size: 12px; text-align: center; color: #777; border-top: 1px solid #ddd; padding-top: 10px; }
+            </style>
         </head>
         <body>
-            <div class="comprobante">
-                <div class="header">
-                    <h2>COMPROBANTE DE INGRESO - ORDEN #${ot.id}</h2>
-                    <p><strong>Laboratorio Técnico de Electrónica</strong></p>
-                </div>
-                
-                <div class="datos">
-                    <p><strong>Cliente:</strong> ${ot.cliente || 'N/A'}</p>
-                    <p><strong>Teléfono:</strong> ${ot.telefono || 'N/A'}</p>
-                    <p><strong>Equipo:</strong> ${ot.equipo || 'N/A'}</p>
-                    <p><strong>Falla Reportada:</strong> ${ot.falla || 'N/A'}</p>
-                    <p><strong>Presupuesto Estimado:</strong> $${parseFloat(ot.presupuesto || 0).toFixed(2)}</p>
-                    <p><strong>Estado:</strong> ${ot.estado || 'Ingresado'}</p>
-                </div>
-
-                <div class="qr-container">
-                    <img src="${qrUrl}" alt="Código QR Orden #${ot.id}">
-                    <p><small>Escanee este código para vincular o verificar la orden #${ot.id}</small></p>
-                </div>
-
-                <div class="footer">
-                    <p>Conserve este comprobante para el retiro del equipo.</p>
-                </div>
+            <div class="header">
+                <h2>${nombreTaller}</h2>
+                <p>Teléfono: ${telTaller} | Ubicación: ${dirTaller}</p>
             </div>
+            
+            <div class="titulo-ot">COMPROBANTE DE INGRESO - ORDEN #${ot.id}</div>
+
+            <div class="datos">
+                <p><strong>Cliente:</strong> ${ot.cliente || 'N/A'}</p>
+                <p><strong>Teléfono:</strong> ${ot.telefono || 'N/A'}</p>
+                <p><strong>Equipo:</strong> ${ot.equipo || 'N/A'}</p>
+                <p><strong>Falla Reportada:</strong> ${ot.falla || 'N/A'}</p>
+                <p><strong>Presupuesto Estimado:</strong> $${parseFloat(ot.presupuesto || 0).toFixed(2)}</p>
+                <p><strong>Estado Actual:</strong> ${ot.estado || 'Ingresado'}</p>
+            </div>
+
+            <div class="qr-container">
+                <img src="${qrUrl}" alt="Código QR Orden #${ot.id}">
+                <p>Escanee este código QR con su celular para consultar el estado de su reparación en tiempo real.</p>
+            </div>
+
+            <div class="footer">
+                <p>Conserve este comprobante para el retiro del equipo.</p>
+            </div>
+
             <script>
                 window.onload = function() {
                     window.print();
