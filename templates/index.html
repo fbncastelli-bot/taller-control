@@ -3,163 +3,384 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAB-CONTROL PRO v4.2 - Gestión de Taller Electrónico</title>
+    <title>Sistema Profesional de Gestión de Taller v4.2</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="bg-light">
+    <style>
+        body { background-color: #0d1527; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header-top { background-color: #0b1120; border-bottom: 1px solid #1e293b; padding: 10px 20px; }
+        .nav-tabs-custom { background-color: #1e293b; border-radius: 8px; padding: 5px; flex-wrap: wrap; }
+        .nav-tabs-custom .nav-link { color: #94a3b8; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; cursor: pointer; }
+        .nav-tabs-custom .nav-link.active { background-color: #0284c7; color: white; }
+        .card-custom { background-color: #111c35; border: 1px solid #1e293b; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .btn-cyan { background-color: #06b6d4; color: white; }
+        .btn-cyan:hover { background-color: #0891b2; color: white; }
+        .btn-verde-registro { background-color: #22c55e; color: white; font-weight: bold; }
+        .btn-verde-registro:hover { background-color: #16a34a; color: white; }
+        pre { background-color: #0b1120; color: #38bdf8; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+        table tr { cursor: pointer; }
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 border-bottom border-primary border-3">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold text-primary" href="#"><i class="bi bi-cpu-fill me-2"></i>LAB-CONTROL PRO <span class="badge bg-secondary fs-6">v4.2</span></a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link active" href="#ordenes"><i class="bi bi-tools me-1"></i>Órdenes (OT)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#banco-placas"><i class="bi bi-motherboard me-1"></i>Banco de Placas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#firmwares"><i class="bi bi-download me-1"></i>Firmwares</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#caja"><i class="bi bi-cash-stack me-1"></i>Caja Diario</a></li>
-                </ul>
+        @media print {
+            body * { visibility: hidden; }
+            #area-impresion, #area-impresion * { visibility: visible; }
+            #area-impresion { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; padding: 20px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-top d-flex justify-content-between align-items-center flex-wrap gap-2 no-print">
+        <div>
+            <span class="fw-bold text-info fs-5">⚙️ {{ taller or 'SERVICIO TÉCNICO & FIRMWARES' }}</span>
+            <span class="badge bg-success ms-2">BBDD: ONLINE</span>
+        </div>
+        <div class="small text-secondary fw-bold d-flex align-items-center gap-3">
+            <span>👤 USER: {{ usuario or 'ADMINISTRATOR' }}</span>
+            <span>📅 <span id="reloj-vivo" class="text-info">--/--/---- --:--:--</span></span>
+            <a href="/logout" class="btn btn-outline-danger btn-sm py-0 text-white" style="text-decoration: none;">🚪 Cerrar Sesión</a>
+        </div>
+    </div>
+
+    <div class="container-fluid p-3 no-print">
+        <ul class="nav nav-tabs-custom mb-3">
+            <li class="nav-item"><a class="nav-link active" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('placas')">🧩 Banco de Placas y Fallas</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock Componentes</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('ventas')">🏷️ Ventas y Usados</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('caja')">💵 Caja y Finanzas</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('firmwares')">☁️ Firmware Nube</a></li>
+        </ul>
+
+        <!-- 1. ÓRDENES DE TRABAJO -->
+        <div id="sec-ordenes">
+            <div class="card-custom">
+                <div class="row g-2">
+                    <div class="col-md-3"><label class="small text-secondary">Cliente:</label><input type="text" id="ot-cliente" class="form-control form-control-sm"></div>
+                    <div class="col-md-2"><label class="small text-secondary">Teléfono (WhatsApp):</label><input type="text" id="ot-telefono" class="form-control form-control-sm" placeholder="1112345678"></div>
+                    <div class="col-md-3"><label class="small text-secondary">Equipo/Modelo/Chasis:</label><input type="text" id="ot-equipo" class="form-control form-control-sm"></div>
+                    <div class="col-md-2"><label class="small text-secondary">Estado:</label>
+                        <select id="ot-estado" class="form-select form-select-sm">
+                            <option value="Ingresado">Ingresado</option>
+                            <option value="Presupuestado">Presupuestado</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="small text-secondary">Falla Reportada:</label><input type="text" id="ot-falla" class="form-control form-control-sm"></div>
+                    <div class="col-md-5"><label class="small text-secondary">Solución / Componentes Cambiados:</label><input type="text" id="ot-solucion" class="form-control form-control-sm" placeholder="Ej: Cambio de R850 y MOSFET Q37AZ"></div>
+                    <div class="col-md-3"><label class="small text-secondary">Presupuesto $:</label><input type="number" id="ot-presupuesto" class="form-control form-control-sm"></div>
+                    <div class="col-md-12 text-end mt-2"><button onclick="guardarOrden()" class="btn btn-cyan btn-sm px-4">Guardar Orden de Trabajo</button></div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6"><input type="text" id="buscar-ot" onkeyup="filtrarTablaOT()" class="form-control form-control-sm" placeholder="🔎 Buscar Orden: Cliente, Teléfono, Equipo o N°..."></div>
+                    <div class="col-md-3"><button onclick="filtrarTablaOT()" class="btn btn-info btn-sm w-100">Filtrar</button></div>
+                    <div class="col-md-3"><button onclick="cargarOrdenes()" class="btn btn-secondary btn-sm w-100">Ver Todas</button></div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover small">
+                        <thead>
+                            <tr><th>N°</th><th>Cliente</th><th>Teléfono</th><th>Equipo / Modelo</th><th>Falla Reportada</th><th>Solución Aplicada</th><th>Estado Trabajo</th><th>Presupuesto</th></tr>
+                        </thead>
+                        <tbody id="tabla-ordenes"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button onclick="verFichaOT()" class="btn btn-primary btn-sm">📄 Ver Ficha / Informe</button>
+                    <button onclick="enviarWhatsApp()" class="btn btn-success btn-sm">💬 Enviar WhatsApp al Cliente</button>
+                    <button onclick="generarComprobanteImpresion()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante Oficial</button>
+                    <button onclick="eliminarOrdenSeleccionada()" class="btn btn-danger btn-sm ms-auto">❌ Eliminar Orden Seleccionada</button>
+                </div>
+            </div>
+
+            <div id="modal-ficha" class="card-custom mt-3" style="display: none; border: 1px solid #0284c7;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="text-info m-0">📋 Ficha de Trabajo e Informe Técnico</h5>
+                    <button onclick="cerrarFicha()" class="btn btn-outline-danger btn-sm">Cerrar ✖</button>
+                </div>
+                <div id="contenido-ficha" class="p-2 bg-dark rounded text-light small"></div>
+                <div class="mt-3 text-end">
+                    <button onclick="enviarWhatsAppModal()" class="btn btn-success btn-sm">💬 Enviar este Informe por WhatsApp</button>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <h6 class="text-info">🤖 Diagnóstico Técnico Inteligente</h6>
+                <div id="box-diagnostico" class="small text-secondary">Seleccioná una orden de la lista para analizar su circuito.</div>
             </div>
         </div>
-    </nav>
 
-    <!-- Contenido Principal -->
-    <div class="container-fluid px-4">
-        
-        <!-- Módulo de Órdenes de Trabajo -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-file-earmark-medical me-2"></i>Gestión de Órdenes de Trabajo</h5>
-                <button class="btn btn-light btn-sm fw-bold" onclick="abrirModalNuevaOT()"><i class="bi bi-plus-circle me-1"></i>Nueva OT</button>
+        <!-- 2. BANCO DE PLACAS Y FALLAS -->
+        <div id="sec-placas" style="display: none;">
+            <div class="card-custom border-warning">
+                <h6 class="text-warning">⚠️ Buscador de Fallas Recurrentes (Histórico Taller + IA)</h6>
+                <div class="input-group mt-2 mb-2">
+                    <input type="text" id="input-chasis-fallas" class="form-control form-control-sm" placeholder="Ingresá Modelo o Código de Chasis (Ej: RSAG7.820.4680 o UN49K5500)">
+                    <button onclick="buscarFallasRecurrentes()" class="btn btn-warning btn-sm fw-bold">Buscar Fallas Típicas</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top border-secondary">
+                    <span class="small text-secondary align-self-center">🌐 Buscar Soluciones en Web / Redes:</span>
+                    <button onclick="buscarEnPlataforma('youtube')" class="btn btn-outline-danger btn-sm">▶️ YouTube (Videos)</button>
+                    <button onclick="buscarEnPlataforma('telegram')" class="btn btn-outline-info btn-sm">✈️ Telegram (Canales/Grupos)</button>
+                    <button onclick="buscarEnPlataforma('google')" class="btn btn-outline-primary btn-sm">🔍 Google (Foros/Casos)</button>
+                </div>
             </div>
-            <div class="card-body">
+
+            <div class="card-custom">
+                <h6>🔎 Buscador de Test Points por Chasis</h6>
+                <div class="input-group mt-2">
+                    <input type="text" id="input-chasis-tp" class="form-control form-control-sm" placeholder="Ej: RSAG7.820.4680 o 3122 427 24420">
+                    <button onclick="buscarTestPoints()" class="btn btn-info btn-sm">Consultar Test Points</button>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <h6>📄 Subir Esquemático / Diagrama en PDF (IA)</h6>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4"><input type="text" id="pdf-chasis-nombre" class="form-control form-control-sm" placeholder="Código de Chasis / Modelo"></div>
+                    <div class="col-md-8"><input type="file" id="pdf-archivo" class="form-control form-control-sm" accept=".pdf"></div>
+                    <div class="col-md-12 text-end mt-2"><button onclick="procesarEsquematicoPDF()" class="btn btn-warning btn-sm">Subir PDF, Analizar y Guardar</button></div>
+                </div>
+            </div>
+
+            <div class="card-custom"><pre id="box-test-points">Ingresá un chasis para buscar fallas recurrentes, puntos de prueba o analizar un PDF.</pre></div>
+
+            <div class="card-custom mt-2">
+                <h6>💬 Consulta Técnica sobre el Esquemático Analizado</h6>
+                <div class="input-group mt-2">
+                    <input type="text" id="input-pregunta-esquema" class="form-control form-control-sm" placeholder="Ej: ¿Qué componentes revisar si no entrega +24V o qué reemplazo usar para STP11NM60FP?">
+                    <button onclick="preguntarSobreEsquema()" class="btn btn-primary btn-sm">Preguntar a la IA</button>
+                </div>
+                <pre id="box-respuesta-esquema" class="mt-2 text-info">Ingresá tu duda técnica sobre el plano.</pre>
+            </div>
+        </div>
+
+        <!-- 3. STOCK COMPONENTES -->
+        <div id="sec-repuestos" style="display: none;">
+            <div class="card-custom">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="small text-secondary">Categoría del Componente:</label>
+                        <select id="rep-cat" class="form-select form-select-sm">
+                            <optgroup label="Semiconductores">
+                                <option value="Integrados PWM/Fuente">Integrados PWM / Fuente</option>
+                                <option value="Microcontroladores / MPU">Microcontroladores / MPU / Flash</option>
+                                <option value="Transistores Bipolares">Transistores Bipolares (BJT)</option>
+                                <option value="MOSFETs / IGBTs">MOSFETs / IGBTs</option>
+                                <option value="Diodos / Zener / Schottky">Diodos (Rectificadores / Zener / Schottky)</option>
+                                <option value="Optoacopladores">Optoacopladores / Reg. TL431</option>
+                            </optgroup>
+                            <optgroup label="Pasivos">
+                                <option value="Resistencias THT">Resistencias THT (Carbón / Metal Film / Potencia)</option>
+                                <option value="Resistencias SMD">Resistencias SMD (0603 / 0805 / 1206 / Shunt)</option>
+                                <option value="Capacitores Electrolíticos">Capacitores Electrolíticos</option>
+                                <option value="Capacitores Cerámicos">Capacitores Cerámicos / SMD</option>
+                                <option value="Capacitores Poliéster">Capacitores de Poliéster / film</option>
+                                <option value="Bobinas e Inductores">Bobinas / Inductores / Choques SMD</option>
+                                <option value="Potenciómetros / Trimmers">Potenciómetros / Preset / Trimmers</option>
+                            </optgroup>
+                            <optgroup label="Protección y Conectividad">
+                                <option value="Fusibles / Varistores / NTC">Protección (Fusibles / NTC / Varistores)</option>
+                                <option value="Cristales / Osciladores">Cristales Cuarzo / Osciladores</option>
+                                <option value="Conectores / Fichas">Conectores / Fichas / Flex</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-3"><label class="small text-secondary">Código/Descripción:</label><input type="text" id="rep-nombre" class="form-control form-control-sm" placeholder="Ej: 10uF 50V / 100k 1206 / 1N4148"></div>
+                    <div class="col-md-3"><label class="small text-secondary">Ubicación/Gaveta:</label><input type="text" id="rep-ubicacion" class="form-control form-control-sm" placeholder="Ej: Gaveta A-12"></div>
+                    <div class="col-md-2"><label class="small text-secondary">Cantidad:</label><input type="number" id="rep-cant" class="form-control form-control-sm" value="1"></div>
+                    <div class="col-md-12 text-end mt-2"><button onclick="guardarRepuesto()" class="btn btn-cyan btn-sm">Guardar Componente Nuevo</button></div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6"><input type="text" id="buscar-comp" onkeyup="filtrarComp()" class="form-control form-control-sm" placeholder="🔎 Buscar Componente: Escriba código (ej: 1N4148, 10k, MOSFET)..."></div>
+                    <div class="col-md-3"><button onclick="filtrarComp()" class="btn btn-info btn-sm w-100">Filtrar</button></div>
+                    <div class="col-md-3"><button onclick="cargarRepuestos()" class="btn btn-secondary btn-sm w-100">Ver Todos</button></div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>OT #</th>
-                                <th>Fecha</th>
-                                <th>Cliente</th>
-                                <th>Equipo / Modelo</th>
-                                <th>Estado</th>
-                                <th>Ubicación</th>
-                                <th class="text-center">Acciones / Impresión</th>
-                            </tr>
+                    <table class="table table-dark table-hover small">
+                        <thead><tr><th>N°</th><th>Categoría</th><th>Código / Nombre Componente</th><th>Gavetero / Ubicación</th><th>Stock</th></tr></thead>
+                        <tbody id="tabla-repuestos"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button onclick="modificarStock(1)" class="btn btn-success btn-sm">+ Sumar 1</button>
+                    <button onclick="modificarStock(-1)" class="btn btn-warning btn-sm">- Restar 1</button>
+                    <button onclick="cambiarCantidadModal()" class="btn btn-primary btn-sm">Cambiar Cantidad</button>
+                    <button onclick="cambiarUbicacionModal()" class="btn btn-info btn-sm text-white">Cambiar Ubicación</button>
+                    <button onclick="buscarDatasheet()" class="btn btn-primary btn-sm">📄 Datasheet PDF</button>
+                    <button onclick="imprimirEtiqueta()" class="btn btn-success btn-sm">🖨️ Imprimir Etiqueta</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. VENTAS Y USADOS -->
+        <div id="sec-ventas" style="display: none;">
+            <div class="card-custom">
+                <div class="row g-2">
+                    <div class="col-md-4"><label class="small text-secondary">Producto/Equipo:</label><input type="text" id="v-producto" class="form-control form-control-sm"></div>
+                    <div class="col-md-3"><label class="small text-secondary">Precio $:</label><input type="number" id="v-precio" class="form-control form-control-sm"></div>
+                    <div class="col-md-3"><label class="small text-secondary">Estado:</label><select id="v-estado" class="form-select form-select-sm"><option value="En Venta">En Venta</option></select></div>
+                    <div class="col-md-2 align-self-end"><button onclick="guardarVenta()" class="btn btn-cyan btn-sm w-100">Guardar Publicación</button></div>
+                </div>
+                <div class="mt-2 text-end"><button onclick="consultarML()" class="btn btn-info btn-sm text-white">🔎 Consultar Valor Usado (MercadoLibre)</button></div>
+            </div>
+
+            <div class="card-custom">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover small">
+                        <thead><tr><th>N°</th><th>Producto / Equipo</th><th>Precio Publicado ($)</th><th>Estado Venta</th></tr></thead>
+                        <tbody id="tabla-ventas"></tbody>
+                    </table>
+                </div>
+                <div class="text-end mt-2"><button onclick="eliminarVentaSeleccionada()" class="btn btn-danger btn-sm">❌ Eliminar Registro Seleccionado</button></div>
+            </div>
+        </div>
+
+        <!-- 5. CAJA Y FINANZAS -->
+        <div id="sec-caja" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="text-success fw-bold me-3 fs-6">Ingresos: <span id="caja-ingresos">$0.00</span></span>
+                    <span class="text-danger fw-bold fs-6">Egresos: <span id="caja-egresos">$0.00</span></span>
+                </div>
+                <div>
+                    <span class="text-info fw-bold fs-6">Balance Neto: <span id="caja-balance">$0.00</span></span>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Tipo Movimiento:</label>
+                        <select id="caja-tipo" class="form-select form-select-sm">
+                            <option value="Ingreso">Ingreso</option>
+                            <option value="Egreso">Egreso</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small text-secondary">Concepto / Detalle:</label>
+                        <input type="text" id="caja-concepto" class="form-control form-control-sm" placeholder="Ej: rep tv samsung 55&quot;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Monto $:</label>
+                        <input type="number" id="caja-monto" class="form-control form-control-sm" placeholder="0">
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button onclick="guardarMovimientoCaja()" class="btn btn-verde-registro btn-sm w-100">Registrar Movimiento</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <input type="text" id="buscar-caja" onkeyup="filtrarCaja()" class="form-control form-control-sm" placeholder="🔎 Buscar en Caja: Concepto, Tipo, Fecha...">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="filtrarCaja()" class="btn btn-cyan btn-sm w-100">Filtrar</button>
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="cargarCaja()" class="btn btn-secondary btn-sm w-100">Ver Todos</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover small">
+                        <thead>
+                            <tr><th>N°</th><th>Fecha y Hora</th><th>Tipo</th><th>Concepto / Detalle</th><th>Monto ($)</th></tr>
                         </thead>
-                        <tbody id="tabla-ordenes">
-                            <!-- Datos cargados dinámicamente vía app.js -->
-                        </tbody>
+                        <tbody id="tabla-caja"></tbody>
+                    </table>
+                </div>
+
+                <div class="text-end mt-3">
+                    <button onclick="eliminarMovimientoSeleccionado()" class="btn btn-danger btn-sm">❌ Eliminar Movimiento Seleccionado</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. FIRMWARES EN LA NUBE CON PEDIDO DIRECTO POR WHATSAPP -->
+        <div id="sec-firmwares" style="display: none;">
+            <div class="card-custom border-info">
+                <div class="alert alert-info bg-dark text-info border-info mb-3 small">
+                    <strong>📌 Servicio de Repositorio Técnico:</strong> Estamos actualizando constantemente el banco de archivos. Si no encontrás el firmware o dump que necesitás en la lista, ingresá los datos del chasis abajo y solicítalo directamente a nuestro soporte técnico para enviártelo a la brevedad.
+                </div>
+
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="small text-secondary">Chasis / Modelo a Buscar o Solicitar:</label>
+                        <input type="text" id="fw-buscar" class="form-control form-control-sm" placeholder="Ej: MS33930.PB751 o 32LD870HI">
+                    </div>
+                    <div class="col-md-4">
+                        <button onclick="filtrarFirmwares()" class="btn btn-info btn-sm">🔎 Buscar en Servidor</button>
+                        <button onclick="pedirFirmwareWhatsApp()" class="btn btn-success btn-sm fw-bold ms-2">💬 Pedir Firmware por WhatsApp</button>
+                    </div>
+                </div>
+
+                <h6>☁️ Archivos Disponibles en Servidor</h6>
+                <div class="table-responsive">
+                    <table class="table table-dark small">
+                        <thead><tr><th>Chasis</th><th>Modelo</th><th>Memoria / Chip</th><th>Enlace / Servidor</th></tr></thead>
+                        <tbody id="tabla-firmwares"></tbody>
                     </table>
                 </div>
             </div>
         </div>
-
     </div>
 
-    <!-- Modal Formulario OT (con subida de foto de componente) -->
-    <div class="modal fade" id="modalOT" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title" id="modalOTLabel"><i class="bi bi-pencil-square me-2"></i>Orden de Trabajo</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- ÁREA EXCLUSIVA DE IMPRESIÓN PARA EL COMPROBANTE OFICIAL -->
+    <div id="area-impresion" style="display: none;">
+        <div style="border: 2px solid #000; padding: 15px; font-family: Arial, sans-serif; max-width: 800px; margin: auto;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                <div>
+                    <h2 style="margin: 0;" id="imp-taller-nombre">SERVICIO TÉCNICO ESPECIALIZADO</h2>
+                    <p style="margin: 0; font-size: 14px;">Comprobante de Recepción de Equipo / Orden de Trabajo</p>
                 </div>
-                <div class="modal-body">
-                    <form id="form-ot">
-                        <input type="hidden" id="ot-id">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Cliente</label>
-                                <input type="text" class="form-control" id="ot-cliente" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Teléfono (WhatsApp)</label>
-                                <input type="text" class="form-control" id="ot-telefono" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Equipo</label>
-                                <input type="text" class="form-control" id="ot-equipo" placeholder="Ej: Smart TV 43''" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Marca / Modelo</label>
-                                <input type="text" class="form-control" id="ot-modelo" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">N° Serie / Chasis</label>
-                                <input type="text" class="form-control" id="ot-chasis">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-bold">Falla Declarada / Diagnóstico Técnico</label>
-                                <textarea class="form-control" id="ot-falla" rows="2" required></textarea>
-                            </div>
-                            
-                            <!-- Campo para Adjuntar Foto del Componente / Placa -->
-                            <div class="col-12">
-                                <label class="form-label fw-bold text-primary"><i class="bi bi-camera me-1"></i>Adjuntar Foto de Evidencia (Componente / Placa)</label>
-                                <input type="file" class="form-control" id="ot-foto-input" accept="image/*" onchange="previewImagen(event)">
-                                <input type="hidden" id="ot-foto-url">
-                                <div id="preview-container" class="mt-2 text-center d-none">
-                                    <img id="foto-preview" src="" alt="Vista previa" class="img-thumbnail" style="max-height: 180px;">
-                                </div>
-                            </div>
+                <div style="text-align: right;">
+                    <h3 style="margin: 0;" id="imp-ot-num">OT #0000</h3>
+                    <p style="margin: 0; font-size: 12px;" id="imp-fecha">Fecha: --/--/----</p>
+                </div>
+            </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Presupuesto ($)</label>
-                                <input type="number" class="form-control" id="ot-presupuesto" value="0">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Seña ($)</label>
-                                <input type="number" class="form-control" id="ot-sena" value="0">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Estado</label>
-                                <select class="form-select" id="ot-estado">
-                                    <option value="Ingresado">Ingresado</option>
-                                    <option value="En Revisión">En Revisión</option>
-                                    <option value="Presupuestado">Presupuestado</option>
-                                    <option value="Aprobado">Aprobado</option>
-                                    <option value="Reparado">Reparado</option>
-                                    <option value="Entregado">Entregado</option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
+            <div style="margin-top: 15px; font-size: 14px; line-height: 1.6;">
+                <p><strong>Cliente:</strong> <span id="imp-cliente">---</span> | <strong>Teléfono:</strong> <span id="imp-telefono">---</span></p>
+                <p><strong>Equipo / Modelo:</strong> <span id="imp-equipo">---</span></p>
+                <p><strong>Falla Reportada:</strong> <span id="imp-falla">---</span></p>
+                <p><strong>Estado Actual:</strong> <span id="imp-estado">---</span></p>
+                <p><strong>Presupuesto Estimado:</strong> $<span id="imp-presupuesto">0.00</span></p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; border-top: 1px solid #ccc; padding-top: 15px;">
+                <div style="font-size: 11px; max-width: 450px;">
+                    <p style="margin: 0;">* Presentar este comprobante para el retiro del equipo.</p>
+                    <p style="margin: 0;">* Pasados los 90 días los equipos no reclamados pasarán a desarme/reciclaje.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="guardarOT()">Guardar Orden</button>
+                <div style="text-align: center;">
+                    <img id="imp-qr" src="" alt="Código QR Estado" style="width: 100px; height: 100px;">
+                    <p style="margin: 0; font-size: 10px;">Escanear para consultar estado</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Área Oculta Exclusiva para Impresión de Etiqueta QR Tapa TV -->
-    <div id="print-ticket-tapa" class="d-none">
-        <div style="width: 70mm; padding: 5mm; border: 2px solid #000; font-family: Arial, sans-serif; text-align: center; background: #fff;">
-            <h4 style="margin: 0; font-size: 14px; font-weight: bold; text-transform: uppercase;">LAB-CONTROL PRO</h4>
-            <p style="margin: 2px 0; font-size: 10px; border-bottom: 1px solid #000; padding-bottom: 3px;">SERVICIO TÉCNICO ESPECIALIZADO</p>
-            
-            <div style="margin: 8px 0; text-align: left; font-size: 11px; line-height: 1.3;">
-                <strong>OT N°:</strong> <span id="lbl-ot-id" style="font-size: 14px; font-weight: bold;"></span><br>
-                <strong>FECHA:</strong> <span id="lbl-ot-fecha"></span><br>
-                <strong>CLIENTE:</strong> <span id="lbl-ot-cliente"></span><br>
-                <strong>EQUIPO:</strong> <span id="lbl-ot-equipo"></span><br>
-                <strong>MODELO:</strong> <span id="lbl-ot-modelo"></span>
-            </div>
-
-            <div style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #000;">
-                <img id="lbl-qr-code" src="" alt="Código QR" style="width: 90px; height: 90px;">
-                <p style="margin: 2px 0 0 0; font-size: 8px;">Escanee para consultar estado de reparación</p>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/app.js"></script>
+    <script>
+        function actualizarReloj() {
+            const ahora = new Date();
+            const fechaStr = ahora.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const horaStr = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('reloj-vivo').innerText = `${fechaStr} ${horaStr}`;
+        }
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+    </script>
 </body>
 </html>
