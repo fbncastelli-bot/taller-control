@@ -104,7 +104,7 @@ def init_db():
 try:
     init_db()
 except Exception as e:
-    print("Error iniciando BBDD PostgreSQL:", e)
+    print("Error iniciando BBDD:", e)
 
 DRIVERS_LED = {
     "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
@@ -117,7 +117,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
     try:
@@ -584,33 +584,6 @@ Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la s
             
         return jsonify({'error': f'Error de procesamiento: {err}'}), 500
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/preguntar-esquematico', methods=['POST'])
-def preguntar_esquematico():
-    try:
-        data = request.json or {}
-        chasis = data.get('chasis', '')
-        pregunta = data.get('pregunta', '')
-        contexto = data.get('contexto', '')
-
-        if not GEMINI_KEY:
-            return jsonify({'error': 'Clave API no configurada'}), 500
-
-        prompt = f"""Basándote en el plano esquemático del chasis/fuente {chasis} con la siguiente estructura:
-
-{contexto}
-
-Consulta técnica:
-{pregunta}
-
-Respondé de forma directa y técnica en español, indicando componentes o reemplazos directos."""
-
-        texto, err = consultar_gemini_limpio(prompt)
-        if texto:
-            return jsonify({'respuesta': texto})
-        return jsonify({'error': f'Error al procesar: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
