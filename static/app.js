@@ -177,7 +177,7 @@ function imprimirOT(id) {
         return;
     }
 
-    const urlConsulta = `https://taller-control-js3z.onrender.com/consulta.html?id=${ot.id}`;
+    const urlConsulta = `https://taller-control-js3z.onrender.com/consulta?id=${ot.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(urlConsulta)}`;
 
     const nombreTaller = "Laboratorio Técnico de Electrónica";
