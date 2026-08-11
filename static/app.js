@@ -1,93 +1,173 @@
-// LAB-CONTROL PRO v4.2 - Lógica de Interfaz e Impresión de Ticket Tapa TV
+// LAB-CONTROL PRO v4.2 - Código Base Completo Original
+
+let ordenesData = [];
+let repuestosData = [];
+let ventasData = [];
+let cajaData = [];
+let firmwaresData = [];
+
+let otSeleccionada = null;
+let repSeleccionado = null;
+let ventaSeleccionada = null;
+let cajaSeleccionado = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarOrdenes();
+    cargarRepuestos();
+    cargarVentas();
+    cargarCaja();
+    cargarFirmwares();
 });
 
-// Cargar tabla de órdenes de trabajo
+// Navegación de pestañas
+function mostrarSeccion(seccionId) {
+    document.querySelectorAll('.seccion-contenido').forEach(el => el.classList.add('d-none'));
+    const seccion = document.getElementById(seccionId);
+    if (seccion) seccion.classList.remove('d-none');
+    
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+    const navBtn = document.getElementById(`btn-nav-${seccionId}`);
+    if (navBtn) navBtn.classList.add('active');
+}
+
+// Cargar Órdenes de Trabajo
 async function cargarOrdenes() {
     try {
         const res = await fetch('/api/ordenes');
-        const ordenes = await res.json();
-        const tbody = document.getElementById('tabla-ordenes');
-        tbody.innerHTML = '';
-
-        ordenes.forEach(ot => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="fw-bold">#${ot.id}</td>
-                <td>${ot.fecha}</td>
-                <td>${ot.cliente}<br><small class="text-muted">${ot.telefono}</small></td>
-                <td>${ot.equipo} - ${ot.modelo}</td>
-                <td><span class="badge bg-${getBadgeEstado(ot.estado)}">${ot.estado}</span></td>
-                <td><span class="badge bg-outline-dark border text-dark">${ot.ubicacion || 'Taller'}</span></td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editarOT(${ot.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-dark me-1" onclick="imprimirTicketTapa(${ot.id})" title="🏷️ Imprimir Ticket Tapa TV"><i class="bi bi-qr-code-scan"></i> Ticket Tapa</button>
-                    <button class="btn btn-sm btn-success" onclick="enviarWhatsApp(${ot.id})" title="Enviar WhatsApp"><i class="bi bi-whatsapp"></i></button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        ordenesData = await res.json();
+        renderTablaOrdenes();
     } catch (err) {
-        console.error('Error al cargar órdenes:', err);
+        console.error('Error al cargar OTs:', err);
     }
 }
 
-// Función exclusiva para generar e imprimir el Ticket QR pequeño para pegar en la tapa trasera
-function imprimirTicketTapa(idOT) {
-    fetch(`/api/ordenes/${idOT}`)
-        .then(res => res.json())
-        .then(ot => {
-            document.getElementById('lbl-ot-id').innerText = ot.id;
-            document.getElementById('lbl-ot-fecha').innerText = ot.fecha;
-            document.getElementById('lbl-ot-cliente').innerText = ot.cliente;
-            document.getElementById('lbl-ot-equipo').innerText = ot.equipo;
-            document.getElementById('lbl-ot-modelo').innerText = ot.modelo;
+function renderTablaOrdenes() {
+    const tbody = document.getElementById('tabla-ordenes');
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
-            // Generación de URL del QR apuntando a la consulta del cliente
-            const urlConsulta = `${window.location.origin}/consulta?ot=${ot.id}`;
-            document.getElementById('lbl-qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(urlConsulta)}`;
-
-            // Disparar ventana de impresión enfocada únicamente en el ticket
-            setTimeout(() => {
-                const contenidoTicket = document.getElementById('print-ticket-tapa').innerHTML;
-                const ventanaImp = window.open('', '_blank', 'width=400,height=500');
-                ventanaImp.document.write(`
-                    <html>
-                        <head>
-                            <title>Ticket Tapa TV - OT #${ot.id}</title>
-                            <style>
-                                body { margin: 0; padding: 10px; display: flex; justify-content: center; }
-                                @media print { @page { size: auto; margin: 0; } }
-                            </style>
-                        </head>
-                        <body onload="window.print(); window.close();">
-                            ${contenidoTicket}
-                        </body>
-                    </html>
-                `);
-                ventanaImp.document.close();
-            }, 300);
-        })
-        .catch(err => alert('Error al obtener datos para la etiqueta: ' + err));
+    ordenesData.forEach(ot => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">#${ot.id}</td>
+            <td>${ot.fecha || ''}</td>
+            <td>${ot.cliente || ''}<br><small class="text-muted">${ot.telefono || ''}</small></td>
+            <td>${ot.equipo || ''} ${ot.marca || ''} ${ot.modelo || ''}</td>
+            <td><span class="badge bg-${getBadgeEstado(ot.estado)}">${ot.estado || 'Ingresado'}</span></td>
+            <td><span class="badge bg-outline-dark border text-dark">${ot.ubicacion || 'Taller'}</span></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editarOT(${ot.id})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-success" onclick="enviarWhatsApp(${ot.id})"><i class="bi bi-whatsapp"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
-// Subida e integración de vista previa de foto
-function previewImagen(event) {
-    const reader = new FileReader();
-    reader.onload = function() {
-        const preview = document.getElementById('foto-preview');
-        preview.src = reader.result;
-        document.getElementById('preview-container').classList.remove('d-none');
-        document.getElementById('ot-foto-url').value = reader.result; // Base64 / URL temporal
-    };
-    if (event.target.files[0]) {
-        reader.readAsDataURL(event.target.files[0]);
+// Cargar Banco de Placas y Repuestos
+async function cargarRepuestos() {
+    try {
+        const res = await fetch('/api/repuestos');
+        repuestosData = await res.json();
+        renderTablaRepuestos();
+    } catch (err) {
+        console.error('Error al cargar repuestos:', err);
     }
 }
 
-// Auxiliar para colores de badges
+function renderTablaRepuestos() {
+    const tbody = document.getElementById('tabla-repuestos');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    repuestosData.forEach(rep => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">${rep.codigo || ''}</td>
+            <td>${rep.descripcion || ''}</td>
+            <td><span class="badge bg-secondary">${rep.chasis || 'Gral'}</span></td>
+            <td>$${rep.precio_venta || 0}</td>
+            <td>${rep.stock || 0} hs</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary" onclick="editarRepuesto(${rep.id})"><i class="bi bi-pencil"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Cargar Ventas
+async function cargarVentas() {
+    try {
+        const res = await fetch('/api/ventas');
+        ventasData = await res.json();
+    } catch (err) {
+        console.error('Error al cargar ventas:', err);
+    }
+}
+
+// Cargar Caja Diario
+async function cargarCaja() {
+    try {
+        const res = await fetch('/api/caja');
+        cajaData = await res.json();
+        renderTablaCaja();
+    } catch (err) {
+        console.error('Error al cargar caja:', err);
+    }
+}
+
+function renderTablaCaja() {
+    const tbody = document.getElementById('tabla-caja');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let total = 0;
+    cajaData.forEach(c => {
+        total += Number(c.monto || 0);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${c.fecha || ''}</td>
+            <td>${c.concepto || ''}</td>
+            <td class="${Number(c.monto) >= 0 ? 'text-success' : 'text-danger'} fw-bold">$${c.monto || 0}</td>
+            <td><span class="badge bg-light text-dark border">${c.metodo || 'Efectivo'}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Cargar Firmwares
+async function cargarFirmwares() {
+    try {
+        const res = await fetch('/api/firmwares');
+        firmwaresData = await res.json();
+        renderTablaFirmwares();
+    } catch (err) {
+        console.error('Error al cargar firmwares:', err);
+    }
+}
+
+function renderTablaFirmwares() {
+    const tbody = document.getElementById('tabla-firmwares');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    firmwaresData.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">${f.marca || ''} ${f.modelo || ''}</td>
+            <td>${f.chasis_panel || ''}</td>
+            <td><span class="badge bg-info text-dark">${f.tipo || 'BIN/NAND'}</span></td>
+            <td>${f.peso || 'N/A'}</td>
+            <td class="text-center">
+                <a href="${f.url_download || '#'}" class="btn btn-sm btn-dark" target="_blank"><i class="bi bi-download"></i> Descargar</a>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Auxiliares
 function getBadgeEstado(estado) {
     switch (estado) {
         case 'Ingresado': return 'secondary';
@@ -100,10 +180,11 @@ function getBadgeEstado(estado) {
     }
 }
 
-function abrirModalNuevaOT() {
-    document.getElementById('form-ot').reset();
-    document.getElementById('ot-id').value = '';
-    document.getElementById('preview-container').classList.add('d-none');
-    const modal = new bootstrap.Modal(document.getElementById('modalOT'));
-    modal.show();
+function enviarWhatsApp(idOT) {
+    const ot = ordenesData.find(o => o.id === idOT);
+    if (!ot || !ot.telefono) return alert('No hay teléfono de WhatsApp registrado para esta orden.');
+    
+    const num = ot.telefono.replace(/[^0-9]/g, '');
+    const msg = `Hola ${ot.cliente}, te contactamos de LAB-CONTROL PRO sobre tu orden #${ot.id} (${ot.equipo} ${ot.modelo}). Estado actual: ${ot.estado}.`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
 }
