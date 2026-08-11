@@ -12,6 +12,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function comprimirImagen(file, maxWidth = 1200, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Error al comprimir la imagen.'));
+                    }
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
 async function guardarOrden(event) {
     if (event) event.preventDefault();
 
@@ -32,10 +69,13 @@ async function guardarOrden(event) {
     let urlFoto = '';
 
     if (fileInput && fileInput.files.length > 0) {
-        const formData = new FormData();
-        formData.append('archivo', fileInput.files[0]);
-
         try {
+            const archivoOriginal = fileInput.files[0];
+            const imagenComprimida = await comprimirImagen(archivoOriginal, 1200, 0.7);
+
+            const formData = new FormData();
+            formData.append('archivo', imagenComprimida, 'foto_orden.jpg');
+
             const uploadRes = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
@@ -50,7 +90,7 @@ async function guardarOrden(event) {
 
             urlFoto = uploadData.url;
         } catch (err) {
-            alert('Error de red al subir la imagen: ' + err.message);
+            alert('Error al procesar la imagen: ' + err.message);
             return;
         }
     }
