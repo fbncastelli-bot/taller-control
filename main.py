@@ -243,9 +243,16 @@ def upload_image():
         return jsonify({'error': 'Nombre de archivo no válido'}), 400
 
     try:
+        c_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
+        c_key = os.environ.get("CLOUDINARY_API_KEY")
+        c_secret = os.environ.get("CLOUDINARY_API_SECRET")
+
         resultado = cloudinary.uploader.upload(
             file,
-            folder="taller_fotos"
+            folder="taller_fotos",
+            cloud_name=c_name,
+            api_key=c_key,
+            api_secret=c_secret
         )
         return jsonify({
             'status': 'success',
