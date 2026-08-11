@@ -192,7 +192,10 @@ async function cargarOrdenes() {
                 <td>${o.falla || ''}</td>
                 <td>$${o.presupuesto || 0}</td>
                 <td><span class="badge bg-${o.estado === 'Entregado' ? 'success' : 'warning'}">${o.estado || 'Ingresado'}</span></td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${o.id})">🗑️</button></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-light me-1" onclick="imprimirOrden(${o.id}, '${o.cliente}', '${o.equipo}')">🖨️ Ficha</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${o.id})">🗑️</button>
+                </td>
             </tr>
         `;
     });
@@ -216,6 +219,10 @@ async function cargarRepuestos() {
                     <button class="btn btn-sm btn-outline-secondary py-0" onclick="cambiarStock(${r.id}, ${r.cantidad + 1})">+</button>
                 </td>
                 <td>$${r.precio || 0}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="buscarDatasheet('${r.nombre}')">📄 Datasheet</button>
+                    <button class="btn btn-sm btn-outline-light" onclick="imprimirEtiqueta('${r.nombre}', '${r.ubicacion}')">🏷️ Etiqueta</button>
+                </td>
             </tr>
         `;
     });
@@ -234,7 +241,10 @@ async function cargarVentas() {
                 <td>${v.producto || ''}</td>
                 <td>$${v.precio || 0}</td>
                 <td><span class="badge bg-info">${v.estado || 'En Venta'}</span></td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarVenta(${v.id})">🗑️</button></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="buscarMLDirecto('${v.producto}')">🔎 Buscar ML</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarVenta(${v.id})">🗑️</button>
+                </td>
             </tr>
         `;
     });
@@ -279,6 +289,7 @@ async function cargarPlacas() {
                 <td>${p.tipo || ''}</td>
                 <td>${p.codigo || ''}</td>
                 <td>${p.modelo || ''}</td>
+                <td><pre class="m-0 text-info" style="font-size: 11px;">${p.test_points || 'Sin mediciones registradas'}</pre></td>
             </tr>
         `;
     });
@@ -300,6 +311,44 @@ async function cargarFirmwares() {
             </tr>
         `;
     });
+}
+
+function buscarDatasheet(componente) {
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(componente + ' datasheet pdf')}`, '_blank');
+}
+
+function buscarMLDirecto(producto) {
+    window.open(`https://listado.mercadolibre.com.ar/${encodeURIComponent(producto)}`, '_blank');
+}
+
+function imprimirEtiqueta(nombre, ubicacion) {
+    const area = document.getElementById('area-impresion');
+    area.innerHTML = `
+        <div style="border: 2px solid #000; padding: 15px; width: 250px; text-align: center; font-family: sans-serif;">
+            <h4 style="margin:0 0 5px 0;">LAB-CONTROL</h4>
+            <p style="margin:0; font-weight:bold; font-size: 16px;">${nombre}</p>
+            <p style="margin:5px 0 0 0; font-size: 12px;">Ubicación: ${ubicacion || 'S/D'}</p>
+        </div>
+    `;
+    area.classList.remove('d-none');
+    window.print();
+    area.classList.add('d-none');
+}
+
+function imprimirOrden(id, cliente, equipo) {
+    const area = document.getElementById('area-impresion');
+    area.innerHTML = `
+        <div style="border: 1px solid #000; padding: 20px; font-family: sans-serif;">
+            <h2>ORDEN DE TRABAJO OT-${id}</h2>
+            <p><strong>Cliente:</strong> ${cliente}</p>
+            <p><strong>Equipo:</strong> ${equipo}</p>
+            <hr>
+            <p style="font-size: 12px;">Comprobante de ingreso de laboratorio técnico.</p>
+        </div>
+    `;
+    area.classList.remove('d-none');
+    window.print();
+    area.classList.add('d-none');
 }
 
 async function eliminarOrden(id) {
