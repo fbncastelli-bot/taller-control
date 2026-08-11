@@ -2,10 +2,10 @@ import os
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template_string, request, jsonify, send_from_directory, redirect, session
+from flask import Flask, render_template, render_template_string, request, jsonify, send_from_directory, redirect, session
 import google.generativeai as genai
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__, static_folder='static', static_url_path='/static', template_folder='templates')
 app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_taller_123')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -86,7 +86,7 @@ def index():
 
 @app.route('/login')
 def login_page():
-    return send_from_directory('templates', 'login.html')
+    return render_template('login.html', error=None)
 
 @app.route('/logout')
 def logout():
