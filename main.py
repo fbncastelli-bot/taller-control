@@ -1,8 +1,8 @@
- import os
+import os
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template_string, request, jsonify, send_from_directory, redirect, url_for, session
+from flask import Flask, render_template_string, request, jsonify, send_from_directory, redirect, session
 import google.generativeai as genai
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
