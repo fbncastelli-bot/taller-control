@@ -28,6 +28,36 @@ function mostrarSeccion(sec) {
     if (link) link.classList.add('active');
 }
 
+// --- FUNCIÓN HELPER SUBIDA CLOUDINARY ---
+async function subirFotoCloudinary(inputId) {
+    const fileInput = document.getElementById(inputId);
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        return null;
+    }
+
+    const formData = new FormData();
+    formData.append('archivo', fileInput.files[0]);
+
+    try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Error subiendo la imagen');
+        }
+
+        const data = await res.json();
+        return data.url;
+    } catch (err) {
+        console.error('Error al subir la foto a Cloudinary:', err);
+        alert('Atención: No se pudo subir la foto. ' + err.message);
+        return null;
+    }
+}
+
 // --- 1. ÓRDENES DE TRABAJO ---
 async function cargarOrdenes() {
     try {
@@ -73,13 +103,19 @@ async function guardarOrden() {
     const telefono = document.getElementById('ot-telefono').value.trim();
     const equipo = document.getElementById('ot-equipo').value.trim();
     const estado = document.getElementById('ot-estado').value;
-    const falla = document.getElementById('ot-falla').value.trim();
+    let falla = document.getElementById('ot-falla').value.trim();
     const solucion = document.getElementById('ot-solucion').value.trim();
     const presupuesto = document.getElementById('ot-presupuesto').value;
 
     if (!cliente || !equipo) {
         alert("Por favor completá al menos el Cliente y el Equipo.");
         return;
+    }
+
+    // Procesa la foto en Cloudinary si se seleccionó un archivo
+    const urlFoto = await subirFotoCloudinary('ot-foto');
+    if (urlFoto) {
+        falla += ` | Foto Adjunta: ${urlFoto}`;
     }
 
     await fetch('/api/ordenes', {
@@ -94,6 +130,8 @@ async function guardarOrden() {
     document.getElementById('ot-falla').value = '';
     document.getElementById('ot-solucion').value = '';
     document.getElementById('ot-presupuesto').value = '';
+    const fotoInput = document.getElementById('ot-foto');
+    if (fotoInput) fotoInput.value = '';
 
     cargarOrdenes();
 }
