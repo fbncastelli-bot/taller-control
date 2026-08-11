@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Estado de Reparación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            padding: 25px;
+            box-sizing: border-box;
+            text-align: left;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 20px;
+        }
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 13px;
+        }
+        .campo {
+            margin-bottom: 12px;
+        }
+        .campo label {
+            font-weight: bold;
+            color: #555;
+            font-size: 13px;
+            display: block;
+        }
+        .campo span {
+            font-size: 16px;
+            color: #111;
+        }
+        .estado-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background-color: #17a2b8;
+            color: #fff;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .monto {
+            font-size: 20px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="header">
+            <h2>Laboratorio Técnico de Electrónica</h2>
+            <p>Consulta pública de estado de equipo</p>
+        </div>
+
+        <div id="loading" style="text-align: center;">Cargando información...</div>
+        <div id="contenido" style="display: none;">
+            <div class="campo">
+                <label>Orden de Trabajo N°:</label>
+                <span id="ot-id"></span>
+            </div>
+            <div class="campo">
+                <label>Cliente:</label>
+                <span id="ot-cliente"></span>
+            </div>
+            <div class="campo">
+                <label>Equipo / Modelo:</label>
+                <span id="ot-equipo"></span>
+            </div>
+            <div class="campo">
+                <label>Falla Reportada:</label>
+                <span id="ot-falla"></span>
+            </div>
+            <div class="campo">
+                <label>Estado Actual:</label>
+                <div class="estado-badge" id="ot-estado"></div>
+            </div>
+            <div class="campo" style="margin-top: 15px;">
+                <label>Presupuesto:</label>
+                <div class="monto" id="ot-presupuesto"></div>
+            </div>
+        </div>
+        <div id="error-msg" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function consultar() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+
+            if (!id) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-msg').innerText = 'Número de orden no especificado.';
+                document.getElementById('error-msg').style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/ordenes');
+                const data = await res.json();
+                const ot = data.find(item => item.id == id);
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (ot) {
+                    document.getElementById('ot-id').innerText = '#' + ot.id;
+                    document.getElementById('ot-cliente').innerText = ot.cliente || 'Sin especificar';
+                    document.getElementById('ot-equipo').innerText = ot.equipo || 'Sin especificar';
+                    document.getElementById('ot-falla').innerText = ot.falla || 'Sin especificar';
+                    document.getElementById('ot-estado').innerText = ot.estado || 'Ingresado';
+                    document.getElementById('ot-presupuesto').innerText = '$' + parseFloat(ot.presupuesto || 0).toFixed(2);
+                    document.getElementById('contenido').style.display = 'block';
+                } else {
+                    document.getElementById('error-msg').innerText = 'No se encontró la Orden de Trabajo #' + id;
+                    document.getElementById('error-msg').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-msg').innerText = 'Error de conexión al obtener los datos.';
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', consultar);
+    </script>
+</body>
+</html>
