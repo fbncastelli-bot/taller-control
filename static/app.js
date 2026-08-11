@@ -87,6 +87,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const formPlaca = document.getElementById('form-placa');
+    if (formPlaca) {
+        formPlaca.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tipo = document.getElementById('placa-tipo').value;
+            const codigo = document.getElementById('placa-codigo').value;
+            const modelo = document.getElementById('placa-modelo').value;
+            const test_points = document.getElementById('placa-testpoints').value;
+
+            await fetch('/api/placas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo, codigo, modelo, test_points })
+            });
+
+            formPlaca.reset();
+            cargarPlacas();
+        });
+    }
+
     const formFirmware = document.getElementById('form-firmware');
     if (formFirmware) {
         formFirmware.addEventListener('submit', async (e) => {
