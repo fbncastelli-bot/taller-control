@@ -1,11 +1,12 @@
-import os
+ import os
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template_string, request, jsonify, send_from_directory
+from flask import Flask, render_template_string, request, jsonify, send_from_directory, redirect, url_for, session
 import google.generativeai as genai
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_taller_123')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 IMGBB_API_KEY = os.environ.get('IMGBB_API_KEY')
@@ -82,6 +83,15 @@ except Exception as e:
 @app.route('/')
 def index():
     return send_from_directory('templates', 'index.html')
+
+@app.route('/login')
+def login_page():
+    return send_from_directory('templates', 'login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
 
 @app.route('/consulta')
 def consulta_publica():
