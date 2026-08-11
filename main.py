@@ -1,428 +1,640 @@
 import os
-import requests
+from datetime import datetime, timedelta
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+import google.generativeai as genai
+from pypdf import PdfReader
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template, render_template_string, request, jsonify, send_from_directory, redirect, session
-import google.generativeai as genai
+import cloudinary
+import cloudinary.uploader
 
-app = Flask(__name__, static_folder='static', static_url_path='/static', template_folder='templates')
-app.secret_key = os.environ.get('SECRET_KEY', 'clave_secreta_taller_123')
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "clave_secreta_taller_2026")
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-IMGBB_API_KEY = os.environ.get('IMGBB_API_KEY')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Configuración de Cloudinary leyendo de las variables de entorno de Render
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    secure=True
+)
+
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    return None
 
 def init_db():
-    if not DATABASE_URL:
-        return
     conn = get_db_connection()
+    if not conn:
+        return
     cur = conn.cursor()
     cur.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            usuario VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            nombre_taller VARCHAR(100) DEFAULT 'Mi Taller'
+        );
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
-            cliente VARCHAR(250),
-            telefono VARCHAR(100),
-            equipo VARCHAR(250),
+            usuario_id INT,
+            cliente VARCHAR(100),
+            telefono VARCHAR(50),
+            equipo VARCHAR(100),
             falla TEXT,
             solucion TEXT,
-            presupuesto NUMERIC(12, 2) DEFAULT 0,
-            estado VARCHAR(100) DEFAULT 'Ingresado',
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            presupuesto NUMERIC(10,2),
+            estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS repuestos (
             id SERIAL PRIMARY KEY,
+            usuario_id INT,
             categoria VARCHAR(100),
-            nombre VARCHAR(250),
+            nombre VARCHAR(100),
             ubicacion VARCHAR(100),
-            cantidad INTEGER DEFAULT 1,
-            precio NUMERIC(12, 2) DEFAULT 0
+            cantidad INT,
+            precio NUMERIC(10,2)
         );
         CREATE TABLE IF NOT EXISTS ventas (
             id SERIAL PRIMARY KEY,
-            producto VARCHAR(250),
-            precio NUMERIC(12, 2) DEFAULT 0,
-            estado VARCHAR(100) DEFAULT 'En Venta'
+            usuario_id INT,
+            producto VARCHAR(100),
+            precio NUMERIC(10,2),
+            estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS caja (
             id SERIAL PRIMARY KEY,
-            tipo VARCHAR(50),
+            usuario_id INT,
+            fecha VARCHAR(50),
+            tipo VARCHAR(20),
             concepto TEXT,
-            monto NUMERIC(12, 2) DEFAULT 0,
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            monto NUMERIC(10,2)
         );
         CREATE TABLE IF NOT EXISTS placas (
             id SERIAL PRIMARY KEY,
-            tipo VARCHAR(100),
-            codigo VARCHAR(250),
-            modelo VARCHAR(250),
+            tipo VARCHAR(50),
+            codigo VARCHAR(100),
+            modelo VARCHAR(100),
             test_points TEXT
         );
         CREATE TABLE IF NOT EXISTS firmwares (
             id SERIAL PRIMARY KEY,
-            chasis VARCHAR(250),
-            modelo VARCHAR(250),
+            chasis VARCHAR(100),
+            modelo VARCHAR(100),
             memoria VARCHAR(100),
             url_nube TEXT
         );
     ''')
+    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE caja ADD COLUMN IF NOT EXISTS usuario_id INT;")
     conn.commit()
+
+    cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
+    user_fabian = cur.fetchone()
+    if user_fabian:
+        fid = user_fabian[0]
+        cur.execute("UPDATE ordenes SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE repuestos SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE ventas SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE caja SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        conn.commit()
+
     cur.close()
     conn.close()
 
 try:
     init_db()
 except Exception as e:
-    print("Error inicializando BD:", e)
+    print("Error iniciando BBDD:", e)
+
+DRIVERS_LED = {
+    "OB3350": "Retirar una de las resistencias en paralelo conectadas al pin ISET (pin 5) para aumentar la resistencia total a masa y reducir la corriente un 25-30%.",
+    "MAP3202": "Aumentar el valor de la resistencia conectada en la línea R_ISET (pin 6).",
+    "BIT3267": "Retirar una resistencia de la red conectada entre ISET (pin 4) y masa.",
+    "AP3041": "Modificar el divisor en el pin ISET incrementando el valor de R_SET.",
+    "OZ9998": "Aumentar la resistencia conectada al pin ISET para limitar la corriente por rama."
+}
+
+def consultar_gemini_limpio(prompt):
+    system_instruction = (
+        "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+    )
+    ultimo_error = None
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                try:
+                    model = genai.GenerativeModel(model_name=m.name, system_instruction=system_instruction)
+                    res = model.generate_content(prompt)
+                    if res and res.text:
+                        texto = res.text
+                        if '|' in texto:
+                            pos_tabla = texto.find('|')
+                            texto = texto[pos_tabla:]
+                        return texto.strip(), None
+                except Exception as e:
+                    ultimo_error = str(e)
+    except Exception as e:
+        ultimo_error = str(e)
+
+    candidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
+    for nombre in candidatos:
+        try:
+            model = genai.GenerativeModel(model_name=nombre, system_instruction=system_instruction)
+            res = model.generate_content(prompt)
+            if res and res.text:
+                texto = res.text
+                if '|' in texto:
+                    pos_tabla = texto.find('|')
+                    texto = texto[pos_tabla:]
+                return texto.strip(), None
+        except Exception as e:
+            ultimo_error = str(e)
+
+    return None, ultimo_error
+
+def get_current_user_id():
+    return session.get('usuario_id', 0)
 
 @app.route('/')
 def index():
-    return send_from_directory('templates', 'index.html')
+    if 'usuario_id' not in session:
+        return redirect(url_for('login_view'))
+    return render_template('index.html', usuario=session.get('usuario'), taller=session.get('nombre_taller'))
 
 @app.route('/login', methods=['GET', 'POST'])
-def login_page():
+def login_view():
     if request.method == 'POST':
-        return redirect('/')
-    return render_template('login.html', error=None)
+        user = request.form.get('usuario', '').strip()
+        pwd = request.form.get('password', '').strip()
+        
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM usuarios WHERE LOWER(usuario) = LOWER(%s) AND password = %s", (user, pwd))
+            u = cur.fetchone()
+            cur.close()
+            conn.close()
+            
+            if u:
+                session['usuario_id'] = u['id']
+                session['usuario'] = u['usuario']
+                session['nombre_taller'] = u['nombre_taller']
+                return redirect(url_for('index'))
+                
+        return render_template('login.html', error="Usuario o contraseña incorrectos")
+    return render_template('login.html')
+
+@app.route('/registro', methods=['POST'])
+def registro_view():
+    user = request.form.get('usuario', '').strip()
+    pwd = request.form.get('password', '').strip()
+    taller = request.form.get('nombre_taller', '').strip() or 'Mi Taller'
+
+    if not user or not pwd:
+        return render_template('login.html', error="Completar usuario y contraseña")
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute(
+                "INSERT INTO usuarios (usuario, password, nombre_taller) VALUES (%s, %s, %s) RETURNING *;",
+                (user, pwd, taller)
+            )
+            nuevo_u = cur.fetchone()
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            session['usuario_id'] = nuevo_u['id']
+            session['usuario'] = nuevo_u['usuario']
+            session['nombre_taller'] = nuevo_u['nombre_taller']
+            return redirect(url_for('index'))
+        except Exception:
+            return render_template('login.html', error="El nombre de usuario ya existe")
+
+    return render_template('login.html', error="Error al conectar con la base de datos")
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect('/login')
+    return redirect(url_for('login_view'))
 
-@app.route('/consulta')
-def consulta_publica():
-    html_template = """
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Consulta de Estado de Reparación</title>
-        <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-            .card { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 100%; max-width: 450px; padding: 25px; box-sizing: border-box; }
-            .header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; }
-            .header h2 { margin: 0; color: #333; font-size: 20px; }
-            .header p { margin: 5px 0 0; color: #666; font-size: 13px; }
-            .campo { margin-bottom: 12px; }
-            .campo label { font-weight: bold; color: #555; font-size: 13px; display: block; }
-            .campo span { font-size: 16px; color: #111; }
-            .estado-badge { display: inline-block; padding: 6px 12px; border-radius: 4px; background-color: #17a2b8; color: #fff; font-weight: bold; font-size: 14px; margin-top: 4px; }
-            .monto { font-size: 20px; font-weight: bold; color: #28a745; }
-            .error { color: #dc3545; text-align: center; font-weight: bold; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="header">
-                <h2>Laboratorio Técnico de Electrónica</h2>
-                <p>Consulta pública de estado de equipo</p>
-            </div>
-            <div id="loading" style="text-align: center;">Cargando información...</div>
-            <div id="contenido" style="display: none;">
-                <div class="campo"><label>Orden de Trabajo N°:</label><span id="ot-id"></span></div>
-                <div class="campo"><label>Cliente:</label><span id="ot-cliente"></span></div>
-                <div class="campo"><label>Equipo / Modelo:</label><span id="ot-equipo"></span></div>
-                <div class="campo"><label>Falla Reportada:</label><span id="ot-falla"></span></div>
-                <div class="campo"><label>Estado Actual:</label><div class="estado-badge" id="ot-estado"></div></div>
-                <div class="campo" style="margin-top: 15px;"><label>Presupuesto:</label><div class="monto" id="ot-presupuesto"></div></div>
-            </div>
-            <div id="error-msg" class="error" style="display: none;"></div>
-        </div>
-        <script>
-            async function consultar() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const id = urlParams.get('id');
-                if (!id) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('error-msg').innerText = 'Número de orden no especificado.';
-                    document.getElementById('error-msg').style.display = 'block';
-                    return;
-                }
-                try {
-                    const res = await fetch('/api/ordenes');
-                    const data = await res.json();
-                    const ot = data.find(item => item.id == id);
-                    document.getElementById('loading').style.display = 'none';
-                    if (ot) {
-                        document.getElementById('ot-id').innerText = '#' + ot.id;
-                        document.getElementById('ot-cliente').innerText = ot.cliente || 'Sin especificar';
-                        document.getElementById('ot-equipo').innerText = ot.equipo || 'Sin especificar';
-                        document.getElementById('ot-falla').innerText = ot.falla || 'Sin especificar';
-                        document.getElementById('ot-estado').innerText = ot.estado || 'Ingresado';
-                        document.getElementById('ot-presupuesto').innerText = '$' + parseFloat(ot.presupuesto || 0).toFixed(2);
-                        document.getElementById('contenido').style.display = 'block';
-                    } else {
-                        document.getElementById('error-msg').innerText = 'No se encontró la Orden de Trabajo #' + id;
-                        document.getElementById('error-msg').style.display = 'block';
-                    }
-                } catch (err) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('error-msg').innerText = 'Error de conexión al obtener los datos.';
-                    document.getElementById('error-msg').style.display = 'block';
-                }
-            }
-            document.addEventListener('DOMContentLoaded', consultar);
-        </script>
-    </body>
-    </html>
-    """
-    return render_template_string(html_template)
-
+# ==================== ENDPOINT DE SUBIDA A CLOUDINARY ====================
 @app.route('/api/upload', methods=['POST'])
-def upload_file():
-    if 'archivo' not in request.files:
-        return jsonify({'error': 'No se envió ningún archivo'}), 400
-    file = request.files['archivo']
+def upload_image():
+    if 'archivo' not in request.files and 'file' not in request.files:
+        return jsonify({'error': 'No se adjuntó ninguna imagen'}), 400
+
+    file = request.files.get('archivo') or request.files.get('file')
+
     if file.filename == '':
-        return jsonify({'error': 'Nombre de archivo vacío'}), 400
-    if not IMGBB_API_KEY:
-        return jsonify({'error': 'Falta configurar IMGBB_API_KEY'}), 500
+        return jsonify({'error': 'Nombre de archivo no válido'}), 400
 
     try:
-        url = 'https://api.imgbb.com/1/upload'
-        payload = {'key': IMGBB_API_KEY}
-        files = {'image': (file.filename, file.stream, file.mimetype)}
-        response = requests.post(url, data=payload, files=files)
-        res_data = response.json()
+        c_name = os.environ.get("CLOUDINARY_CLOUD_NAME")
+        c_key = os.environ.get("CLOUDINARY_API_KEY")
+        c_secret = os.environ.get("CLOUDINARY_API_SECRET")
 
-        if response.status_code == 200 and res_data.get('success'):
-            return jsonify({'url': res_data['data']['url']}), 200
-        else:
-            return jsonify({'error': res_data.get('error', {}).get('message', 'Error subiendo a ImgBB')}), 500
+        resultado = cloudinary.uploader.upload(
+            file,
+            folder="taller_fotos",
+            cloud_name=c_name,
+            api_key=c_key,
+            api_secret=c_secret
+        )
+        return jsonify({
+            'status': 'success',
+            'url': resultado.get('secure_url'),
+            'public_id': resultado.get('public_id')
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/ordenes', methods=['GET', 'POST'])
-def handle_ordenes():
+@app.route('/api/ordenes', methods=['GET'])
+def get_ordenes():
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO ordenes (cliente, telefono, equipo, falla, solucion, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;",
-            (data.get('cliente'), data.get('telefono'), data.get('equipo'), data.get('falla'), data.get('solucion'), data.get('presupuesto', 0), data.get('estado', 'Ingresado'))
-        )
-        new_id = cur.fetchone()['id']
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM ordenes ORDER BY id DESC;")
-        ordenes = cur.fetchall()
-        cur.close()
-        conn.close()
-        return jsonify(ordenes)
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    for f in filas:
+        f['presupuesto'] = float(f['presupuesto'] or 0)
+    return jsonify(filas)
 
-@app.route('/api/ordenes/<int:id_orden>', methods=['DELETE'])
-def delete_orden(id_orden):
+@app.route('/api/ordenes', methods=['POST'])
+def add_orden():
+    uid = get_current_user_id()
+    data = request.json or {}
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM ordenes WHERE id = %s;", (id_orden,))
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO ordenes (usuario_id, cliente, telefono, equipo, falla, solucion, presupuesto, estado) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;",
+        (uid, data.get("cliente", ""), data.get("telefono", ""), data.get("equipo", ""), data.get("falla", ""), data.get("solucion", ""), float(data.get("presupuesto", 0)), data.get("estado", "Ingresado"))
+    )
+    nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'status': 'deleted'})
+    if nuevo:
+        nuevo['presupuesto'] = float(nuevo['presupuesto'] or 0)
+    return jsonify(nuevo), 201
 
-@app.route('/api/repuestos', methods=['GET', 'POST'])
-def handle_repuestos():
+@app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
+def delete_orden(ot_id):
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO repuestos (categoria, nombre, ubicacion, cantidad, precio) VALUES (%s, %s, %s, %s, %s) RETURNING id;",
-            (data.get('categoria'), data.get('nombre'), data.get('ubicacion'), data.get('cantidad', 1), data.get('precio', 0))
-        )
-        new_id = cur.fetchone()['id']
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s;", (ot_id, uid))
         conn.commit()
         cur.close()
         conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM repuestos ORDER BY id DESC;")
-        repuestos = cur.fetchall()
-        cur.close()
-        conn.close()
-        return jsonify(repuestos)
+    return jsonify({"status": "deleted"})
 
-@app.route('/api/repuestos/<int:id_repuesto>', methods=['DELETE'])
-def delete_repuesto(id_repuesto):
+@app.route('/api/repuestos', methods=['GET'])
+def get_repuestos():
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM repuestos WHERE id = %s;", (id_repuesto,))
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    for f in filas:
+        f['precio'] = float(f['precio'] or 0)
+    return jsonify(filas)
+
+@app.route('/api/repuestos', methods=['POST'])
+def add_repuesto():
+    uid = get_current_user_id()
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO repuestos (usuario_id, categoria, nombre, ubicacion, cantidad, precio) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;",
+        (uid, data.get("categoria", ""), data.get("nombre", ""), data.get("ubicacion", ""), int(data.get("cantidad", 1)), float(data.get("precio", 0)))
+    )
+    nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'status': 'deleted'})
+    if nuevo:
+        nuevo['precio'] = float(nuevo['precio'] or 0)
+    return jsonify(nuevo), 201
 
-@app.route('/api/ventas', methods=['GET', 'POST'])
-def handle_ventas():
+@app.route('/api/repuestos/<int:rep_id>', methods=['PUT'])
+def update_repuesto(rep_id):
+    uid = get_current_user_id()
+    data = request.json or {}
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO ventas (producto, precio, estado) VALUES (%s, %s, %s) RETURNING id;",
-            (data.get('producto'), data.get('precio', 0), data.get('estado', 'En Venta'))
-        )
-        new_id = cur.fetchone()['id']
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM ventas ORDER BY id DESC;")
-        ventas = cur.fetchall()
-        cur.close()
-        conn.close()
-        return jsonify(ventas)
-
-@app.route('/api/ventas/<int:id_venta>', methods=['DELETE'])
-def delete_venta(id_venta):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM ventas WHERE id = %s;", (id_venta,))
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    if 'cantidad' in data:
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (int(data['cantidad']), rep_id, uid))
+    elif 'ubicacion' in data:
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (data['ubicacion'], rep_id, uid))
+    res = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'status': 'deleted'})
+    if res:
+        res['precio'] = float(res['precio'] or 0)
+    return jsonify(res)
 
-@app.route('/api/caja', methods=['GET', 'POST'])
-def handle_caja():
+@app.route('/api/ventas', methods=['GET'])
+def get_ventas():
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO caja (tipo, concepto, monto) VALUES (%s, %s, %s) RETURNING id;",
-            (data.get('tipo'), data.get('concepto'), data.get('monto', 0))
-        )
-        new_id = cur.fetchone()['id']
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM caja ORDER BY id DESC;")
-        movimientos = cur.fetchall()
-        cur.execute("SELECT COALESCE(SUM(monto), 0) as ingresos FROM caja WHERE tipo = 'Ingreso';")
-        ingresos = cur.fetchone()['ingresos']
-        cur.execute("SELECT COALESCE(SUM(monto), 0) as egresos FROM caja WHERE tipo = 'Egreso';")
-        egresos = cur.fetchone()['egresos']
-        cur.close()
-        conn.close()
-        return jsonify({
-            'movimientos': movimientos,
-            'ingresos': float(ingresos),
-            'egresos': float(egresos),
-            'balance': float(ingresos - egresos)
-        })
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    for f in filas:
+        f['precio'] = float(f['precio'] or 0)
+    return jsonify(filas)
 
-@app.route('/api/caja/<int:id_movimiento>', methods=['DELETE'])
-def delete_movimiento(id_movimiento):
+@app.route('/api/ventas', methods=['POST'])
+def add_venta():
+    uid = get_current_user_id()
+    data = request.json or {}
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM caja WHERE id = %s;", (id_movimiento,))
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO ventas (usuario_id, producto, precio, estado) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (uid, data.get("producto", ""), float(data.get("precio", 0)), data.get("estado", "En Venta"))
+    )
+    nuevo = cur.fetchone()
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'status': 'deleted'})
+    if nuevo:
+        nuevo['precio'] = float(nuevo['precio'] or 0)
+    return jsonify(nuevo), 201
 
-@app.route('/api/placas', methods=['GET', 'POST'])
-def handle_placas():
+@app.route('/api/ventas/<int:v_id>', methods=['DELETE'])
+def delete_venta(v_id):
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s) RETURNING id;",
-            (data.get('tipo'), data.get('codigo'), data.get('modelo'), data.get('test_points'))
-        )
-        new_id = cur.fetchone()['id']
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s;", (v_id, uid))
         conn.commit()
         cur.close()
         conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM placas ORDER BY id DESC;")
-        placas = cur.fetchall()
-        cur.close()
-        conn.close()
-        return jsonify(placas)
+    return jsonify({"status": "deleted"})
 
-@app.route('/api/firmwares', methods=['GET', 'POST'])
-def handle_firmwares():
+@app.route('/api/caja', methods=['GET'])
+def get_caja():
+    uid = get_current_user_id()
     conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        data = request.json
-        cur.execute(
-            "INSERT INTO firmwares (chasis, modelo, memoria, url_nube) VALUES (%s, %s, %s, %s) RETURNING id;",
-            (data.get('chasis'), data.get('modelo'), data.get('memoria'), data.get('url_nube'))
-        )
-        new_id = cur.fetchone()['id']
+    if not conn:
+        return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
+    movimientos = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    for m in movimientos:
+        m['monto'] = float(m['monto'] or 0)
+
+    total_ingresos = sum(m['monto'] for m in movimientos if m['tipo'] == 'Ingreso')
+    total_egresos = sum(m['monto'] for m in movimientos if m['tipo'] == 'Egreso')
+    balance = total_ingresos - total_egresos
+
+    return jsonify({
+        "movimientos": movimientos,
+        "ingresos": total_ingresos,
+        "egresos": total_egresos,
+        "balance": balance
+    })
+
+@app.route('/api/caja', methods=['POST'])
+def add_movimiento():
+    uid = get_current_user_id()
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    
+    hora_arg = datetime.utcnow() - timedelta(hours=3)
+    fecha_str = hora_arg.strftime("%Y-%m-%d %H:%M")
+
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO caja (usuario_id, fecha, tipo, concepto, monto) VALUES (%s, %s, %s, %s, %s) RETURNING *;",
+        (uid, fecha_str, data.get("tipo", "Ingreso"), data.get("concepto", ""), float(data.get("monto", 0)))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if nuevo:
+        nuevo['monto'] = float(nuevo['monto'] or 0)
+    return jsonify(nuevo), 201
+
+@app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
+def delete_movimiento(mov_id):
+    uid = get_current_user_id()
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s;", (mov_id, uid))
         conn.commit()
         cur.close()
         conn.close()
-        return jsonify({'id': new_id, 'status': 'success'}), 201
-    else:
-        cur.execute("SELECT * FROM firmwares ORDER BY id DESC;")
-        firmwares = cur.fetchall()
-        cur.close()
-        conn.close()
-        return jsonify(firmwares)
+    return jsonify({"status": "deleted"})
+
+@app.route('/api/placas', methods=['GET'])
+def get_placas():
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM placas ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
+
+@app.route('/api/placas', methods=['POST'])
+def add_placa():
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (data.get("tipo", ""), data.get("codigo", ""), data.get("modelo", ""), data.get("test_points", ""))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
+
+@app.route('/api/firmwares', methods=['GET'])
+def get_firmwares():
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM firmwares ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
+
+@app.route('/api/firmwares', methods=['POST'])
+def add_firmware():
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO firmwares (chasis, modelo, memoria, url_nube) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (data.get("chasis", ""), data.get("modelo", ""), data.get("memoria", ""), data.get("url_nube", ""))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
-    data = request.json
-    equipo = data.get('equipo', '')
-    falla = data.get('falla', '')
-
-    if not GEMINI_API_KEY:
-        return jsonify({'error': 'Gemini API Key no configurada'}), 500
-
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Analiza esta falla técnica de Smart TV o Audio:\nEquipo: {equipo}\nFalla: {falla}\nProporciona pasos de diagnóstico específicos y componentes habituales causantes."
-        response = model.generate_content(prompt)
-        return jsonify({'diagnostico': response.text})
+        data = request.json or {}
+        equipo, falla = data.get('equipo', ''), data.get('falla', '')
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+        prompt = f"Analizá la falla técnica del equipo {equipo} con síntoma {falla}. Brindá mediciones clave, descarte y componentes propensos a falla en español."
+        texto, err = consultar_gemini_limpio(prompt)
+        return jsonify({'diagnostico': texto}) if texto else jsonify({'error': str(err)}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/obtener-test-points', methods=['POST'])
 def obtener_test_points():
-    data = request.json
-    chasis = data.get('chasis', '')
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT test_points FROM placas WHERE codigo = %s LIMIT 1;", (chasis,))
-    res = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if res:
-        return jsonify({'test_points': res['test_points']})
-    
-    if not GEMINI_API_KEY:
-        return jsonify({'error': 'No se encontró en BD y Gemini no está disponible'}), 404
-
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Dame los Test Points y voltajes principales de la placa de TV/Audio con chasis/código: {chasis}."
-        response = model.generate_content(prompt)
-        return jsonify({'test_points': response.text})
+        data = request.json or {}
+        chasis_buscado = data.get('chasis', '').strip().upper()
+        
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM placas WHERE UPPER(codigo) LIKE %s;", (f"%{chasis_buscado}%",))
+            placa = cur.fetchone()
+            cur.close()
+            conn.close()
+            if placa:
+                return jsonify({'test_points': f"=== DATOS LOCALES DEL TALLER ===\nChasis: {placa['codigo']}\nModelo: {placa['modelo']}\nTest Points:\n{placa['test_points']}"})
+
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Analizá la arquitectura del chasis / placa de TV LED: {chasis_buscado}.
+
+Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a CIs reguladores y bobinas de paso SMD, indicando la comparación entre Standby y ON:
+
+| Sub-fuente / Etapa | IC Regulador o Diodo Salida | Pin de Medición o Bobina | Tensión Standby | Tensión ON (Encendido) | Resistencia a GND |"""
+
+        texto, err = consultar_gemini_limpio(prompt)
+        if texto:
+            return jsonify({'test_points': texto})
+        return jsonify({'error': f'Error de conexión: {err}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/analizar-esquematico-pdf', methods=['POST'])
+def analizar_esquematico_pdf():
+    try:
+        if 'archivo' not in request.files:
+            return jsonify({'error': 'No se adjuntó ningún archivo PDF'}), 400
+        
+        file = request.files['archivo']
+        chasis = request.form.get('chasis', '').strip().upper()
+
+        if file.filename == '':
+            return jsonify({'error': 'Archivo no seleccionado'}), 400
+
+        reader = PdfReader(file)
+        texto_extraido = ""
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                texto_extraido += t + "\n"
+
+        if not texto_extraido.strip():
+            return jsonify({'error': 'El PDF es un documento escaneado como imagen pura. Seleccioná el texto del diagrama.'}), 400
+
+        if not GEMINI_KEY:
+            return jsonify({'error': 'Clave API no configurada'}), 500
+
+        prompt = f"""Analizá el esquema técnico del chasis/fuente: {chasis}.
+
+Contenido del plano extraído:
+{texto_extraido[:8000]}
+
+Devolvé ÚNICAMENTE una tabla Markdown en español técnico referenciada a la serigrafía real del plano:
+| Etapa / Sub-fuente | IC / Transistor / Diodo Salida | Pin / Punto de Medición | Tensión Nominal | Estado (STB / ON) |"""
+
+        texto, err = consultar_gemini_limpio(prompt)
+        if texto:
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s);",
+                    ("Esquemático PDF Cargado", chasis, file.filename, texto)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+            return jsonify({'resultado': texto})
+            
+        return jsonify({'error': f'Error de procesamiento: {err}'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calcular-backlight', methods=['POST'])
+def calcular_backlight():
+    data = request.json or {}
+    driver = data.get('driver', '').upper().strip()
+    instruccion = DRIVERS_LED.get(driver, "Driver no registrado. Modificar la resistencia en el pin ISET/IREF para reducir corriente un 25-30%.")
+    return jsonify({'driver': driver, 'procedimiento': instruccion})
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
