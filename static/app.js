@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO BUSCAR TEST POINTS / TENSIONES
+    // FORMULARIO TEST POINTS
     const formTestPoints = document.getElementById('form-test-points');
     if (formTestPoints) {
         formTestPoints.addEventListener('submit', async (e) => {
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FORMULARIO SUBIR DIAGRAMA PDF
+    // FORMULARIO SUBIR PDF ESQUEMÁTICO
     const formPdf = document.getElementById('form-pdf-esquematico');
     if (formPdf) {
         formPdf.addEventListener('submit', async (e) => {
@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // CALCULAR CORRIENTE LED / BACKLIGHT
+    // CALCULAR CORRIENTE LED
     const formBacklight = document.getElementById('form-backlight');
     if (formBacklight) {
         formBacklight.addEventListener('submit', async (e) => {
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// FUNCIONES DE CARGA DE TABLAS
+// FUNCIONES DE CARGA Y TABLAS
 async function cargarOrdenes() {
     const res = await fetch('/api/ordenes');
     const ordenes = await res.json();
@@ -180,9 +180,7 @@ async function cargarOrdenes() {
                 <td>${o.falla || ''}</td>
                 <td>$${o.presupuesto || 0}</td>
                 <td><span class="badge bg-${o.estado === 'Entregado' ? 'success' : 'warning'}">${o.estado || 'Ingresado'}</span></td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${o.id})">🗑️</button>
-                </td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarOrden(${o.id})">🗑️</button></td>
             </tr>
         `;
     });
@@ -224,9 +222,7 @@ async function cargarVentas() {
                 <td>${v.producto || ''}</td>
                 <td>$${v.precio || 0}</td>
                 <td><span class="badge bg-info">${v.estado || 'En Venta'}</span></td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarVenta(${v.id})">🗑️</button>
-                </td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarVenta(${v.id})">🗑️</button></td>
             </tr>
         `;
     });
@@ -245,9 +241,7 @@ async function cargarCaja() {
                 <td><span class="badge bg-${m.tipo === 'Ingreso' ? 'success' : 'danger'}">${m.tipo}</span></td>
                 <td>${m.concepto || ''}</td>
                 <td>$${m.monto || 0}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarMovimiento(${m.id})">🗑️</button>
-                </td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarMovimiento(${m.id})">🗑️</button></td>
             </tr>
         `;
     });
@@ -296,7 +290,6 @@ async function cargarFirmwares() {
     });
 }
 
-// OPERACIONES DE EDICION Y BORRADO
 async function eliminarOrden(id) {
     if (confirm('¿Eliminar orden de trabajo?')) {
         await fetch(`/api/ordenes/${id}`, { method: 'DELETE' });
