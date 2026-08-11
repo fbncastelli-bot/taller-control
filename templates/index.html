@@ -5,18 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAB-CONTROL PRO | Gestión de Taller Electrónico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #0b1120; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar-custom { background-color: #0f172a; border-bottom: 1px solid #1e293b; }
-        .nav-tabs .nav-link { color: #94a3b8; border: none; font-weight: 500; }
-        .nav-tabs .nav-link.active { color: #38bdf8; background-color: transparent; border-bottom: 2px solid #38bdf8; font-weight: 600; }
-        .card-custom { background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; }
-        .form-control, .form-select { background-color: #0f172a !important; color: #ffffff !important; border: 1px solid #475569 !important; }
-        .form-control::placeholder { color: #94a3b8 !important; }
-        .form-control:focus, .form-select:focus { border-color: #38bdf8 !important; box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important; }
-        .table-custom { color: #f8fafc; }
-        .table-custom th { background-color: #0f172a; color: #38bdf8; border-bottom: 1px solid #334155; }
-        .table-custom td { border-bottom: 1px solid #1e293b; background-color: #1e293b; color: #f8fafc; }
+        :root { --bg-primary: #0a0f1d; --bg-card: #131b2e; --border-color: #1e293b; --accent-blue: #0ea5e9; }
+        body { background-color: var(--bg-primary); color: #e2e8f0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        .navbar-custom { background-color: #0f172a; border-bottom: 1px solid var(--border-color); }
+        .nav-tabs { border-bottom: 1px solid var(--border-color); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
+        .nav-tabs .nav-link { color: #94a3b8; border: none; font-weight: 500; white-space: nowrap; padding: 10px 16px; }
+        .nav-tabs .nav-link.active { color: var(--accent-blue); background-color: transparent; border-bottom: 2px solid var(--accent-blue); font-weight: 600; }
+        .card-custom { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+        .form-control, .form-select { background-color: #090d16 !important; color: #ffffff !important; border: 1px solid #2a374e !important; }
+        .form-control::placeholder { color: #64748b !important; }
+        .form-control:focus, .form-select:focus { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.2) !important; }
+        .table-custom { color: #e2e8f0; }
+        .table-custom th { background-color: #0f172a; color: var(--accent-blue); border-bottom: 1px solid var(--border-color); font-size: 13px; text-transform: uppercase; }
+        .table-custom td { border-bottom: 1px solid var(--border-color); background-color: var(--bg-card); color: #e2e8f0; font-size: 14px; }
+        .btn-telegram { background-color: #229ED9; color: white; border: none; }
+        .btn-telegram:hover { background-color: #1c85b8; color: white; }
+        .btn-youtube { background-color: #FF0000; color: white; border: none; }
+        .btn-youtube:hover { background-color: #cc0000; color: white; }
         @media print {
             body * { visibility: hidden; }
             #area-impresion, #area-impresion * { visibility: visible; }
@@ -26,49 +33,51 @@
 </head>
 <body>
 
-    <nav class="navbar navbar-custom px-4 py-2 d-flex justify-content-between align-items-center">
+    <nav class="navbar navbar-custom px-3 py-2 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
-            <span class="fs-4">⚙️</span>
+            <i class="bi bi-cpu text-info fs-3"></i>
             <div>
                 <h5 class="m-0 text-info fw-bold">LAB-CONTROL PRO</h5>
-                <small class="text-secondary" style="font-size: 11px;">{{ taller if taller else 'TALLER ELECTRÓNICO' }}</small>
+                <small class="text-secondary" style="font-size: 11px;">{{ taller if taller else 'SISTEMA INTEGRAL DE TALLER' }}</small>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-3">
-            <span id="reloj-vivo" class="badge bg-dark text-info border border-secondary px-3 py-2 fw-normal">--:--</span>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="https://t.me" target="_blank" class="btn btn-telegram btn-sm d-flex align-items-center gap-1"><i class="bi bi-telegram"></i> <span class="d-none d-md-inline">Telegram</span></a>
+            <a href="https://youtube.com" target="_blank" class="btn btn-youtube btn-sm d-flex align-items-center gap-1"><i class="bi bi-youtube"></i> <span class="d-none d-md-inline">YouTube</span></a>
+            <span id="reloj-vivo" class="badge bg-dark text-info border border-secondary px-2 py-2 fw-normal">--:--</span>
             {% if usuario %}
-            <span class="badge bg-secondary text-light">👤 {{ usuario }}</span>
-            <a href="/logout" class="btn btn-sm btn-outline-danger">🚪 Cerrar Sesión</a>
+            <span class="badge bg-secondary text-light"><i class="bi bi-person-fill"></i> {{ usuario }}</span>
+            <a href="/logout" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Salir</a>
             {% endif %}
         </div>
     </nav>
 
-    <div class="container-fluid mt-3 px-4">
-        <ul class="nav nav-tabs mb-3 border-bottom-0" id="tallerTabs" role="tablist">
-            <li class="nav-item"><button class="nav-link active" id="ordenes-tab" data-bs-toggle="tab" data-bs-target="#ordenes" type="button">🛠️ Órdenes de Trabajo</button></li>
-            <li class="nav-item"><button class="nav-link" id="repuestos-tab" data-bs-toggle="tab" data-bs-target="#repuestos" type="button">📦 Stock Componentes</button></li>
-            <li class="nav-item"><button class="nav-link" id="ventas-tab" data-bs-toggle="tab" data-bs-target="#ventas" type="button">🏷️ Equipos en Venta</button></li>
-            <li class="nav-item"><button class="nav-link" id="caja-tab" data-bs-toggle="tab" data-bs-target="#caja" type="button">💰 Control de Caja</button></li>
-            <li class="nav-item"><button class="nav-link" id="placas-tab" data-bs-toggle="tab" data-bs-target="#placas" type="button">📐 Banco de Placas / Info Main TV</button></li>
-            <li class="nav-item"><button class="nav-link" id="firmwares-tab" data-bs-toggle="tab" data-bs-target="#firmwares" type="button">💾 Firmwares Nube</button></li>
-            <li class="nav-item"><button class="nav-link" id="ia-tab" data-bs-toggle="tab" data-bs-target="#ia" type="button">🤖 Asistente Técnico / Reforma LED</button></li>
+    <div class="container-fluid mt-3 px-2 px-md-4">
+        <ul class="nav nav-tabs mb-3" id="tallerTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active" id="ordenes-tab" data-bs-toggle="tab" data-bs-target="#ordenes" type="button"><i class="bi bi-tools me-1"></i> Órdenes de Trabajo</button></li>
+            <li class="nav-item"><button class="nav-link" id="repuestos-tab" data-bs-toggle="tab" data-bs-target="#repuestos" type="button"><i class="bi bi-box-seam me-1"></i> Stock Componentes</button></li>
+            <li class="nav-item"><button class="nav-link" id="ventas-tab" data-bs-toggle="tab" data-bs-target="#ventas" type="button"><i class="bi bi-cart3 me-1"></i> Equipos en Venta / ML</button></li>
+            <li class="nav-item"><button class="nav-link" id="caja-tab" data-bs-toggle="tab" data-bs-target="#caja" type="button"><i class="bi bi-cash-stack me-1"></i> Control de Caja</button></li>
+            <li class="nav-item"><button class="nav-link" id="placas-tab" data-bs-toggle="tab" data-bs-target="#placas" type="button"><i class="bi bi-diagram-3 me-1"></i> Banco de Placas / Info Main TV</button></li>
+            <li class="nav-item"><button class="nav-link" id="firmwares-tab" data-bs-toggle="tab" data-bs-target="#firmwares" type="button"><i class="bi bi-cloud-download me-1"></i> Firmwares Nube</button></li>
+            <li class="nav-item"><button class="nav-link" id="ia-tab" data-bs-toggle="tab" data-bs-target="#ia" type="button"><i class="bi bi-robot me-1"></i> Asistente Técnico / Reforma LED</button></li>
         </ul>
 
         <div class="tab-content" id="tallerTabsContent">
 
-            <!-- TAB 1: ÓRDENES -->
+            <!-- TAB 1: ÓRDENES DE TRABAJO -->
             <div class="tab-pane fade show active" id="ordenes" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Nueva Orden de Trabajo</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-plus-circle me-1"></i> Nueva Orden de Trabajo</h6>
                             <form id="form-orden">
-                                <div class="mb-2"><input type="text" id="ot-cliente" class="form-control form-control-sm" placeholder="Cliente" required></div>
-                                <div class="mb-2"><input type="text" id="ot-telefono" class="form-control form-control-sm" placeholder="Teléfono"></div>
-                                <div class="mb-2"><input type="text" id="ot-equipo" class="form-control form-control-sm" placeholder="Equipo / Modelo" required></div>
-                                <div class="mb-2"><textarea id="ot-falla" class="form-control form-control-sm" rows="2" placeholder="Falla reportada"></textarea></div>
-                                <div class="mb-2"><textarea id="ot-solucion" class="form-control form-control-sm" rows="2" placeholder="Solución / Trabajo realizado"></textarea></div>
-                                <div class="mb-2"><input type="number" id="ot-presupuesto" class="form-control form-control-sm" placeholder="Presupuesto $"></div>
+                                <div class="mb-2"><input type="text" id="ot-cliente" class="form-control form-control-sm" placeholder="Cliente / Titular" required></div>
+                                <div class="mb-2"><input type="text" id="ot-telefono" class="form-control form-control-sm" placeholder="Teléfono / WhatsApp"></div>
+                                <div class="mb-2"><input type="text" id="ot-equipo" class="form-control form-control-sm" placeholder="Equipo / Marca / Modelo" required></div>
+                                <div class="mb-2"><textarea id="ot-falla" class="form-control form-control-sm" rows="2" placeholder="Síntoma / Falla reportada"></textarea></div>
+                                <div class="mb-2"><textarea id="ot-solucion" class="form-control form-control-sm" rows="2" placeholder="Solución / Mediciones realizadas"></textarea></div>
+                                <div class="mb-2"><input type="number" id="ot-presupuesto" class="form-control form-control-sm" placeholder="Presupuesto ($)"></div>
                                 <div class="mb-3">
                                     <select id="ot-estado" class="form-select form-select-sm">
                                         <option value="Ingresado">Ingresado</option>
@@ -78,13 +87,13 @@
                                         <option value="Entregado">Entregado</option>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Guardar Orden</button>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold"><i class="bi bi-save me-1"></i> Guardar Orden</button>
                             </form>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-lg-8">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Historial de Órdenes</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-list-task me-1"></i> Historial de Órdenes Registradas</h6>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
@@ -100,12 +109,12 @@
                 </div>
             </div>
 
-            <!-- TAB 2: REPUESTOS -->
+            <!-- TAB 2: STOCK COMPONENTES -->
             <div class="tab-pane fade" id="repuestos" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Agregar Componente / Repuesto</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-cpu me-1"></i> Cargar Componente / Repuesto</h6>
                             <form id="form-repuesto">
                                 <div class="mb-2">
                                     <select id="rep-categoria" class="form-select form-select-sm">
@@ -118,22 +127,22 @@
                                         <option value="Varios">Varios</option>
                                     </select>
                                 </div>
-                                <div class="mb-2"><input type="text" id="rep-nombre" class="form-control form-control-sm" placeholder="Descripción / Código IC" required></div>
-                                <div class="mb-2"><input type="text" id="rep-ubicacion" class="form-control form-control-sm" placeholder="Ubicación (Caja / Estante)"></div>
-                                <div class="mb-2"><input type="number" id="rep-cantidad" class="form-control form-control-sm" placeholder="Cantidad" value="1" required></div>
-                                <div class="mb-3"><input type="number" id="rep-precio" class="form-control form-control-sm" placeholder="Precio Unitario $"></div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Agregar a Stock</button>
+                                <div class="mb-2"><input type="text" id="rep-nombre" class="form-control form-control-sm" placeholder="Descripción / Código de Componente" required></div>
+                                <div class="mb-2"><input type="text" id="rep-ubicacion" class="form-control form-control-sm" placeholder="Ubicación en Taller (Caja / Cajón)"></div>
+                                <div class="mb-2"><input type="number" id="rep-cantidad" class="form-control form-control-sm" placeholder="Cantidad Inicial" value="1" required></div>
+                                <div class="mb-3"><input type="number" id="rep-precio" class="form-control form-control-sm" placeholder="Precio Unitario ($)"></div>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i> Agregar a Stock</button>
                             </form>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-lg-8">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Inventario de Componentes</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-search me-1"></i> Inventario Completo de Repuestos</h6>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
                                         <tr>
-                                            <th>Categoría</th><th>Descripción / Código</th><th>Ubicación</th><th>Stock</th><th>Precio</th><th>Acciones</th>
+                                            <th>Categoría</th><th>Componente</th><th>Ubicación</th><th>Stock</th><th>Precio</th><th>Herramientas</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tabla-repuestos"></tbody>
@@ -144,30 +153,31 @@
                 </div>
             </div>
 
-            <!-- TAB 3: VENTAS Y MERCADO LIBRE -->
+            <!-- TAB 3: EQUIPOS EN VENTA / MERCADO LIBRE -->
             <div class="tab-pane fade" id="ventas" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card card-custom p-3 mb-3">
-                            <h6 class="text-info mb-3">Publicar Equipo / Placa en Venta</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-tag me-1"></i> Publicar Placa / Equipo en Venta</h6>
                             <form id="form-venta">
-                                <div class="mb-2"><input type="text" id="vta-producto" class="form-control form-control-sm" placeholder="Producto / TV / Placa" required></div>
-                                <div class="mb-3"><input type="number" id="vta-precio" class="form-control form-control-sm" placeholder="Precio de Venta $" required></div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Publicar Venta</button>
+                                <div class="mb-2"><input type="text" id="vta-producto" class="form-control form-control-sm" placeholder="Producto / TV / Placa Comercial" required></div>
+                                <div class="mb-3"><input type="number" id="vta-precio" class="form-control form-control-sm" placeholder="Precio ($)" required></div>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold"><i class="bi bi-cloud-upload me-1"></i> Registrar en Venta</button>
                             </form>
                         </div>
-                        <div class="card card-custom p-3 mb-3">
-                            <h6 class="text-warning mb-2">Consulta de Usados en Mercado Libre</h6>
+                        <div class="card card-custom p-3">
+                            <h6 class="text-warning mb-2"><i class="bi bi-cart-check me-1"></i> Módulo Mercado Libre</h6>
+                            <p class="text-secondary small mb-2">Consultar referencias de valores de usados y placas compatibles:</p>
                             <div class="input-group input-group-sm mb-2">
-                                <input type="text" id="ml-busqueda" class="form-control" placeholder="Modelo o Placa TV">
-                                <button class="btn btn-warning" onclick="consultarMercadoLibre()">Buscar ML</button>
+                                <input type="text" id="ml-busqueda" class="form-control" placeholder="Modelo / Código PCB">
+                                <button class="btn btn-warning fw-bold" onclick="consultarMercadoLibre()">Buscar ML</button>
                             </div>
-                            <a href="https://www.mercadolibre.com.ar" target="_blank" class="btn btn-outline-warning btn-sm w-100 fw-bold">🛒 Abrir Mercado Libre</a>
+                            <a href="https://www.mercadolibre.com.ar" target="_blank" class="btn btn-outline-warning btn-sm w-100 fw-bold"><i class="bi bi-box-arrow-up-right me-1"></i> Abrir Portal Mercado Libre</a>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-lg-8">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Listado de Equipos y Placas en Venta</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-shop me-1"></i> Catálogo de Equipos y Placas Publicadas</h6>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
@@ -183,12 +193,12 @@
                 </div>
             </div>
 
-            <!-- TAB 4: CAJA -->
+            <!-- TAB 4: CONTROL DE CAJA -->
             <div class="tab-pane fade" id="caja" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card card-custom p-3 mb-3">
-                            <h6 class="text-info mb-3">Registrar Movimiento de Caja</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-journal-plus me-1"></i> Movimiento Diarios de Caja</h6>
                             <form id="form-caja">
                                 <div class="mb-2">
                                     <select id="caja-tipo" class="form-select form-select-sm">
@@ -196,22 +206,22 @@
                                         <option value="Egreso">Egreso (-)</option>
                                     </select>
                                 </div>
-                                <div class="mb-2"><input type="text" id="caja-concepto" class="form-control form-control-sm" placeholder="Concepto (ej. Cobro OT-15)" required></div>
-                                <div class="mb-3"><input type="number" id="caja-monto" class="form-control form-control-sm" placeholder="Monto $" required></div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Registrar Movimiento</button>
+                                <div class="mb-2"><input type="text" id="caja-concepto" class="form-control form-control-sm" placeholder="Concepto (Cobro OT, repuesto, etc.)" required></div>
+                                <div class="mb-3"><input type="number" id="caja-monto" class="form-control form-control-sm" placeholder="Monto ($)" required></div>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold"><i class="bi bi-check-circle me-1"></i> Registrar Movimiento</button>
                             </form>
                         </div>
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-2">Resumen Financiero</h6>
-                            <div class="d-flex justify-content-between mb-1"><span>Ingresos:</span><strong id="caja-total-ingresos" class="text-success">$0</strong></div>
-                            <div class="d-flex justify-content-between mb-1"><span>Egresos:</span><strong id="caja-total-egresos" class="text-danger">$0</strong></div>
+                            <h6 class="text-info mb-2"><i class="bi bi-calculator me-1"></i> Balance de Laboratorio</h6>
+                            <div class="d-flex justify-content-between mb-1"><span>Total Ingresos:</span><strong id="caja-total-ingresos" class="text-success">$0</strong></div>
+                            <div class="d-flex justify-content-between mb-1"><span>Total Egresos:</span><strong id="caja-total-egresos" class="text-danger">$0</strong></div>
                             <hr class="border-secondary my-2">
-                            <div class="d-flex justify-content-between fs-5"><span>Balance:</span><strong id="caja-balance" class="text-info">$0</strong></div>
+                            <div class="d-flex justify-content-between fs-5"><span>Balance Neto:</span><strong id="caja-balance" class="text-info">$0</strong></div>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-lg-8">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Movimientos Registrados</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-receipt me-1"></i> Registro de Operaciones de Caja</h6>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
@@ -227,20 +237,20 @@
                 </div>
             </div>
 
-            <!-- TAB 5: PLACAS / INFO MAIN TV -->
+            <!-- TAB 5: BANCO DE PLACAS / INFO MAIN TV -->
             <div class="tab-pane fade" id="placas" role="tabpanel">
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="card card-custom p-3">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="text-info m-0">Banco de Placas / Info Main TV</h6>
-                                <button class="btn btn-sm btn-outline-light" onclick="imprimirArea('tabla-placas')">🖨️ Imprimir Lista</button>
+                                <h6 class="text-info m-0"><i class="bi bi-cpu-fill me-1"></i> Banco de Placas e Info Main TV</h6>
+                                <button class="btn btn-sm btn-outline-light" onclick="imprimirArea('tabla-placas')"><i class="bi bi-printer me-1"></i> Imprimir Ficha de Placas</button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
                                         <tr>
-                                            <th>Tipo</th><th>Chasis / Código PCB</th><th>Modelo de TV</th><th>Puntos de Prueba / Mediciones</th>
+                                            <th>Tipo</th><th>Chasis / PCB</th><th>Modelo TV</th><th>Mediciones / Test Points Registrados</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tabla-placas"></tbody>
@@ -254,26 +264,26 @@
             <!-- TAB 6: FIRMWARES NUBE -->
             <div class="tab-pane fade" id="firmwares" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Cargar Enlace de Firmware</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-cloud-plus me-1"></i> Registrar Firmware en Nube</h6>
                             <form id="form-firmware">
-                                <div class="mb-2"><input type="text" id="fw-chasis" class="form-control form-control-sm" placeholder="Chasis / Placa" required></div>
-                                <div class="mb-2"><input type="text" id="fw-modelo" class="form-control form-control-sm" placeholder="Modelo de TV" required></div>
-                                <div class="mb-2"><input type="text" id="fw-memoria" class="form-control form-control-sm" placeholder="Tipo Memoria (ej. 25Q64, eMMC)" required></div>
-                                <div class="mb-3"><input type="url" id="fw-url" class="form-control form-control-sm" placeholder="Link Nube / Google Drive" required></div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Guardar Firmware</button>
+                                <div class="mb-2"><input type="text" id="fw-chasis" class="form-control form-control-sm" placeholder="Código de Chasis / PCB" required></div>
+                                <div class="mb-2"><input type="text" id="fw-modelo" class="form-control form-control-sm" placeholder="Modelo Comercial TV" required></div>
+                                <div class="mb-2"><input type="text" id="fw-memoria" class="form-control form-control-sm" placeholder="Tipo Memoria (25Q64, eMMC...)" required></div>
+                                <div class="mb-3"><input type="url" id="fw-url" class="form-control form-control-sm" placeholder="Enlace Servidor / Google Drive" required></div>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold"><i class="bi bi-upload me-1"></i> Guardar Archivo</button>
                             </form>
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-lg-8">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-3">Archivos Firmware / Memorias SPI Flash</h6>
+                            <h6 class="text-info mb-3"><i class="bi bi-hdd-network me-1"></i> Biblioteca de Firmwares Registrados</h6>
                             <div class="table-responsive">
                                 <table class="table table-custom table-hover align-middle m-0">
                                     <thead>
                                         <tr>
-                                            <th>Chasis</th><th>Modelo</th><th>Memoria</th><th>Descarga</th>
+                                            <th>Chasis</th><th>Modelo TV</th><th>Memoria</th><th>Servidor / Enlace</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tabla-firmwares"></tbody>
@@ -284,35 +294,35 @@
                 </div>
             </div>
 
-            <!-- TAB 7: IA Y REFORMA LED -->
+            <!-- TAB 7: ASISTENTE TÉCNICO / REFORMA LED / IA -->
             <div class="tab-pane fade" id="ia" role="tabpanel">
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-lg-6">
                         <div class="card card-custom p-3 mb-3">
-                            <h6 class="text-info mb-2">Ajuste / Reforma de Corriente Backlight LED</h6>
-                            <p class="text-secondary small mb-2">Calculadora directa por CI Driver (reducción del 25-30% de corriente):</p>
+                            <h6 class="text-info mb-2"><i class="bi bi-lightning-charge me-1"></i> Calculadora de Reforma de Corriente LED (Backlight)</h6>
+                            <p class="text-secondary small mb-2">Selección de resistencia ISET / IREF para bajar 25-30% la corriente por rama:</p>
                             <form id="form-backlight" class="d-flex gap-2 mb-2">
-                                <input type="text" id="driver-ic" class="form-control form-control-sm" placeholder="Driver IC (OB3350, MAP3202, BIT3267...)" required>
-                                <button type="submit" class="btn btn-info btn-sm font-bold text-nowrap">Calcular Reforma</button>
+                                <input type="text" id="driver-ic" class="form-control form-control-sm" placeholder="Model IC (OB3350, MAP3202, BIT3267...)" required>
+                                <button type="submit" class="btn btn-info btn-sm fw-bold text-nowrap">Calcular Reforma</button>
                             </form>
                             <div id="resultado-backlight"></div>
                         </div>
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-2">Consulta de Test Points / Tensiones</h6>
+                            <h6 class="text-info mb-2"><i class="bi bi-search me-1"></i> Consulta Diagnóstica de Test Points con IA</h6>
                             <form id="form-test-points" class="d-flex gap-2">
-                                <input type="text" id="tp-chasis" class="form-control form-control-sm" placeholder="Código Chasis (ej. 5800-A6M31G-0P00)" required>
-                                <button type="submit" class="btn btn-info btn-sm font-bold text-nowrap">Consultar IA</button>
+                                <input type="text" id="tp-chasis" class="form-control form-control-sm" placeholder="Chasis / PCB (ej. 5800-A6M31G-0P00)" required>
+                                <button type="submit" class="btn btn-info btn-sm fw-bold text-nowrap">Consultar IA</button>
                             </form>
                             <div id="resultado-test-points" class="mt-3"></div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-lg-6">
                         <div class="card card-custom p-3">
-                            <h6 class="text-info mb-2">Análisis de Diagrama Esquemático PDF</h6>
+                            <h6 class="text-info mb-2"><i class="bi bi-file-earmark-pdf me-1"></i> Procesamiento de Esquemáticos PDF con IA</h6>
                             <form id="form-pdf-esquematico">
                                 <div class="mb-2"><input type="text" id="pdf-chasis" class="form-control form-control-sm" placeholder="Código de Chasis" required></div>
                                 <div class="mb-3"><input type="file" id="pdf-file" class="form-control form-control-sm" accept=".pdf" required></div>
-                                <button type="submit" class="btn btn-info btn-sm w-100 font-bold">Procesar PDF con IA</button>
+                                <button type="submit" class="btn btn-info btn-sm w-100 fw-bold">Analizar Diagrama PDF</button>
                             </form>
                             <div id="resultado-pdf" class="mt-3"></div>
                         </div>
@@ -341,7 +351,7 @@
         function imprimirArea(idElemento) {
             const contenido = document.getElementById(idElemento).outerHTML;
             const area = document.getElementById('area-impresion');
-            area.innerHTML = `<h3>Ficha del Taller</h3>${contenido}`;
+            area.innerHTML = `<h3>LAB-CONTROL PRO - COMPROBANTE TÉCNICO</h3>${contenido}`;
             area.classList.remove('d-none');
             window.print();
             area.classList.add('d-none');
