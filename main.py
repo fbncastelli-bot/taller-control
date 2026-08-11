@@ -74,6 +74,13 @@ def init_db():
             modelo VARCHAR(100),
             test_points TEXT
         );
+        CREATE TABLE IF NOT EXISTS firmwares (
+            id SERIAL PRIMARY KEY,
+            chasis VARCHAR(100),
+            modelo VARCHAR(100),
+            memoria VARCHAR(100),
+            url_nube TEXT
+        );
     ''')
     cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS usuario_id INT;")
     cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS usuario_id INT;")
@@ -81,7 +88,6 @@ def init_db():
     cur.execute("ALTER TABLE caja ADD COLUMN IF NOT EXISTS usuario_id INT;")
     conn.commit()
 
-    # VINCULAR HISTORIAL HUÉRFANO AUTOMÁTICAMENTE AL USUARIO 'fabian'
     cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
     user_fabian = cur.fetchone()
     if user_fabian:
@@ -111,7 +117,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
     try:
@@ -438,11 +444,51 @@ def get_placas():
     conn.close()
     return jsonify(filas)
 
+@app.route('/api/placas', methods=['POST'])
+def add_placa():
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO placas (tipo, codigo, modelo, test_points) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (data.get("tipo", ""), data.get("codigo", ""), data.get("modelo", ""), data.get("test_points", ""))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
+
 @app.route('/api/firmwares', methods=['GET'])
 def get_firmwares():
-    return jsonify([
-        {"id": 1, "chasis": "MS33930.PB751", "modelo": "Noblex 32LD870HI", "memoria": "SPI Flash 25Q64", "url_nube": "https://drive.google.com"}
-    ])
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([])
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM firmwares ORDER BY id ASC;")
+    filas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(filas)
+
+@app.route('/api/firmwares', methods=['POST'])
+def add_firmware():
+    data = request.json or {}
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Sin conexion BBDD'}), 500
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "INSERT INTO firmwares (chasis, modelo, memoria, url_nube) VALUES (%s, %s, %s, %s) RETURNING *;",
+        (data.get("chasis", ""), data.get("modelo", ""), data.get("memoria", ""), data.get("url_nube", ""))
+    )
+    nuevo = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(nuevo), 201
 
 @app.route('/api/analizar-falla', methods=['POST'])
 def analizar_falla():
