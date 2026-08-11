@@ -26,6 +26,8 @@ def init_db():
     if not conn:
         return
     cur = conn.cursor()
+    
+    # 1. Crear tabla usuarios si no existe
     cur.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
@@ -35,7 +37,6 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
             cliente VARCHAR(100),
             telefono VARCHAR(50),
             equipo VARCHAR(100),
@@ -46,7 +47,6 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS repuestos (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
             categoria VARCHAR(100),
             nombre VARCHAR(100),
             ubicacion VARCHAR(100),
@@ -55,14 +55,12 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ventas (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
             producto VARCHAR(100),
             precio NUMERIC(10,2),
             estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS caja (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
             fecha VARCHAR(50),
             tipo VARCHAR(20),
             concepto TEXT,
@@ -76,6 +74,13 @@ def init_db():
             test_points TEXT
         );
     ''')
+    
+    # 2. ASEGURAR QUE EXISTE LA COLUMNA usuario_id EN CADA TABLA
+    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
+    cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
+    cur.execute("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
+    cur.execute("ALTER TABLE caja ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
+
     conn.commit()
     cur.close()
     conn.close()
@@ -96,7 +101,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
     try:
@@ -239,7 +244,6 @@ def add_orden():
 
 @app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
 def delete_orden(ot_id):
-    uid = get_current_user_id()
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
