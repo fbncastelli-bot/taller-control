@@ -34,7 +34,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ordenes (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
+            usuario_id INT,
             cliente VARCHAR(100),
             telefono VARCHAR(50),
             equipo VARCHAR(100),
@@ -45,7 +45,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS repuestos (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
+            usuario_id INT,
             categoria VARCHAR(100),
             nombre VARCHAR(100),
             ubicacion VARCHAR(100),
@@ -54,14 +54,14 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS ventas (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
+            usuario_id INT,
             producto VARCHAR(100),
             precio NUMERIC(10,2),
             estado VARCHAR(50)
         );
         CREATE TABLE IF NOT EXISTS caja (
             id SERIAL PRIMARY KEY,
-            usuario_id INT DEFAULT 1,
+            usuario_id INT,
             fecha VARCHAR(50),
             tipo VARCHAR(20),
             concepto TEXT,
@@ -75,11 +75,23 @@ def init_db():
             test_points TEXT
         );
     ''')
-    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
-    cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
-    cur.execute("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
-    cur.execute("ALTER TABLE caja ADD COLUMN IF NOT EXISTS usuario_id INT DEFAULT 1;")
+    cur.execute("ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE repuestos ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE ventas ADD COLUMN IF NOT EXISTS usuario_id INT;")
+    cur.execute("ALTER TABLE caja ADD COLUMN IF NOT EXISTS usuario_id INT;")
     conn.commit()
+
+    # VINCULAR HISTORIAL HUÉRFANO AUTOMÁTICAMENTE AL USUARIO 'fabian'
+    cur.execute("SELECT id FROM usuarios WHERE LOWER(usuario) = 'fabian';")
+    user_fabian = cur.fetchone()
+    if user_fabian:
+        fid = user_fabian[0]
+        cur.execute("UPDATE ordenes SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE repuestos SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE ventas SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        cur.execute("UPDATE caja SET usuario_id = %s WHERE usuario_id IS NULL OR usuario_id = 1;", (fid,))
+        conn.commit()
+
     cur.close()
     conn.close()
 
@@ -99,7 +111,7 @@ DRIVERS_LED = {
 def consultar_gemini_limpio(prompt):
     system_instruction = (
         "Sos un asistente técnico de laboratorio electrónico de Smart TVs. Respondé exclusivamente en español técnico. "
-        "Queda estrictamente prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
+        "Queda strictly prohibido usar idioma inglés o escribir preámbulos, introducciones o saludos."
     )
     ultimo_error = None
     try:
@@ -136,7 +148,7 @@ def consultar_gemini_limpio(prompt):
     return None, ultimo_error
 
 def get_current_user_id():
-    return session.get('usuario_id', 1)
+    return session.get('usuario_id', 0)
 
 @app.route('/')
 def index():
@@ -210,7 +222,7 @@ def get_ordenes():
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s OR usuario_id IS NULL OR usuario_id = 1 ORDER BY id ASC;", (uid,))
+    cur.execute("SELECT * FROM ordenes WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
     filas = cur.fetchall()
     cur.close()
     conn.close()
@@ -240,10 +252,11 @@ def add_orden():
 
 @app.route('/api/ordenes/<int:ot_id>', methods=['DELETE'])
 def delete_orden(ot_id):
+    uid = get_current_user_id()
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM ordenes WHERE id = %s;", (ot_id,))
+        cur.execute("DELETE FROM ordenes WHERE id = %s AND usuario_id = %s;", (ot_id, uid))
         conn.commit()
         cur.close()
         conn.close()
@@ -256,7 +269,7 @@ def get_repuestos():
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s OR usuario_id IS NULL OR usuario_id = 1 ORDER BY id ASC;", (uid,))
+    cur.execute("SELECT * FROM repuestos WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
     filas = cur.fetchall()
     cur.close()
     conn.close()
@@ -286,15 +299,16 @@ def add_repuesto():
 
 @app.route('/api/repuestos/<int:rep_id>', methods=['PUT'])
 def update_repuesto(rep_id):
+    uid = get_current_user_id()
     data = request.json or {}
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Sin conexion BBDD'}), 500
     cur = conn.cursor(cursor_factory=RealDictCursor)
     if 'cantidad' in data:
-        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s RETURNING *;", (int(data['cantidad']), rep_id))
+        cur.execute("UPDATE repuestos SET cantidad = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (int(data['cantidad']), rep_id, uid))
     elif 'ubicacion' in data:
-        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s RETURNING *;", (data['ubicacion'], rep_id))
+        cur.execute("UPDATE repuestos SET ubicacion = %s WHERE id = %s AND usuario_id = %s RETURNING *;", (data['ubicacion'], rep_id, uid))
     res = cur.fetchone()
     conn.commit()
     cur.close()
@@ -310,7 +324,7 @@ def get_ventas():
     if not conn:
         return jsonify([])
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s OR usuario_id IS NULL OR usuario_id = 1 ORDER BY id ASC;", (uid,))
+    cur.execute("SELECT * FROM ventas WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
     filas = cur.fetchall()
     cur.close()
     conn.close()
@@ -340,10 +354,11 @@ def add_venta():
 
 @app.route('/api/ventas/<int:v_id>', methods=['DELETE'])
 def delete_venta(v_id):
+    uid = get_current_user_id()
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM ventas WHERE id = %s;", (v_id,))
+        cur.execute("DELETE FROM ventas WHERE id = %s AND usuario_id = %s;", (v_id, uid))
         conn.commit()
         cur.close()
         conn.close()
@@ -356,7 +371,7 @@ def get_caja():
     if not conn:
         return jsonify({"movimientos": [], "ingresos": 0, "egresos": 0, "balance": 0})
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM caja WHERE usuario_id = %s OR usuario_id IS NULL OR usuario_id = 1 ORDER BY id ASC;", (uid,))
+    cur.execute("SELECT * FROM caja WHERE usuario_id = %s ORDER BY id ASC;", (uid,))
     movimientos = cur.fetchall()
     cur.close()
     conn.close()
@@ -401,10 +416,11 @@ def add_movimiento():
 
 @app.route('/api/caja/<int:mov_id>', methods=['DELETE'])
 def delete_movimiento(mov_id):
+    uid = get_current_user_id()
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM caja WHERE id = %s;", (mov_id,))
+        cur.execute("DELETE FROM caja WHERE id = %s AND usuario_id = %s;", (mov_id, uid))
         conn.commit()
         cur.close()
         conn.close()
