@@ -251,6 +251,32 @@ def delete_orden(oid):
     conn.close()
     return jsonify({'status': 'ok'})
 
+# EXPORTACIÓN DE ÓRDENES A EXCEL (CSV)
+@app.route('/api/exportar-ordenes', methods=['GET'])
+def exportar_ordenes():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, fecha_creacion, cliente, telefono, equipo, falla, solucion, estado, presupuesto FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    output = "N° Orden,Fecha,Cliente,Telefono,Equipo,Falla Reportada,Solucion,Estado,Presupuesto\n"
+    for r in rows:
+        fecha = str(r['fecha_creacion']) if r.get('fecha_creacion') else ''
+        output += f'"{r["id"]}","{fecha}","{r["cliente"]}","{r["telefono"]}","{r["equipo"]}","{r["falla"]}","{r["solucion"]}","{r["estado"]}","{r["presupuesto"]}"\n'
+
+    return app.response_class(
+        response=output,
+        status=200,
+        mimetype='text/csv',
+        headers={"Content-disposition": "attachment; filename=ordenes_taller.csv"}
+    )
+
 # API REPUESTOS
 @app.route('/api/repuestos', methods=['GET', 'POST'])
 def handle_repuestos():
