@@ -1,4 +1,3 @@
- 
 let ordenes = [];
 let repuestos = [];
 let ventas = [];
@@ -511,19 +510,25 @@ async function eliminarVentaSeleccionada() {
     }
 }
 
-// --- CAJA ---
+// --- CAJA Y REPORTES FINANCIEROS ---
 async function cargarCaja() {
     try {
         const res = await fetch('/api/caja');
         const data = await res.json();
         cajaMovimientos = data.movimientos || [];
-        
-        document.getElementById('caja-ingresos').innerText = `$${parseFloat(data.ingresos || 0).toFixed(2)}`;
-        document.getElementById('caja-egresos').innerText = `$${parseFloat(data.egresos || 0).toFixed(2)}`;
-        document.getElementById('caja-balance').innerText = `$${parseFloat(data.balance || 0).toFixed(2)}`;
-
+        actualizarBalanceTotales(cajaMovimientos);
         renderTablaCaja(cajaMovimientos);
     } catch (e) { console.error(e); }
+}
+
+function actualizarBalanceTotales(lista) {
+    const ingresos = lista.filter(m => m.tipo === 'Ingreso').reduce((sum, m) => sum + (parseFloat(m.monto) || 0), 0);
+    const egresos = lista.filter(m => m.tipo === 'Egreso').reduce((sum, m) => sum + (parseFloat(m.monto) || 0), 0);
+    const balance = ingresos - egresos;
+
+    document.getElementById('caja-ingresos').innerText = `$${ingresos.toFixed(2)}`;
+    document.getElementById('caja-egresos').innerText = `$${egresos.toFixed(2)}`;
+    document.getElementById('caja-balance').innerText = `$${balance.toFixed(2)}`;
 }
 
 function renderTablaCaja(lista) {
@@ -543,6 +548,21 @@ function renderTablaCaja(lista) {
         `;
         tbody.appendChild(tr);
     });
+}
+
+function filtrarCajaPeriodo(periodo) {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const mesStr = hoyStr.substring(0, 7);
+
+    let filtrados = cajaMovimientos;
+    if (periodo === 'hoy') {
+        filtrados = cajaMovimientos.filter(m => m.fecha && m.fecha.includes(hoyStr));
+    } else if (periodo === 'mes') {
+        filtrados = cajaMovimientos.filter(m => m.fecha && m.fecha.includes(mesStr));
+    }
+
+    actualizarBalanceTotales(filtrados);
+    renderTablaCaja(filtrados);
 }
 
 async function guardarMovimientoCaja() {
@@ -570,7 +590,12 @@ function filtrarCaja() {
         (m.tipo && m.tipo.toLowerCase().includes(txt)) ||
         (m.fecha && m.fecha.toLowerCase().includes(txt))
     );
+    actualizarBalanceTotales(filtrados);
     renderTablaCaja(filtrados);
+}
+
+function exportarCajaExcel() {
+    window.location.href = '/api/exportar-caja';
 }
 
 async function eliminarMovimientoSeleccionado() {
