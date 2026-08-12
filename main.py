@@ -1,4 +1,4 @@
- import os
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
