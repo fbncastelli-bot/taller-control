@@ -1,6 +1,7 @@
 import os
 import json
 import io
+import re
 import datetime
 from decimal import Decimal
 from flask import (
@@ -40,8 +41,11 @@ def inject_taller_info():
 def reemplazar_cabecera_html(response):
     if response.status_code == 200 and response.mimetype == 'text/html':
         contenido = response.get_data(as_text=True)
-        contenido = contenido.replace("FD electrónica", NOMBRE_TALLER)
-        contenido = contenido.replace("FD electronica", NOMBRE_TALLER)
+        
+        # Reemplazo dinámico insensible a mayúsculas/minúsculas y acentos
+        patron_nombre = re.compile(r'FD\s*electr[oó]nica', re.IGNORECASE)
+        contenido = patron_nombre.sub(NOMBRE_TALLER, contenido)
+        
         response.set_data(contenido)
     return response
 
