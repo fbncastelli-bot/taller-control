@@ -1,17 +1,9 @@
+// Variable global para almacenar el usuario activo
+let usuarioActual = "Invitado";
+
 document.addEventListener('DOMContentLoaded', () => {
     // Inicialización del sistema
     initApp();
-
-    // Evento de cierre de sesión
-    const logoutBtn = document.getElementById('logout-btn') || document.querySelector('a[href="/logout"]');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/logout';
-        });
-    }
 });
 
 function initApp() {
@@ -23,7 +15,7 @@ function initApp() {
     cargarCaja();
 }
 
-// Interfaz de navegación de pestañas
+// Navegación de pestañas
 function cambiarPestana(pestanaId) {
     const pestañas = document.querySelectorAll('.tab-content');
     pestañas.forEach(p => p.style.display = 'none');
@@ -32,29 +24,17 @@ function cambiarPestana(pestanaId) {
     if (activa) {
         activa.style.display = 'block';
     }
-}
 
-// API Login
-async function ejecutarLogin(usuario, password) {
-    try {
-        const res = await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario, password })
-        });
-        const data = await res.json();
-        if (data.success) {
-            localStorage.setItem('usuario', data.usuario);
-            window.location.href = '/';
-        } else {
-            alert(data.message || 'Error de credenciales');
-        }
-    } catch (err) {
-        console.error("Error en login:", err);
+    const botones = document.querySelectorAll('.tab-button');
+    botones.forEach(b => b.classList.remove('active'));
+    
+    const botonActivo = document.querySelector(`[onclick="cambiarPestana('${pestanaId}')"]`);
+    if (botonActivo) {
+        botonActivo.classList.add('active');
     }
 }
 
-// Carga de Módulos
+// Carga de módulos desde el backend
 async function cargarOrdenes() {
     try {
         const res = await fetch('/api/ordenes');
@@ -127,7 +107,7 @@ async function cargarCaja() {
     }
 }
 
-// Funciones de renderizado de tablas
+// Renderizado de datos en la interfaz
 function renderizarTablaOrdenes(datos) {
     const contenedor = document.getElementById('tabla-ordenes');
     if (!contenedor) return;
@@ -218,7 +198,7 @@ function renderizarCaja(datos) {
     if (elemBalance) elemBalance.innerText = `$${datos.balance || 0}`;
 }
 
-// Consultas de Diagnóstico
+// Diagnósticos
 async function analizarFalla() {
     const equipo = document.getElementById('diag-equipo')?.value;
     const falla = document.getElementById('diag-falla')?.value;
