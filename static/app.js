@@ -157,6 +157,21 @@ function generarComprobanteImpresion() {
     area.style.display = 'none';
 }
 
+function generarEtiquetaTapaQR() {
+    if (!otSeleccionada) { alert("Seleccioná una orden primero."); return; }
+    document.getElementById('lbl-qr-ot').innerText = `OT-${otSeleccionada.id}`;
+    document.getElementById('lbl-qr-cliente').innerText = otSeleccionada.cliente || '---';
+    document.getElementById('lbl-qr-equipo').innerText = otSeleccionada.equipo || '---';
+
+    const urlConsulta = `${window.location.origin}/consulta?ot=${otSeleccionada.id}`;
+    document.getElementById('lbl-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(urlConsulta)}`;
+
+    const area = document.getElementById('area-impresion-qr-tapa');
+    area.style.display = 'block';
+    window.print();
+    area.style.display = 'none';
+}
+
 async function eliminarOrdenSeleccionada() {
     if (!otSeleccionada) { alert("Seleccioná una orden primero."); return; }
     if (confirm(`¿Eliminar definitivamente la OT-${otSeleccionada.id}?`)) {
