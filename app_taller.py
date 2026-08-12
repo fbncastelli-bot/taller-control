@@ -9,7 +9,7 @@ from flask import (
     flash, jsonify, make_response
 )
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -29,6 +29,16 @@ NOMBRE_TALLER = "AGCelectronica"
 DIRECCION_TALLER = "Alsina 4336, Claypole"
 TELEFONO_TALLER = "1164992829"
 
+def actualizar_nombre_en_bd():
+    """Actualiza el nombre del taller guardado en las tablas de la Base de Datos."""
+    with app.app_context():
+        try:
+            # Intenta actualizar en la tabla usuario/configuracion si existen
+            db.session.execute(text("UPDATE usuario SET nombre_taller = :nombre WHERE nombre_taller ILIKE '%FD%';"), {"nombre": NOMBRE_TALLER})
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
 @app.context_processor
 def inject_taller_info():
     return dict(
@@ -41,11 +51,9 @@ def inject_taller_info():
 def reemplazar_cabecera_html(response):
     if response.status_code == 200 and response.mimetype == 'text/html':
         contenido = response.get_data(as_text=True)
-        
-        # Reemplazo dinámico insensible a mayúsculas/minúsculas y acentos
+        # Reemplaza 'FD electrónica', 'FD electronica', 'fd electrónica', etc.
         patron_nombre = re.compile(r'FD\s*electr[oó]nica', re.IGNORECASE)
         contenido = patron_nombre.sub(NOMBRE_TALLER, contenido)
-        
         response.set_data(contenido)
     return response
 
@@ -174,6 +182,7 @@ def generar_pdf_orden(orden_id):
 
 with app.app_context():
     db.create_all()
+    actualizar_nombre_en_bd()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
