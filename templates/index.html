@@ -45,7 +45,8 @@
 
     <div class="container-fluid p-3 no-print">
         <ul class="nav nav-tabs-custom mb-3">
-            <li class="nav-item"><a class="nav-link active" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</a></li>
+            <li class="nav-item"><a class="nav-link active" onclick="mostrarSeccion('dashboard')">📊 Dashboard / Resumen</a></li>
+            <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('ordenes')">📋 Órdenes de Trabajo</a></li>
             <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('placas')">🧩 Banco de Placas y Fallas</a></li>
             <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('repuestos')">📦 Stock Componentes</a></li>
             <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('ventas')">🏷️ Ventas y Usados</a></li>
@@ -53,8 +54,52 @@
             <li class="nav-item"><a class="nav-link" onclick="mostrarSeccion('firmwares')">☁️ Firmware Nube</a></li>
         </ul>
 
+        <!-- 0. DASHBOARD / RESUMEN -->
+        <div id="sec-dashboard">
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <div class="card-custom border-info h-100 text-center">
+                        <span class="text-secondary small fw-bold">🛠️ ÓRDENES EN PROCESO</span>
+                        <h2 class="text-info my-2" id="dash-ordenes-proceso">0</h2>
+                        <span class="small text-muted">Equipos en banco de trabajo</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-custom border-success h-100 text-center">
+                        <span class="text-secondary small fw-bold">✅ FINALIZADAS PENDIENTES</span>
+                        <h2 class="text-success my-2" id="dash-ordenes-finalizadas">0</h2>
+                        <span class="small text-muted">Listas para entregar y cobrar</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-custom border-warning h-100 text-center">
+                        <span class="text-secondary small fw-bold">⚠️ COMPONENTES CRÍTICOS</span>
+                        <h2 class="text-warning my-2" id="dash-stock-critico">0</h2>
+                        <span class="small text-muted">Repuestos con 0 o 1 unidad</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-custom border-primary h-100 text-center">
+                        <span class="text-secondary small fw-bold">💵 BALANCE DEL MES</span>
+                        <h2 class="text-primary my-2" id="dash-balance-mes">$0.00</h2>
+                        <span class="small text-muted">Resultado neto acumulado</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-custom">
+                <h6 class="text-info mb-3">⚡ ACCESOS RÁPIDOS</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <button onclick="mostrarSeccion('ordenes')" class="btn btn-info btn-sm text-white fw-bold">➕ Nueva Orden de Trabajo</button>
+                    <button onclick="mostrarSeccion('caja')" class="btn btn-success btn-sm fw-bold">💵 Registrar Movimiento en Caja</button>
+                    <button onclick="mostrarSeccion('repuestos')" class="btn btn-warning btn-sm text-dark fw-bold">📦 Agregar / Modificar Repuesto</button>
+                    <button onclick="mostrarSeccion('placas')" class="btn btn-primary btn-sm fw-bold">🔍 Consultar Fallas y Esquemas</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. ÓRDENES DE TRABAJO -->
-        <div id="sec-ordenes">
+        <div id="sec-ordenes" style="display: none;">
             <div class="card-custom">
                 <div class="row g-2">
                     <div class="col-md-3"><label class="small text-secondary">Cliente:</label><input type="text" id="ot-cliente" class="form-control form-control-sm"></div>
