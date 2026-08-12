@@ -185,6 +185,10 @@ function generarComprobanteImpresion() {
     area.style.display = 'none';
 }
 
+function exportarOrdenesExcel() {
+    window.location.href = '/api/exportar-ordenes';
+}
+
 async function eliminarOrdenSeleccionada() {
     if (!otSeleccionadaId) return alert('Seleccioná una orden para eliminar.');
     if (confirm(`¿Eliminar la orden #${otSeleccionadaId}?`)) {
@@ -200,13 +204,13 @@ async function buscarFallasRecurrentes() {
     if (!chasis) return alert('Ingresá un chasis o modelo.');
     document.getElementById('box-test-points').innerText = 'Buscando fallas recurrentes...';
     try {
-        const res = await fetch('/api/obtener-test-points', {
+        const res = await fetch('/api/fallas-recurrentes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chasis })
         });
         const data = await res.json();
-        document.getElementById('box-test-points').innerText = data.test_points || data.error || 'Sin datos';
+        document.getElementById('box-test-points').innerText = data.resultado || data.error || 'Sin datos';
     } catch (e) { console.error(e); }
 }
 
@@ -225,13 +229,13 @@ async function buscarTestPoints() {
     if (!chasis) return alert('Ingresá un chasis.');
     document.getElementById('box-test-points').innerText = 'Consultando Test Points...';
     try {
-        const res = await fetch('/api/obtener-test-points', {
+        const res = await fetch('/api/fallas-recurrentes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chasis })
         });
         const data = await res.json();
-        document.getElementById('box-test-points').innerText = data.test_points || data.error || 'Sin datos';
+        document.getElementById('box-test-points').innerText = data.resultado || data.error || 'Sin datos';
     } catch (e) { console.error(e); }
 }
 
@@ -307,8 +311,7 @@ async function guardarRepuesto() {
         categoria: document.getElementById('rep-cat').value,
         nombre: document.getElementById('rep-nombre').value,
         ubicacion: document.getElementById('rep-ubicacion').value,
-        cantidad: parseInt(document.getElementById('rep-cant').value) || 1,
-        precio: 0
+        cantidad: parseInt(document.getElementById('rep-cant').value) || 1
     };
 
     await fetch('/api/repuestos', {
