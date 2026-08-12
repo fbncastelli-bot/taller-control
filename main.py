@@ -121,8 +121,14 @@ def login():
     conn.close()
     
     if user:
+        session['usuario'] = user['nombre']
         return jsonify({'success': True, 'usuario': user['nombre']})
     return jsonify({'success': False, 'message': 'Credenciales inválidas'}), 401
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
 @app.route('/api/ordenes', methods=['GET', 'POST'])
 def handle_ordenes():
@@ -255,7 +261,6 @@ def analizar_falla():
     equipo = data.get('equipo', '')
     falla = data.get('falla', '')
     
-    # Respuesta estructurada de diagnóstico
     diagnostico = f"Diagnóstico sugerido para {equipo}:\n- Falla reportada: {falla}\n- Verificación inicial: Comprobar voltajes de fuente (STBY y Power-On).\n- Si no hay imagen pero hay audio: Revisar circuito inverter / driver LED."
     return jsonify({'diagnostico': diagnostico})
 
