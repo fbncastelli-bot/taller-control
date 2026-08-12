@@ -1,4 +1,4 @@
-import os
+ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
@@ -252,7 +252,7 @@ def delete_orden(oid):
     conn.close()
     return jsonify({'status': 'ok'})
 
-# EXPORTACIÓN DE ÓRDENES A EXCEL (CSV FORMATEADO EN ESPAÑOL)
+# EXPORTACIÓN DE ÓRDENES A EXCEL (CSV)
 @app.route('/api/exportar-ordenes', methods=['GET'])
 def exportar_ordenes():
     if 'usuario_id' not in session:
@@ -396,6 +396,36 @@ def delete_caja(mid):
     cur.close()
     conn.close()
     return jsonify({'status': 'ok'})
+
+# EXPORTACIÓN DE CAJA / FINANZAS A EXCEL (CSV)
+@app.route('/api/exportar-caja', methods=['GET'])
+def exportar_caja():
+    if 'usuario_id' not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+
+    uid = session['usuario_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, fecha, tipo, concepto, monto FROM caja WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    output = "\ufeffN° Movimiento;Fecha;Tipo;Concepto / Detalle;Monto ($)\n"
+    for r in rows:
+        fecha = str(r.get("fecha") or "")
+        tipo = (r.get("tipo") or "").replace(";", ",")
+        concepto = (r.get("concepto") or "").replace(";", ",")
+        monto = str(r.get("monto") or 0)
+
+        output += f"{r['id']};{fecha};{tipo};{concepto};{monto}\n"
+
+    return app.response_class(
+        response=output.encode('utf-8'),
+        status=200,
+        mimetype='text/csv; charset=utf-8',
+        headers={"Content-disposition": "attachment; filename=caja_taller.csv"}
+    )
 
 # API VENTAS
 @app.route('/api/ventas', methods=['GET', 'POST'])
