@@ -179,6 +179,17 @@ function generarComprobanteImpresion() {
     document.getElementById('imp-presupuesto').innerText = parseFloat(o.presupuesto || 0).toFixed(2);
     document.getElementById('imp-fecha').innerText = `Fecha: ${new Date().toLocaleDateString('es-AR')}`;
 
+    const qrContainer = document.getElementById('imp-qr-container');
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+        const qrText = `OT:${o.id}|CLIENTE:${o.cliente}|EQUIPO:${o.equipo}|ESTADO:${o.estado}`;
+        new QRCode(qrContainer, {
+            text: qrText,
+            width: 100,
+            height: 100
+        });
+    }
+
     const area = document.getElementById('area-impresion');
     area.style.display = 'block';
     window.print();
