@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function mostrarSeccion(sec) {
-    const secciones = ['ordenes', 'placas', 'repuestos', 'ventas', 'caja', 'firmwares'];
+    const secciones = ['dashboard', 'ordenes', 'placas', 'repuestos', 'ventas', 'caja', 'firmwares'];
     secciones.forEach(s => {
         const el = document.getElementById(`sec-${s}`);
         if (el) el.style.display = (s === sec) ? 'block' : 'none';
@@ -30,6 +30,27 @@ function mostrarSeccion(sec) {
             link.classList.add('active');
         }
     });
+
+    if (sec === 'dashboard') {
+        actualizarDashboard();
+    }
+}
+
+function actualizarDashboard() {
+    const enProceso = ordenes.filter(o => o.estado === 'En Proceso' || o.estado === 'Ingresado' || o.estado === 'Presupuestado').length;
+    const finalizadas = ordenes.filter(o => o.estado === 'Finalizado').length;
+    const stockCritico = repuestos.filter(r => (r.cantidad || 0) <= 1).length;
+
+    const mesActual = new Date().toISOString().substring(0, 7);
+    const movsMes = cajaMovimientos.filter(m => m.fecha && m.fecha.includes(mesActual));
+    const ingresos = movsMes.filter(m => m.tipo === 'Ingreso').reduce((s, m) => s + (parseFloat(m.monto) || 0), 0);
+    const egresos = movsMes.filter(m => m.tipo === 'Egreso').reduce((s, m) => s + (parseFloat(m.monto) || 0), 0);
+    const balance = ingresos - egresos;
+
+    document.getElementById('dash-ordenes-proceso').innerText = enProceso;
+    document.getElementById('dash-ordenes-finalizadas').innerText = finalizadas;
+    document.getElementById('dash-stock-critico').innerText = stockCritico;
+    document.getElementById('dash-balance-mes').innerText = `$${balance.toFixed(2)}`;
 }
 
 // --- ÓRDENES ---
@@ -38,6 +59,7 @@ async function cargarOrdenes() {
         const res = await fetch('/api/ordenes');
         ordenes = await res.json();
         renderTablaOT(ordenes);
+        actualizarDashboard();
     } catch (e) { console.error('Error cargando ordenes:', e); }
 }
 
@@ -329,6 +351,7 @@ async function cargarRepuestos() {
         const res = await fetch('/api/repuestos');
         repuestos = await res.json();
         renderTablaRepuestos(repuestos);
+        actualizarDashboard();
     } catch (e) { console.error(e); }
 }
 
@@ -518,6 +541,7 @@ async function cargarCaja() {
         cajaMovimientos = data.movimientos || [];
         actualizarBalanceTotales(cajaMovimientos);
         renderTablaCaja(cajaMovimientos);
+        actualizarDashboard();
     } catch (e) { console.error(e); }
 }
 
