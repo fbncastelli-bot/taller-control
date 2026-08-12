@@ -234,7 +234,8 @@ def handle_ordenes():
 
     for o in ordenes:
         o['presupuesto'] = float(o['presupuesto'] or 0)
-        o['fecha_creacion'] = str(o['fecha_creacion']) if o.get('fecha_creacion') else ''
+        if 'fecha_creacion' in o and o['fecha_creacion']:
+            o['fecha_creacion'] = str(o['fecha_creacion'])
 
     return jsonify(ordenes)
 
@@ -260,15 +261,14 @@ def exportar_ordenes():
     uid = session['usuario_id']
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, fecha_creacion, cliente, telefono, equipo, falla, solucion, estado, presupuesto FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
+    cur.execute("SELECT id, cliente, telefono, equipo, falla, solucion, estado, presupuesto FROM ordenes WHERE usuario_id = %s ORDER BY id DESC", (uid,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
-    output = "N° Orden,Fecha,Cliente,Telefono,Equipo,Falla Reportada,Solucion,Estado,Presupuesto\n"
+    output = "N° Orden,Cliente,Telefono,Equipo,Falla Reportada,Solucion,Estado,Presupuesto\n"
     for r in rows:
-        fecha = str(r['fecha_creacion']) if r.get('fecha_creacion') else ''
-        output += f'"{r["id"]}","{fecha}","{r["cliente"]}","{r["telefono"]}","{r["equipo"]}","{r["falla"]}","{r["solucion"]}","{r["estado"]}","{r["presupuesto"]}"\n'
+        output += f'"{r["id"]}","{r["cliente"]}","{r["telefono"]}","{r["equipo"]}","{r["falla"]}","{r["solucion"]}","{r["estado"]}","{r["presupuesto"]}"\n'
 
     return app.response_class(
         response=output,
