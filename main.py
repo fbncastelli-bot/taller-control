@@ -266,7 +266,6 @@ def exportar_ordenes():
     cur.close()
     conn.close()
 
-    # Se agrega \ufeff (UTF-8 BOM) y delimitador ; para apertura directa y limpia en Excel
     output = "\ufeffN° Orden;Cliente;Telefono;Equipo;Falla Reportada;Solucion;Estado;Presupuesto\n"
     for r in rows:
         cliente = (r.get("cliente") or "").replace(";", ",")
