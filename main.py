@@ -252,7 +252,7 @@ def delete_orden(oid):
     conn.close()
     return jsonify({'status': 'ok'})
 
-# EXPORTACIÓN DE ÓRDENES A EXCEL (CSV)
+# EXPORTACIÓN DE ÓRDENES A EXCEL (CSV FORMATEADO EN ESPAÑOL)
 @app.route('/api/exportar-ordenes', methods=['GET'])
 def exportar_ordenes():
     if 'usuario_id' not in session:
@@ -266,14 +266,23 @@ def exportar_ordenes():
     cur.close()
     conn.close()
 
-    output = "N° Orden,Cliente,Telefono,Equipo,Falla Reportada,Solucion,Estado,Presupuesto\n"
+    # Se agrega \ufeff (UTF-8 BOM) y delimitador ; para apertura directa y limpia en Excel
+    output = "\ufeffN° Orden;Cliente;Telefono;Equipo;Falla Reportada;Solucion;Estado;Presupuesto\n"
     for r in rows:
-        output += f'"{r["id"]}","{r["cliente"]}","{r["telefono"]}","{r["equipo"]}","{r["falla"]}","{r["solucion"]}","{r["estado"]}","{r["presupuesto"]}"\n'
+        cliente = (r.get("cliente") or "").replace(";", ",")
+        telefono = (r.get("telefono") or "").replace(";", ",")
+        equipo = (r.get("equipo") or "").replace(";", ",")
+        falla = (r.get("falla") or "").replace(";", ",")
+        solucion = (r.get("solucion") or "").replace(";", ",")
+        estado = (r.get("estado") or "").replace(";", ",")
+        presupuesto = str(r.get("presupuesto") or 0)
+
+        output += f"{r['id']};{cliente};{telefono};{equipo};{falla};{solucion};{estado};{presupuesto}\n"
 
     return app.response_class(
-        response=output,
+        response=output.encode('utf-8'),
         status=200,
-        mimetype='text/csv',
+        mimetype='text/csv; charset=utf-8',
         headers={"Content-disposition": "attachment; filename=ordenes_taller.csv"}
     )
 
