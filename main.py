@@ -5,86 +5,42 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_taller'
 
-# Base de datos SQLite
 DB_NAME = 'taller.db'
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    
-    # Tabla Usuarios
     cur.execute('''CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         usuario TEXT UNIQUE,
         password TEXT,
         nombre TEXT
     )''')
-    
-    # Tabla Ordenes (OT)
     cur.execute('''CREATE TABLE IF NOT EXISTS ordenes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        cliente TEXT,
-        telefono TEXT,
-        equipo TEXT,
-        falla TEXT,
-        presupuesto REAL,
-        ubicacion TEXT,
-        estado TEXT DEFAULT 'Ingresado'
+        cliente TEXT, telefono TEXT, equipo TEXT, falla TEXT, presupuesto REAL, ubicacion TEXT, estado TEXT DEFAULT 'Ingresado'
     )''')
-    
-    # Tabla Placas
     cur.execute('''CREATE TABLE IF NOT EXISTS placas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tipo TEXT,
-        codigo TEXT,
-        modelo TEXT,
-        test_points TEXT
+        id INTEGER PRIMARY KEY AUTOINCREMENT, tipo TEXT, codigo TEXT, modelo TEXT, test_points TEXT
     )''')
-
-    # Tabla Firmwares
     cur.execute('''CREATE TABLE IF NOT EXISTS firmwares (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chasis TEXT,
-        modelo TEXT,
-        memoria TEXT,
-        url_nube TEXT
+        id INTEGER PRIMARY KEY AUTOINCREMENT, chasis TEXT, modelo TEXT, memoria TEXT, url_nube TEXT
     )''')
-
-    # Tabla Repuestos
     cur.execute('''CREATE TABLE IF NOT EXISTS repuestos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        categoria TEXT,
-        nombre TEXT,
-        ubicacion TEXT,
-        cantidad INTEGER,
-        precio REAL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, categoria TEXT, nombre TEXT, ubicacion TEXT, cantidad INTEGER, precio REAL
     )''')
-
-    # Tabla Ventas
     cur.execute('''CREATE TABLE IF NOT EXISTS ventas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        producto TEXT,
-        precio REAL,
-        estado TEXT DEFAULT 'En Venta'
+        id INTEGER PRIMARY KEY AUTOINCREMENT, producto TEXT, precio REAL, estado TEXT DEFAULT 'En Venta'
     )''')
-
-    # Tabla Caja
     cur.execute('''CREATE TABLE IF NOT EXISTS caja (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        tipo TEXT,
-        concepto TEXT,
-        monto REAL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP, tipo TEXT, concepto TEXT, monto REAL
     )''')
-
-    # Cargar usuarios por defecto si está vacía
     cur.execute("SELECT COUNT(*) FROM usuarios")
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO usuarios (usuario, password, nombre) VALUES ('Fabian', '1234', 'Fabián')")
         cur.execute("INSERT INTO usuarios (usuario, password, nombre) VALUES ('Jose', '1234', 'José')")
         cur.execute("INSERT INTO usuarios (usuario, password, nombre) VALUES ('Gerardo', '1234', 'Gerardo')")
-
     conn.commit()
     conn.close()
 
@@ -95,7 +51,6 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Base de conocimiento para drivers de LED
 DRIVERS_LED = {
     "OB3350": "Modificar resistencia en pin ISET (pin 5). Aumentar el valor de R para reducir corriente.",
     "MAP3202": "Modificar resistencias conectadas a los pines CS1/CS2. Retirar resistencias en paralelo.",
@@ -113,13 +68,11 @@ def login():
     data = request.json or {}
     usuario = data.get('usuario')
     password = data.get('password')
-    
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT * FROM usuarios WHERE usuario = ? AND password = ?", (usuario, password))
     user = cur.fetchone()
     conn.close()
-    
     if user:
         session['usuario'] = user['nombre']
         return jsonify({'success': True, 'usuario': user['nombre']})
@@ -128,7 +81,7 @@ def login():
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect('/')
 
 @app.route('/api/ordenes', methods=['GET', 'POST'])
 def handle_ordenes():
@@ -240,13 +193,10 @@ def handle_caja():
     else:
         cur.execute("SELECT * FROM caja ORDER BY id DESC")
         movimientos = [dict(r) for r in cur.fetchall()]
-        
         cur.execute("SELECT SUM(monto) FROM caja WHERE tipo = 'Ingreso'")
         ingresos = cur.fetchone()[0] or 0
-        
         cur.execute("SELECT SUM(monto) FROM caja WHERE tipo = 'Egreso'")
         egresos = cur.fetchone()[0] or 0
-        
         conn.close()
         return jsonify({
             'movimientos': movimientos,
@@ -260,7 +210,6 @@ def analizar_falla():
     data = request.json or {}
     equipo = data.get('equipo', '')
     falla = data.get('falla', '')
-    
     diagnostico = f"Diagnóstico sugerido para {equipo}:\n- Falla reportada: {falla}\n- Verificación inicial: Comprobar voltajes de fuente (STBY y Power-On).\n- Si no hay imagen pero hay audio: Revisar circuito inverter / driver LED."
     return jsonify({'diagnostico': diagnostico})
 
