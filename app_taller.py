@@ -29,16 +29,6 @@ NOMBRE_TALLER = "AGCelectronica"
 DIRECCION_TALLER = "Alsina 4336, Claypole"
 TELEFONO_TALLER = "1164992829"
 
-def actualizar_nombre_en_bd():
-    """Actualiza el nombre del taller guardado en las tablas de la Base de Datos."""
-    with app.app_context():
-        try:
-            # Intenta actualizar en la tabla usuario/configuracion si existen
-            db.session.execute(text("UPDATE usuario SET nombre_taller = :nombre WHERE nombre_taller ILIKE '%FD%';"), {"nombre": NOMBRE_TALLER})
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
 @app.context_processor
 def inject_taller_info():
     return dict(
@@ -49,11 +39,25 @@ def inject_taller_info():
 
 @app.after_request
 def reemplazar_cabecera_html(response):
-    if response.status_code == 200 and response.mimetype == 'text/html':
+    if response.status_code == 200 and 'text/html' in response.headers.get('Content-Type', ''):
         contenido = response.get_data(as_text=True)
-        # Reemplaza 'FD electrónica', 'FD electronica', 'fd electrónica', etc.
-        patron_nombre = re.compile(r'FD\s*electr[oó]nica', re.IGNORECASE)
-        contenido = patron_nombre.sub(NOMBRE_TALLER, contenido)
+        
+        # Reemplazo en código HTML
+        patron = re.compile(r'FD\s*electr[oó]nica', re.IGNORECASE)
+        contenido = patron.sub(NOMBRE_TALLER, contenido)
+        
+        # Inyección JavaScript para forzar cambio en el DOM del navegador
+        js_override = f"""
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {{
+            document.body.innerHTML = document.body.innerHTML.replace(/FD\\s*electr[oó]nica/gi, "{NOMBRE_TALLER}");
+        }});
+        </script>
+        </body>
+        """
+        if "</body>" in contenido:
+            contenido = contenido.replace("</body>", js_override)
+            
         response.set_data(contenido)
     return response
 
@@ -182,7 +186,6 @@ def generar_pdf_orden(orden_id):
 
 with app.app_context():
     db.create_all()
-    actualizar_nombre_en_bd()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
