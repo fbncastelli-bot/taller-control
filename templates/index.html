@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Profesional de Gestión de Taller v4.2</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Librerías para Generación de PDF y Código QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { background-color: #0d1527; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -92,7 +94,8 @@
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <button onclick="verFichaOT()" class="btn btn-primary btn-sm">📄 Ver Ficha / Informe</button>
                     <button onclick="enviarWhatsApp()" class="btn btn-success btn-sm">💬 Enviar WhatsApp al Cliente</button>
-                    <button onclick="generarComprobanteImpresion()" class="btn btn-info btn-sm text-white">🖨️ Imprimir / Guardar PDF (QR)</button>
+                    <button onclick="generarComprobanteImpresion()" class="btn btn-info btn-sm text-white">🖨️ Imprimir Comprobante Oficial</button>
+                    <button onclick="descargarComprobantePDF()" class="btn btn-warning btn-sm fw-bold">📄 Descargar PDF con QR</button>
                     <button onclick="exportarOrdenesExcel()" class="btn btn-success btn-sm fw-bold">📊 Exportar a Excel (CSV)</button>
                     <button onclick="eliminarOrdenSeleccionada()" class="btn btn-danger btn-sm ms-auto">❌ Eliminar Orden Seleccionada</button>
                 </div>
@@ -200,14 +203,14 @@
 
             <div class="card-custom">
                 <div class="row g-2 mb-2">
-                    <div class="col-md-6"><input type="text" id="buscar-comp" onkeyup="filtrarComp()" class="form-control form-control-sm" placeholder="🔎 Buscar Componente: Escriba código (ej: 1N4148, 10k, MOSFET)..."></div>
+                    <div class="col-md-6"><input type="text" id="buscar-comp" onkeyup="filtrarComp()" class="form-control form-control-sm" placeholder="🔎 Buscar Componente: Escriba código (ej: 1N4148, 10k, MOSFET, Gaveta A)..."></div>
                     <div class="col-md-3"><button onclick="filtrarComp()" class="btn btn-info btn-sm w-100">Filtrar</button></div>
                     <div class="col-md-3"><button onclick="cargarRepuestos()" class="btn btn-secondary btn-sm w-100">Ver Todos</button></div>
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover small">
-                        <thead><tr><th>N°</th><th>Categoría</th><th>Código / Nombre Componente</th><th>Gavetero / Ubicación</th><th>Stock</th></tr></thead>
+                    <table class="table table-dark table-hover small align-middle">
+                        <thead><tr><th>N°</th><th>Categoría</th><th>Código / Nombre Componente</th><th>Gavetero / Ubicación</th><th>Stock</th><th class="text-center">Ajuste Rápido</th></tr></thead>
                         <tbody id="tabla-repuestos"></tbody>
                     </table>
                 </div>
@@ -338,36 +341,36 @@
         </div>
     </div>
 
-    <!-- ÁREA EXCLUSIVA DE IMPRESIÓN PARA EL COMPROBANTE OFICIAL -->
+    <!-- ÁREA EXCLUSIVA DE IMPRESIÓN Y DESCARGA DE PDF PARA EL COMPROBANTE OFICIAL -->
     <div id="area-impresion" style="display: none;">
-        <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; max-width: 800px; margin: auto; background-color: #fff; color: #000;">
+        <div id="bloque-comprobante-pdf" style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; max-width: 800px; margin: auto; background-color: #ffffff; color: #000000;">
             <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px;">
                 <div>
-                    <h2 style="margin: 0;" id="imp-taller-nombre">{{ taller or 'SERVICIO TÉCNICO ESPECIALIZADO' }}</h2>
-                    <p style="margin: 0; font-size: 14px;">Comprobante Oficial de Ingreso / Orden de Trabajo</p>
+                    <h2 style="margin: 0; font-size: 20px; font-weight: bold;" id="imp-taller-nombre">SERVICIO TÉCNICO ESPECIALIZADO</h2>
+                    <p style="margin: 0; font-size: 13px;">Comprobante de Recepción de Equipo / Orden de Trabajo</p>
                 </div>
                 <div style="text-align: right;">
-                    <h3 style="margin: 0;" id="imp-ot-num">OT #0000</h3>
+                    <h3 style="margin: 0; font-size: 18px; color: #000;" id="imp-ot-num">OT #0000</h3>
                     <p style="margin: 0; font-size: 12px;" id="imp-fecha">Fecha: --/--/----</p>
                 </div>
             </div>
 
-            <div style="margin-top: 15px; font-size: 14px; line-height: 1.6;">
-                <p style="margin: 4px 0;"><strong>Cliente:</strong> <span id="imp-cliente">---</span> | <strong>Teléfono:</strong> <span id="imp-telefono">---</span></p>
-                <p style="margin: 4px 0;"><strong>Equipo / Modelo:</strong> <span id="imp-equipo">---</span></p>
-                <p style="margin: 4px 0;"><strong>Falla Reportada:</strong> <span id="imp-falla">---</span></p>
-                <p style="margin: 4px 0;"><strong>Estado Actual:</strong> <span id="imp-estado">---</span></p>
-                <p style="margin: 4px 0;"><strong>Presupuesto Estimado:</strong> $<span id="imp-presupuesto">0.00</span></p>
+            <div style="margin-top: 15px; font-size: 13px; line-height: 1.6;">
+                <p style="margin: 3px 0;"><strong>Cliente:</strong> <span id="imp-cliente">---</span> | <strong>Teléfono:</strong> <span id="imp-telefono">---</span></p>
+                <p style="margin: 3px 0;"><strong>Equipo / Modelo:</strong> <span id="imp-equipo">---</span></p>
+                <p style="margin: 3px 0;"><strong>Falla Reportada:</strong> <span id="imp-falla">---</span></p>
+                <p style="margin: 3px 0;"><strong>Estado Actual:</strong> <span id="imp-estado">---</span></p>
+                <p style="margin: 3px 0;"><strong>Presupuesto Estimado:</strong> $<span id="imp-presupuesto">0.00</span></p>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; border-top: 1px solid #ccc; padding-top: 15px;">
-                <div style="font-size: 11px; max-width: 450px; color: #333;">
-                    <p style="margin: 0;">* Presentar este comprobante obligatoriamente para el retiro del equipo.</p>
-                    <p style="margin: 0;">* Pasados los 90 días los equipos no reclamados pasarán a desarme o reciclaje.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
+                <div style="font-size: 11px; max-width: 480px; color: #333;">
+                    <p style="margin: 0;">* Presentar este comprobante para el retiro del equipo.</p>
+                    <p style="margin: 0;">* Pasados los 90 días los equipos no reclamados pasarán a desarme/reciclaje.</p>
                 </div>
                 <div style="text-align: center;">
-                    <div id="imp-qr-container" style="display: flex; justify-content: center; align-items: center; width: 100px; height: 100px; margin: auto;"></div>
-                    <p style="margin: 4px 0 0 0; font-size: 10px; font-weight: bold;">Escanear para verificar OT</p>
+                    <div id="contenedor-qr" style="width: 100px; height: 100px; margin: 0 auto;"></div>
+                    <p style="margin: 4px 0 0 0; font-size: 10px;">Escanear para verificar estado</p>
                 </div>
             </div>
         </div>
