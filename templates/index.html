@@ -8,15 +8,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg-dark: #0d1527; --card-dark: #111c35; --accent: #0284c7; }
-        body { background-color: var(--bg-dark); color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar { background-color: #0b1120; border-bottom: 1px solid #1e293b; }
-        .card-custom { background-color: var(--card-dark); border: 1px solid #1e293b; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .table-dark { background-color: var(--card-dark); color: #e2e8f0; }
-        .nav-tabs-custom .nav-link { color: #94a3b8; border: none; border-radius: 8px; padding: 8px 16px; margin-right: 5px; }
-        .nav-tabs-custom .nav-link.active { color: #fff; background-color: var(--accent); }
-        .btn-cyan { background-color: #06b6d4; color: white; }
-        .btn-cyan:hover { background-color: #0891b2; color: white; }
+        :root { --bg-dark: #121212; --card-dark: #1e1e1e; --accent: #0d6efd; }
+        body { background-color: var(--bg-dark); color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: #0d1117; border-bottom: 1px solid #30363d; }
+        .card { background-color: var(--card-dark); border: 1px solid #30363d; color: #fff; margin-bottom: 20px; }
+        .table-dark { background-color: var(--card-dark); }
+        .nav-tabs .nav-link { color: #8b949e; border: none; }
+        .nav-tabs .nav-link.active { color: #fff; background-color: var(--card-dark); border-bottom: 2px solid var(--accent); }
         
         @media print {
             body * { visibility: hidden; }
@@ -27,167 +25,187 @@
     </style>
 </head>
 <body>
-
-    <!-- PANTALLA DE LOGIN -->
-    <div id="pantalla-login" class="container mt-5 no-print" style="max-width: 400px;">
-        <div class="card-custom text-center p-4">
-            <h4 class="mb-3"><i class="bi bi-cpu"></i> LAB-CONTROL PRO</h4>
-            <p class="text-secondary small">Ingrese sus credenciales de taller</p>
-            <form onsubmit="ejecutarLogin(event)">
-                <input type="text" id="login-usuario" class="form-control bg-dark text-light mb-2" placeholder="Usuario" required>
-                <input type="password" id="login-password" class="form-control bg-dark text-light mb-3" placeholder="Contraseña" required>
-                <button type="submit" class="btn btn-cyan w-100">Ingresar al Sistema</button>
-            </form>
-            <div id="login-error" class="text-danger small mt-2" style="display:none;">Usuario o clave incorrecta</div>
-        </div>
-    </div>
-
-    <!-- CONTENIDO PRINCIPAL -->
-    <div id="pantalla-sistema" style="display:none;">
-        <nav class="navbar navbar-expand-lg navbar-dark px-3 no-print">
-            <a class="navbar-brand font-monospace fw-bold" href="#"><i class="bi bi-cpu"></i> LAB-CONTROL <span class="badge bg-secondary fs-6">v4.2</span></a>
-            <div class="ms-auto d-flex align-items-center">
-                <span class="text-light me-3 small"><i class="bi bi-person-circle"></i> <strong id="usuario-activo"></strong></span>
-                <button class="btn btn-sm btn-outline-danger" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> Salir</button>
-            </div>
-        </nav>
-
-        <div class="container-fluid mt-3 no-print">
-            <ul class="nav nav-tabs-custom mb-3" id="mainTabs" role="tablist">
+    <nav class="navbar navbar-expand-lg navbar-dark px-3 no-print">
+        <a class="navbar-brand font-monospace fw-bold" href="#"><i class="bi bi-cpu"></i> LAB-CONTROL PRO <span class="badge bg-secondary fs-6">v4.2</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="nav nav-tabs ms-auto" id="mainTabs" role="tablist">
                 <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ordenes"><i class="bi bi-tools"></i> Órdenes (OT)</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-placas"><i class="bi bi-memory"></i> Banco de Placas</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-firmwares"><i class="bi bi-cloud-download"></i> Firmwares</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-repuestos"><i class="bi bi-box-seam"></i> Repuestos</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-repuestos"><i class="bi bi-box-seam"></i> Stock Repuestos</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ventas"><i class="bi bi-cart"></i> Ventas</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-caja"><i class="bi bi-cash-stack"></i> Caja</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-caja"><i class="bi bi-cash-stack"></i> Caja y Finanzas</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ia"><i class="bi bi-robot"></i> Asistente IA</button></li>
             </ul>
+        </div>
+    </nav>
 
-            <div class="tab-content">
-                <!-- OT -->
-                <div class="tab-pane fade show active" id="tab-ordenes">
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-journal-check"></i> Órdenes de Trabajo</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaOT"><i class="bi bi-plus-circle"></i> Nueva Orden</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead>
-                                    <tr>
-                                        <th>OT #</th>
-                                        <th>Fecha</th>
-                                        <th>Cliente</th>
-                                        <th>Equipo / Modelo</th>
-                                        <th>Estado</th>
-                                        <th>Ubicación</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-ordenes"></tbody>
-                            </table>
-                        </div>
+    <div class="container-fluid mt-3 no-print">
+        <div class="tab-content" id="mainTabsContent">
+            
+            <!-- ÓRDENES DE TRABAJO -->
+            <div class="tab-pane fade show active" id="tab-ordenes">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-journal-check"></i> Gestión de Órdenes de Trabajo</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaOT"><i class="bi bi-plus-circle"></i> Nueva Orden</button>
                     </div>
-                </div>
-
-                <!-- PLACAS -->
-                <div class="tab-pane fade" id="tab-placas">
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-memory"></i> Banco de Placas</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaPlaca"><i class="bi bi-plus-circle"></i> Cargar Placa</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead><tr><th>Tipo</th><th>Código/Chasis</th><th>Modelo TV</th><th>Test Points</th></tr></thead>
-                                <tbody id="tabla-placas"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FIRMWARES -->
-                <div class="tab-pane fade" id="tab-firmwares">
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-cloud-download"></i> Firmwares</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoFirmware"><i class="bi bi-plus-circle"></i> Nuevo Firmware</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead><tr><th>Chasis</th><th>Modelo</th><th>Memoria</th><th>Enlace</th></tr></thead>
-                                <tbody id="tabla-firmwares"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- REPUESTOS -->
-                <div class="tab-pane fade" id="tab-repuestos">
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-box-seam"></i> Repuestos</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoRepuesto"><i class="bi bi-plus-circle"></i> Agregar Repuesto</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead><tr><th>Categoría</th><th>Nombre</th><th>Ubicación</th><th>Stock</th><th>Precio</th></tr></thead>
-                                <tbody id="tabla-repuestos"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VENTAS -->
-                <div class="tab-pane fade" id="tab-ventas">
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-cart"></i> Ventas</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaVenta"><i class="bi bi-plus-circle"></i> Registrar Venta</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead><tr><th>ID</th><th>Producto</th><th>Precio</th><th>Estado</th></tr></thead>
-                                <tbody id="tabla-ventas"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CAJA -->
-                <div class="tab-pane fade" id="tab-caja">
-                    <div class="card-custom mb-3 text-center">
-                        <div class="row">
-                            <div class="col-4"><span class="text-success small">Ingresos</span><h4 id="caja-ingresos">$0.00</h4></div>
-                            <div class="col-4"><span class="text-danger small">Egresos</span><h4 id="caja-egresos">$0.00</h4></div>
-                            <div class="col-4"><span class="text-info small">Balance</span><h4 id="caja-balance">$0.00</h4></div>
-                        </div>
-                    </div>
-                    <div class="card-custom">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="m-0"><i class="bi bi-cash-stack"></i> Movimientos de Caja</h5>
-                            <button class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoMovimiento"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover align-middle small">
-                                <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Monto</th></tr></thead>
-                                <tbody id="tabla-caja"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- IA -->
-                <div class="tab-pane fade" id="tab-ia">
-                    <div class="card-custom">
-                        <h5><i class="bi bi-robot"></i> Asistente IA Técnico</h5>
-                        <input type="text" id="ia-equipo" class="form-control bg-dark text-light mb-2" placeholder="Modelo de TV o equipo">
-                        <textarea id="ia-falla" class="form-control bg-dark text-light mb-2" rows="3" placeholder="Descripción de la falla"></textarea>
-                        <button class="btn btn-cyan btn-sm" onclick="consultarIA()"><i class="bi bi-cpu"></i> Analizar Falla</button>
-                        <div id="ia-resultado" class="p-3 bg-dark rounded mt-3" style="display:none; white-space: pre-line;"></div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>OT #</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Equipo / Modelo</th>
+                                    <th>Estado</th>
+                                    <th>Ubicación</th>
+                                    <th>Acciones / Impresión</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-ordenes"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+
+            <!-- BANCO DE PLACAS -->
+            <div class="tab-pane fade" id="tab-placas">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-memory"></i> Banco de Placas y Test Points</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaPlaca"><i class="bi bi-plus-circle"></i> Nueva Placa</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Código / Chasis</th>
+                                    <th>Modelo TV / Equipo</th>
+                                    <th>Test Points / Mediciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-placas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIRMWARES -->
+            <div class="tab-pane fade" id="tab-firmwares">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-cloud-download"></i> Firmwares y Memorias</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoFirmware"><i class="bi bi-plus-circle"></i> Cargar Firmware</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Chasis / Board</th>
+                                    <th>Modelo</th>
+                                    <th>Memoria</th>
+                                    <th>Enlace Nube</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-firmwares"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STOCK REPUESTOS -->
+            <div class="tab-pane fade" id="tab-repuestos">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-box-seam"></i> Inventario de Repuestos</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoRepuesto"><i class="bi bi-plus-circle"></i> Nuevo Repuesto</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Categoría</th>
+                                    <th>Nombre / Descripción</th>
+                                    <th>Ubicación / Gaveta</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-repuestos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VENTAS -->
+            <div class="tab-pane fade" id="tab-ventas">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-cart"></i> Registro de Ventas</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaVenta"><i class="bi bi-plus-circle"></i> Nueva Venta</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Producto / Servicio</th>
+                                    <th>Precio</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-ventas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAJA -->
+            <div class="tab-pane fade" id="tab-caja">
+                <div class="card p-3 mb-3">
+                    <div class="row text-center">
+                        <div class="col-md-4"><h6 class="text-success">Ingresos</h6><h4 id="caja-ingresos">$0.00</h4></div>
+                        <div class="col-md-4"><h6 class="text-danger">Egresos</h6><h4 id="caja-egresos">$0.00</h4></div>
+                        <div class="col-md-4"><h6 class="text-info">Balance Net</h6><h4 id="caja-balance">$0.00</h4></div>
+                    </div>
+                </div>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0"><i class="bi bi-cash-stack"></i> Movimientos de Caja</h5>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoMovimiento"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Concepto</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-caja"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IA -->
+            <div class="tab-pane fade" id="tab-ia">
+                <div class="card p-3">
+                    <h5><i class="bi bi-robot"></i> Asistente IA Técnico</h5>
+                    <div class="mb-3">
+                        <input type="text" id="ia-equipo" class="form-control bg-dark text-light mb-2" placeholder="Modelo de TV o equipo">
+                        <textarea id="ia-falla" class="form-control bg-dark text-light mb-2" rows="3" placeholder="Descripción detallada de la falla"></textarea>
+                        <button class="btn btn-info text-white" onclick="consultarIA()"><i class="bi bi-cpu"></i> Analizar Falla</button>
+                    </div>
+                    <div id="ia-resultado" class="p-3 bg-secondary rounded" style="display:none; white-space: pre-line;"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -200,7 +218,9 @@
         <p style="margin: 2px 0; font-size: 12px;"><strong>OT N°:</strong> <span id="p-id"></span></p>
         <p style="margin: 2px 0; font-size: 12px;"><strong>Cliente:</strong> <span id="p-cliente"></span></p>
         <p style="margin: 2px 0; font-size: 12px;"><strong>Equipo:</strong> <span id="p-equipo"></span></p>
+        <p style="margin: 2px 0; font-size: 12px;"><strong>Falla:</strong> <span id="p-falla"></span></p>
         <p style="margin: 2px 0; font-size: 12px;"><strong>Estado:</strong> <span id="p-estado"></span></p>
+        <p style="margin: 2px 0; font-size: 12px;"><strong>Presupuesto:</strong> $<span id="p-presupuesto"></span></p>
         <div id="qrcode" style="margin: 10px auto; display: flex; justify-content: center;"></div>
         <p style="text-align: center; font-size: 10px; margin-top: 5px;">Escanee para consultar estado online</p>
     </div>
@@ -211,59 +231,28 @@
             <div class="modal-content bg-dark text-light">
                 <div class="modal-header"><h5 class="modal-title">Nueva Orden de Trabajo</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <input type="text" id="ot-cliente" class="form-control bg-secondary text-light mb-2" placeholder="Cliente">
+                    <input type="text" id="ot-cliente" class="form-control bg-secondary text-light mb-2" placeholder="Nombre del Cliente">
                     <input type="text" id="ot-telefono" class="form-control bg-secondary text-light mb-2" placeholder="Teléfono">
                     <input type="text" id="ot-equipo-in" class="form-control bg-secondary text-light mb-2" placeholder="Equipo / Modelo">
                     <textarea id="ot-falla-in" class="form-control bg-secondary text-light mb-2" placeholder="Falla reportada"></textarea>
-                    <input type="number" id="ot-presupuesto-in" class="form-control bg-secondary text-light mb-2" placeholder="Presupuesto ($)">
-                    <input type="text" id="ot-ubicacion" class="form-control bg-secondary text-light mb-2" placeholder="Ubicación física">
+                    <input type="number" id="ot-presupuesto-in" class="form-control bg-secondary text-light mb-2" placeholder="Presupuesto estimado ($)">
+                    <input type="text" id="ot-ubicacion" class="form-control bg-secondary text-light mb-2" placeholder="Ubicación física en taller">
                 </div>
-                <div class="modal-footer"><button class="btn btn-cyan" onclick="guardarOT()">Guardar</button></div>
+                <div class="modal-footer"><button class="btn btn-primary" onclick="guardarOT()">Guardar Orden</button></div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        async function ejecutarLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('login-usuario').value;
-            const p = document.getElementById('login-password').value;
-            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ usuario: u, password: p }) });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                localStorage.setItem('usuario_activo', u);
-                iniciarSesionUI(u);
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
-        }
-
-        function iniciarSesionUI(u) {
-            document.getElementById('pantalla-login').style.display = 'none';
-            document.getElementById('pantalla-sistema').style.display = 'block';
-            document.getElementById('usuario-activo').innerText = u;
-            cargarTodo();
-        }
-
-        function cerrarSesion() {
-            localStorage.removeItem('usuario_activo');
-            location.reload();
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            const u = localStorage.getItem('usuario_activo');
-            if (u) iniciarSesionUI(u);
-        });
-
-        function cargarTodo() {
             cargarOrdenes();
             cargarPlacas();
             cargarFirmwares();
             cargarRepuestos();
             cargarVentas();
             cargarCaja();
-        }
+        });
 
         async function cargarOrdenes() {
             const res = await fetch('/api/ordenes');
@@ -313,7 +302,9 @@
             document.getElementById('p-id').innerText = ot.id;
             document.getElementById('p-cliente').innerText = ot.cliente || '';
             document.getElementById('p-equipo').innerText = ot.equipo || '';
+            document.getElementById('p-falla').innerText = ot.falla || '';
             document.getElementById('p-estado').innerText = ot.estado || 'Ingresado';
+            document.getElementById('p-presupuesto').innerText = parseFloat(ot.presupuesto || 0).toFixed(2);
 
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = '';
@@ -331,7 +322,9 @@
             const data = await res.json();
             const tbody = document.getElementById('tabla-placas');
             tbody.innerHTML = '';
-            data.forEach(p => { tbody.innerHTML += `<tr><td>${p.tipo||''}</td><td>${p.codigo||''}</td><td>${p.modelo||''}</td><td>${p.test_points||''}</td></tr>`; });
+            data.forEach(p => {
+                tbody.innerHTML += `<tr><td>${p.tipo||''}</td><td>${p.codigo||''}</td><td>${p.modelo||''}</td><td>${p.test_points||''}</td></tr>`;
+            });
         }
 
         async function cargarFirmwares() {
@@ -339,7 +332,9 @@
             const data = await res.json();
             const tbody = document.getElementById('tabla-firmwares');
             tbody.innerHTML = '';
-            data.forEach(f => { tbody.innerHTML += `<tr><td>${f.chasis||''}</td><td>${f.modelo||''}</td><td>${f.memoria||''}</td><td><a href="${f.url_nube}" target="_blank" class="btn btn-sm btn-outline-info">Descargar</a></td></tr>`; });
+            data.forEach(f => {
+                tbody.innerHTML += `<tr><td>${f.chasis||''}</td><td>${f.modelo||''}</td><td>${f.memoria||''}</td><td><a href="${f.url_nube}" target="_blank" class="btn btn-sm btn-outline-info">Descargar</a></td></tr>`;
+            });
         }
 
         async function cargarRepuestos() {
@@ -347,7 +342,9 @@
             const data = await res.json();
             const tbody = document.getElementById('tabla-repuestos');
             tbody.innerHTML = '';
-            data.forEach(r => { tbody.innerHTML += `<tr><td>${r.categoria||''}</td><td>${r.nombre||''}</td><td>${r.ubicacion||''}</td><td>${r.cantidad||0}</td><td>$${parseFloat(r.precio||0).toFixed(2)}</td></tr>`; });
+            data.forEach(r => {
+                tbody.innerHTML += `<tr><td>${r.categoria||''}</td><td>${r.nombre||''}</td><td>${r.ubicacion||''}</td><td>${r.cantidad||0}</td><td>$${parseFloat(r.precio||0).toFixed(2)}</td></tr>`;
+            });
         }
 
         async function cargarVentas() {
@@ -355,7 +352,9 @@
             const data = await res.json();
             const tbody = document.getElementById('tabla-ventas');
             tbody.innerHTML = '';
-            data.forEach(v => { tbody.innerHTML += `<tr><td>#${v.id}</td><td>${v.producto||''}</td><td>$${parseFloat(v.precio||0).toFixed(2)}</td><td><span class="badge bg-success">${v.estado||'En Venta'}</span></td></tr>`; });
+            data.forEach(v => {
+                tbody.innerHTML += `<tr><td>#${v.id}</td><td>${v.producto||''}</td><td>$${parseFloat(v.precio||0).toFixed(2)}</td><td><span class="badge bg-success">${v.estado||'En Venta'}</span></td></tr>`;
+            });
         }
 
         async function cargarCaja() {
